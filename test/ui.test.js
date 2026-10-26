@@ -16,17 +16,23 @@ function createNode(tag){
     querySelectorAll(selector){return this.lists?.[selector]||[];}
   };
 }
-function setup(){
+function setup(gymPage=false){
   const body=createNode("body"), root=createNode("html");
   const document={body,documentElement:root,createElement:createNode,getElementById:()=>null};
   const tabs=["today","compare","steps","gyms","bonuses","settings"].map(name=>({dataset:{tab:name},onclick:null}));
+  const modes=["training","happyjump"].map(mode=>({dataset:{mode},onclick:null}));
+  const hours=[24,168].map(h=>({dataset:{hours:String(h)},onclick:null}));
   const requests=[];
   const fixture={
     "/user/bars":{bars:{energy:{current:150,maximum:150,interval:120,increment:1},happy:{current:5000,maximum:5000}}},
     "/user/cooldowns":{cooldowns:{drug:0,booster:0}},
     "/user/battlestats":{battlestats:{strength:{value:1000},speed:{value:2000},defense:{value:1500},dexterity:{value:500}}},
     "/user/gym":{gym:{id:9,name:"Example gym"}},
-    "/torn/gyms":{gyms:[{id:9,name:"Example gym",energy_cost:10,modifiers:{strength:50,speed:50,defense:50,dexterity:50}}]},
+    "/torn/gyms":{gyms:[
+      {id:9,name:"Example gym",cost:100,energy_cost:10,modifiers:{strength:50,speed:50,defense:50,dexterity:50}},
+      {id:10,name:"Better gym",cost:50000,energy_cost:10,modifiers:{strength:75,speed:75,defense:75,dexterity:75}}
+    ]},
+    "/user/perks":{perks:{merit:["+25% effective battle strength"],stock:["+10% bank interest"],job:["+5% gym gains","Reduce booster cooldown by 10%"]}},
     "/user/refills":{refills:{energy:true}},
     "/user/travel":{travel:{destination:"United Kingdom",time_left:0}},
     "/market/pointsmarket":{pointsmarket:[{cost:25000,quantity:10000}]}
@@ -44,16 +50,20 @@ function setup(){
   const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
     .replace("###PDA-APIKEY###","test-placeholder-key");
   new Function("document","location","window","localStorage","PDA_httpGet",source)(
-    document,{hostname:"www.torn.com"},{setInterval(){}},{getItem(){return null;},setItem(){}},PDA_httpGet);
+    document,{hostname:"www.torn.com",pathname:gymPage?"/gym.php":"/index.php"},{setInterval(){}},{getItem(){return null;},setItem(){}},PDA_httpGet);
   const launcher=body.children.find(x=>x.id==="hhj-launch");
   const panel=body.children.find(x=>x.id==="hhj-panel");
   const refresh={onclick:null,disabled:false};
   const close={onclick:null};
-  panel.cache={"#hhj-refresh":refresh,"#hhj-close":close,"#hhj-timer":{textContent:""}};
-  panel.lists={"#hhj-refresh":[refresh],"[data-tab]":tabs,"[data-field]":[],"[data-plan]":[],"[data-goal]":[],"[data-step]":[]};
-  return {launcher,panel,refresh,tabs,requests};
+  const manualGym={value:"10"},manualStatus={value:"buy"},manualConfirm={onclick:null};
+  panel.cache={"#hhj-refresh":refresh,"#hhj-close":close,"#hhj-timer":{textContent:""},
+    "#hhj-manual-gym":manualGym,"#hhj-manual-status":manualStatus,
+    "#hhj-manual-confirm":manualConfirm};
+  panel.lists={"#hhj-refresh":[refresh],"[data-tab]":tabs,"[data-field]":[],
+    "[data-plan]":[],"[data-goal]":[],"[data-step]":[],"[data-mode]":modes,"[data-hours]":hours};
+  return {launcher,panel,refresh,tabs,modes,hours,manualConfirm,requests};
 }
-test("TornPDA script opens with readable four-tab panel",()=>{
+test("TornPDA script opens with readable six-tab panel",()=>{
   const app=setup();
   app.launcher.onclick();
   assert.match(app.panel.innerHTML,/Today/);
@@ -95,4 +105,43 @@ test("API error 21 degrades inventory while stats, market, travel and tabs still
   assert.match(app.panel.innerHTML,/Compare both choices/);
   assert.match(app.panel.innerHTML,/Regular training \(no jumps\)/);
   assert.ok(app.requests.every(x=>x.url.startsWith("https://api.torn.com/v2/")));
+});
+
+test("schedule mode controls switch from regular training to jump-specific plans",async()=>{
+  const app=setup();
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  app.tabs.find(x=>x.dataset.tab==="compare").onclick();
+  assert.match(app.panel.innerHTML,/Regular Xanax training/);
+  app.modes.find(x=>x.dataset.mode==="happyjump").onclick();
+  assert.match(app.panel.innerHTML,/Candy micro|eDVD/);
+  app.tabs.find(x=>x.dataset.tab==="steps").onclick();
+  assert.match(app.panel.innerHTML,/Next 24 hours/);
+  app.hours.find(x=>x.dataset.hours==="168").onclick();
+  assert.match(app.panel.innerHTML,/Manual actions · 168 hours/);
+  assert.ok(app.requests.every(x=>x.url.startsWith("https://api.torn.com/v2/")));
+});
+test("manual visible-gym confirmation recommends unpurchased better gym without changing Torn",async()=>{
+  const app=setup(true);
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  app.tabs.find(x=>x.dataset.tab==="gyms").onclick();
+  assert.equal(typeof app.manualConfirm.onclick,"function");
+  app.manualConfirm.onclick();
+  assert.match(app.panel.innerHTML,/Better gym/);
+  assert.match(app.panel.innerHTML,/Buy manually in Torn/);
+  assert.match(app.panel.innerHTML,/projected gain/);
+  assert.ok(app.requests.every(x=>x.url.startsWith("https://api.torn.com/v2/")));
+});
+test("irrelevant merits and financial stock benefits do not appear in Perks screen",async()=>{
+  const app=setup();
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  app.tabs.find(x=>x.dataset.tab==="bonuses").onclick();
+  assert.match(app.panel.innerHTML,/gym gains/);
+  assert.match(app.panel.innerHTML,/booster cooldown/);
+  assert.ok(!app.panel.innerHTML.includes("effective battle strength"));
+  assert.ok(!app.panel.innerHTML.includes("bank interest"));
+  assert.match(app.panel.innerHTML,/Long-term battle-stat milestones/);
+  assert.match(app.panel.innerHTML,/When to activate your books/);
 });
