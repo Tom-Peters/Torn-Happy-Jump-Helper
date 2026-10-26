@@ -47,7 +47,7 @@
   }
   // Official Torn Wiki Gym training estimate (current formula, NOT guaranteed).
   // Torn API gym.modifiers are x10 compared with displayed gym dots.
-  function gainTrain(energy, happy, stat, dots, bonusFactor, gymEnergy) {
+  function gainTrain(energy, happy, stat, dots, bonusFactor, gymEnergy, happyLoss=0.5) {
     if (!(energy>0 && dots>0 && gymEnergy>0)) return 0;
     let remaining=Math.max(0,Math.floor(energy/gymEnergy)*gymEnergy);
     let h=Math.max(0,happy), s=Math.max(0,stat), total=0;
@@ -56,16 +56,16 @@
         +6.82775184551527e-5*(h+250)-0.0301431777;
       const increase=Math.max(0,term)*dots*gymEnergy*bonusFactor;
       total+=increase; s+=increase;
-      h=Math.max(0,h-gymEnergy*0.5);
+      h=Math.max(0,h-gymEnergy*happyLoss);
       remaining-=gymEnergy;
     }
     return total;
   }
-  function gainRegular(energy, happy, stat, dots, bonus, gymCost, sessionEnergy) {
+  function gainRegular(energy, happy, stat, dots, bonus, gymCost, sessionEnergy, happyLoss=0.5) {
     let gain=0, left=Math.floor(energy/gymCost)*gymCost, s=stat;
     const chunk=Math.max(gymCost,Math.floor(sessionEnergy/gymCost)*gymCost);
     while(left>0) {
-      const e=Math.min(left,chunk), g=gainTrain(e,happy,s,dots,bonus,gymCost);
+      const e=Math.min(left,chunk), g=gainTrain(e,happy,s,dots,bonus,gymCost,happyLoss);
       gain+=g;s+=g;left-=e;
     }
     return gain;
@@ -73,10 +73,10 @@
   function baseline(input) {
     const hours=168, regenHour=input.regenHour;
     const normalE=hours*regenHour+(input.refill?7*input.maxE:0);
-    const normal=gainRegular(normalE,input.baseHappy,input.stat,input.dots,input.mod,input.gymCost,input.maxE);
+    const normal=gainRegular(normalE,input.baseHappy,input.stat,input.dots,input.mod,input.gymCost,input.maxE,input.happyLoss);
     const regularXan=14;
     const xanE=normalE+regularXan*250;
-    const xanGain=gainRegular(xanE,input.baseHappy,input.stat,input.dots,input.mod,input.gymCost,input.maxE);
+    const xanGain=gainRegular(xanE,input.baseHappy,input.stat,input.dots,input.mod,input.gymCost,input.maxE,input.happyLoss);
     const xanSpend=marketCost(input.books.xanax,regularXan);
     const pointsSpend=input.refill?marketCost(input.books.points,7*30):{cost:0,known:true};
     return [
@@ -97,7 +97,7 @@
       ["eDVD 2","dvd",0,2],["eDVD 4","dvd",0,4],["eDVD 8","dvd",0,8]
     ];
     const candidates=boosts.flatMap(b=>[0,1,4].map(x=>({name:b[0]+(x?" + "+x+" Xanax":""),type:b[1],count:b[2],dvds:b[3],xanax:x})));
-    const perks=clamp(input.candyPercent,0,250)/100;
+    const perks=clamp(input.candyPercent,0,800)/100;
     for (const s of candidates) {
       const dvdHappy=clamp(input.dvdHappy,2500,5000);
       const perBoosterHours=s.count*0.5*(1-clamp(input.boosterReduction,0,0.75))+s.dvds*6;
@@ -116,9 +116,9 @@
       const energy=Math.max(0,168*input.regenHour-lostRegen)+s.xanax*250*jumps+weekRefill;
       const jumpedE=Math.min(energy,jumps*(input.maxE+s.xanax*250)+weekRefill);
       const eachJump=jumpedE/jumps;
-      const jumpGain=gainTrain(eachJump,jumpHappy,input.stat,input.dots,input.mod,input.gymCost)*jumps;
+      const jumpGain=gainTrain(eachJump,jumpHappy,input.stat,input.dots,input.mod,input.gymCost,input.happyLoss)*jumps;
       const normalGain=gainRegular(Math.max(0,energy-jumpedE),input.baseHappy,input.stat,
-        input.dots,input.mod,input.gymCost,input.maxE);
+        input.dots,input.mod,input.gymCost,input.maxE,input.happyLoss);
       const totalGain=jumpGain+normalGain;
       const counts={xanax:s.xanax*jumps,ecstasy:jumps,dvd:s.dvds*jumps,points:input.refill?210:0};
       counts[s.type]=(counts[s.type]||0)+s.count*jumps;
@@ -156,7 +156,7 @@
   if(!location.hostname.endsWith("torn.com") || document.getElementById("hhj-launch"))return;
   let data={}, quotes={}, lastRefresh=0, errors=[],selected="", opened=false,busy=false;
   const defaults={budget:10000000,stat:"defense",maxJumpsDaily:2,maxE:150,
-    candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,
+    candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
     refill:true,gymOverride:0};
   let cfg={...defaults};
   try{
@@ -211,7 +211,7 @@
       refill:!!cfg.refill, maxJumpsDaily:cfg.maxJumpsDaily,
       budget:cfg.budget,candyPercent:cfg.candyPercent,boosterReduction:cfg.boosterReduction,
       dvdHappy:cfg.dvdHappy,boosterCap:cfg.boosterCap,
-      books:quotes,owned:state.owned,inventoryReady:!!data.inventory};
+      books:Object.fromEntries(Object.entries(quotes).map(([k,v])=>[k,fresh(v)?v:null])),owned:state.owned,inventoryReady:!!data.inventory,happyLoss:cfg.happyLoss};
   }
   async function request(path){
     // Exclusively the official read-only HTTPS v2 API. Do not log the key or URL.
@@ -275,16 +275,16 @@
       title("Energy",fmt(live.e.current)+" / "+fmt(live.e.maximum))+
       title("Happy",fmt(live.h.current)+" / "+fmt(live.h.maximum))+
       title("Gym",escape(live.selectedGym?.name||data.gym?.gym?.name||"not loaded"))+
-      title("Target stat",fmt(live.bs[cfg.stat]?.value))+'</div>';
+      title("Target stat",fmt(live.bs[cfg.stat]?.value))+title("Point refill",data.refills?.refills?.energy===true?"Available":data.refills?.refills?.energy===false?"Used / unavailable":"Unknown")+title("Inventory",data.inventory?"API cached (up to 1h)":"Not loaded")+'</div>';
     const inputs='<h3>Optimisation settings</h3><div class="grid">'+
       opt("stat","Train stat",STATS.map(s=>[s,s[0].toUpperCase()+s.slice(1)]))+
       field("budget","Weekly budget ($)","number",'min="0" step="100000"')+
       field("maxJumpsDaily","Maximum jumps you can attend per day","number",'min="1" max="8"')+
       opt("refill","Use daily 30-point refill",[[true,"Yes, 1 per day"],[false,"No"]])+
       field("modifierPercent","Total personal training bonus % (manual)","number",'min="-50" max="300" step="1"')+
-      field("candyPercent","Candy happy bonus % (manual)","number",'min="0" max="250"')+
+      field("candyPercent","Candy happy bonus % (manual)","number",'min="0" max="800"')+
       opt("dvdHappy","Happy per eDVD",[[2500,"2,500 standard"],[5000,"5,000: eligible Adult Novelties"]])+
-      opt("boosterReduction","Consumable booster cooldown reduction",[[0,"0%"],[0.1,"10%"],[0.25,"25%"],[0.5,"50% (book; check eligibility)"]])+
+      opt("boosterReduction","Candy booster cooldown reduction",[[0,"0%"],[0.1,"10%"],[0.25,"25%"],[0.5,"50% (eligible book)"]])+opt("happyLoss","Happy loss per training E",[[0.5,"0.5 normal"],[0.25,"0.25: Fitness Center Goal Oriented"]])+
       field("gymOverride","Gym dots override (0 = official API)","number",'min="0" max="20" step="0.1"')+
       field("boosterCap","Booster cap hours (readiness only)","number",'min="24" max="48"')+
       '</div><p class="tiny">Modifiers require manual confirmation. The simulation excludes OD risk, addiction/rehab penalties, event effects, exact timing and market slippage. Changing settings never performs a game action.</p>';
@@ -298,7 +298,7 @@
       rec+='<h3>Strategy comparison</h3><div class="scroll"><table><thead><tr><th>Strategy</th><th>Jump/wk</th><th>Stats/wk</th><th>Gain vs base</th><th>Weekly spend</th></tr></thead><tbody>'+
         order.map(x=>'<tr class="choice '+(selected===x.id?"chosen":"")+'" data-plan="'+escape(x.id)+'"><td>'+escape(x.name)+'</td><td>'+fmt(x.jumps)+'</td><td>'+fmt(x.gain)+'</td><td>'+fmt(x.increment)+'</td><td>'+ (x.known?cash(x.cost):"missing quote")+'</td></tr>').join("")+
         '</tbody></table></div><p class="tiny">Tap a strategy to inspect its required items and manual sequence. Prices are market orderbook estimates less known personal inventory; not guaranteed transaction prices.</p>';
-      rec+=chosen?steps(chosen,live,input):"";
+      rec+=insights(live,input,plans);rec+=chosen?steps(chosen,live,input):"";
       const stale=Object.entries(quotes).filter(([k,v])=>!fresh(v)).map(([k])=>k);
       if(stale.length)rec+='<div class="warn">Prices not recently verified for: '+escape(stale.join(", "))+'. Refresh before purchasing.</div>';
     }
@@ -330,6 +330,22 @@
     });
     countdown();
   }
+  function insights(live,input,plans){
+    const tips=[];
+    if (input.maxE<150)tips.push("Donator status raises the energy cap to 150 and natural regeneration to 30 E/hour. Compare its cost before buying additional boosters.");
+    if (input.baseHappy<5025)tips.push("A well-staffed Private Island can raise base happiness to 5,025. Compare rental cost and the improvement in every train.");
+    if (input.stat>=100000)tips.push("This stat is already fairly developed. Check the net weekly gains column: normal Xanax training can beat Happy stacking after lost regeneration.");
+    if (input.stat>=1000000)tips.push("At high stats, prioritise sustainable energy per day, the strongest eligible gym and training bonuses; consider stat enhancers separately.");
+    if (cfg.candyPercent===0)tips.push("Check Voracity candy perks and World Diabetes Day (13–15 November); set the actual bonus manually only while it applies.");
+    if (cfg.happyLoss!==0.25)tips.push("A 3-star Fitness Center offers Goal Oriented, halving happy lost from gym training; choose 0.25 only if you receive that bonus.");
+    if (cfg.dvdHappy!==5000)tips.push("A 10-star Adult Novelties job may double eDVD happiness to 5,000, but weigh job changes against other benefits.");
+    if (cfg.modifierPercent===0)tips.push("Enter verified education, Steadfast faction, company, book and gym-gain bonuses to improve estimates.");
+    if (data.refills?.refills?.energy===false && cfg.refill)tips.push("Today's points energy refill appears unavailable; the weekly projection assumes seven future daily refills, not an immediately available refill.");
+    if (plans.options.some(p=>!p.known))tips.push("Some candidate costs are unverified because item quotes are absent, stale or too shallow. Do not treat those as free.");
+    const natural=plans.baseline[0], xan=plans.baseline[1];
+    if(xan.known && xan.gain>natural.gain)tips.push("Regular Xanax use is an alternative: modelled at "+fmt(xan.gain-natural.gain)+" more stats/week than natural training, before overdose and addiction costs.");
+    return '<h3>Ways to improve stat growth</h3><div class="tile"><ul>'+tips.map(s=>'<li>'+escape(s)+'</li>').join("")+'</ul></div>';
+  }
   function steps(p,live,input){
     const booster=p.count?fmt(p.count)+" × "+ITEMS[p.type].label:(p.dvds?fmt(p.dvds)+" × Erotic DVD":"none");
     const currentCd=data.cooldowns?.cooldowns||{};
@@ -340,7 +356,7 @@
     const needNow=p.xanax?["Allow drug cooldown to expire. Bank energy with "+p.xanax+" manually taken Xanax, spaced by their actual 6–8 hour drug cooldowns. Never take another drug while on cooldown."]:["Build a full energy bar by natural regeneration first."];
     const canUseBooster=(currentCd.booster||0)<input.boosterCap*3600;
     const canDrug=(currentCd.drug||0)===0;
-    const ready=canUseBooster&&canDrug&&live.e.current>=live.e.maximum&&live.h.current>=live.h.maximum;
+    const ready=canUseBooster&&canDrug&&(currentCd.booster||0)+p.perBoosterHours*3600<=input.boosterCap*3600&&live.e.current>=live.e.maximum&&live.h.current>=live.h.maximum;
     const list=[
       "Check the in-game cooldowns, maximum booster cooldown, items and gym. "+(ready?"Current immediate readiness checks pass.":"Not currently ready for a complete immediate jump."),
       ...needNow,
