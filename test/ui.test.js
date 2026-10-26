@@ -157,9 +157,11 @@ test("launcher mounts after late TornPDA body creation and recovers after naviga
   };
   const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
     .replace("###PDA-APIKEY###","placeholder-key");
-  new Function("document","location","window","localStorage",source)(
+  let clock=Date.now();
+  class FakeDate extends Date {static now(){return clock;}}
+  new Function("document","location","window","localStorage","Date",source)(
     document,{hostname:"www.torn.com",pathname:"/index.php"},
-    {setInterval(fn){heartbeat=fn;}},{getItem(){return null;},setItem(){}});
+    {setInterval(fn){heartbeat=fn;}},{getItem(){return null;},setItem(){}},FakeDate);
   assert.equal(document.body,null);
   assert.equal(typeof domReady,"function");
   activeBody=createNode("body");
@@ -174,6 +176,7 @@ test("launcher mounts after late TornPDA body creation and recovers after naviga
   // Torn replaces the whole <body> node during navigation.
   activeBody=createNode("body");
   document.body=activeBody;
+  clock+=6000;
   heartbeat();
   assert.equal(document.getElementById("hhj-launch"),launcher);
   assert.ok(document.getElementById("hhj-panel"));
