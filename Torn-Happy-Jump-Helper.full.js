@@ -173,7 +173,7 @@
     const all={baseline:[],options:[],naturalBenchmark:natural};
     const contexts={energy:input.currentEnergy,happy:input.currentHappy,
       drugCooldown:input.drugCooldown,boosterCooldown:input.boosterCooldown,
-      refillUsed:input.refillUsed,regenInterval:input.regenInterval,
+      refillUsed:input.refillReady!==true,regenInterval:input.regenInterval,
       regenIncrement:input.regenIncrement,available:input.available,
       xanaxHours:input.xanaxHours,ecstasyHours:input.ecstasyHours||3.6};
     for(const refill of modes){
@@ -262,11 +262,15 @@
       add(t,"train",label+" • "+used+" E • +"+Math.round(gain).toLocaleString()+" "+input.statName,used,gain);
     }
     function useRefill(t){
-      if(!refills||refilledToday||!available||e>limit-normalCap)return;
-      if(!canPay({points:30}))return;
-      consume(t,"points",30);e=Math.min(limit,e+normalCap);refilledToday=true;
-      add(t,"refill","Manual 30-point energy refill • +"+normalCap+" E",normalCap);
+      // 30-point energy refill fills TO the normal cap, never adds a full
+      // extra bar to a partially filled or Xanax-stacked energy bar.
+      if(!refills||refilledToday||!available||e>=normalCap)return false;
+      if(!canPay({points:30}))return false;
+      const restored=normalCap-e;
+      consume(t,"points",30);e=normalCap;refilledToday=true;
+      add(t,"refill","Manual 30-point energy refill • "+Math.round(restored)+" E restored to "+normalCap+" E",restored);
       train(t,"Train after daily refill");
+      return true;
     }
     if(boosterHours>input.boosterCap)return {events:[],gain:0,cost:NaN,known:false,jumps:0,error:"Booster duration exceeds cap"};
     let nextXan=start;
@@ -296,7 +300,11 @@
           add(t,"xanax","Manually take Xanax • +250 E; assumed next drug availability "+new Date(nextDrug*1000).toISOString(),250);
           train(t,"Train Xanax energy promptly");
         }
-        if(t%86400>=12*3600&&!refilledToday){if(e>=input.gymCost)train(t,"Train before daily refill");useRefill(t);}
+        if(refills&&t%86400>=12*3600&&!refilledToday&&canPay({points:30})){
+          // Spend only if the planned daily refill really can follow.
+          if(e>=input.gymCost)train(t,"Train before confirmed available daily refill");
+          useRefill(t);
+        }
       }else{
         // A jump strategy still trains naturally available overflow energy.
         // If the next jump is >one whole regen cycle away and no Xanax has
@@ -532,7 +540,7 @@
     const start=plan.timeline.start;
     const shared={energy:input.currentEnergy,happy:input.currentHappy,
       drugCooldown:input.drugCooldown,boosterCooldown:input.boosterCooldown,
-      refillUsed:input.refillUsed,regenInterval:input.regenInterval,
+      refillUsed:input.refillReady!==true,regenInterval:input.regenInterval,
       regenIncrement:input.regenIncrement,regenFirstSeconds:input.regenFirstSeconds,
       available:input.available};
     const quick=schedule(input,plan,start,{...shared,xanaxHours:6,ecstasyHours:200/60});
@@ -852,7 +860,7 @@
        boosterCooldown:data.cooldowns?.cooldowns?.booster||0,
        regenInterval:state.e.interval||120,regenIncrement:state.e.increment||1,
        regenFirstSeconds:state.e.tick_time||state.e.interval||120,
-       refillUsed:data.refills?.refills?.energy===false,
+       refillReady:data.refills?.refills?.energy===true,refillUsed:data.refills?.refills?.energy!==true,
        available:true, // Plans while abroad are conditional until return.
        xanaxHours:cfg.xanaxHours,returnHours:cfg.returnHours,perkAudit};
   }
