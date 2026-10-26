@@ -1,0 +1,15 @@
+{
+  "name": "torn-happy-jump-helper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only on-demand TornPDA happy-jump planner",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --check Torn-Happy-Jump-Helper.user.js && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "author": "IamEEKY"
+}
