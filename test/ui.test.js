@@ -16,7 +16,7 @@ function createNode(tag){
     querySelectorAll(selector){return this.lists?.[selector]||[];}
   };
 }
-function setup(gymPage=false,inventoryMode="error"){
+function setup(gymPage=false,inventoryMode="error",refillUsed=true){
   const body=createNode("body"), root=createNode("html");
   const document={body,documentElement:root,createElement:createNode,getElementById:()=>null};
   const tabs=["today","compare","steps","gyms","bonuses","progress","settings"].map(name=>({dataset:{tab:name},onclick:null}));
@@ -34,7 +34,7 @@ function setup(gymPage=false,inventoryMode="error"){
       {id:10,name:"Better gym",cost:50000,energy_cost:10,modifiers:{strength:75,speed:75,defense:75,dexterity:75}}
     ]},
     "/user/perks":{perks:{merit:["+25% effective battle strength"],stock:["+10% bank interest"],job:["+5% gym gains","Reduce booster cooldown by 10%"]}},
-    "/user/refills":{refills:{energy:true}},
+    "/user/refills":{refills:{energy:refillUsed}},
     "/user/travel":{travel:{destination:"United Kingdom",time_left:0}},
     "/market/pointsmarket":{pointsmarket:[{cost:25000,quantity:10000}]}
   };
@@ -71,7 +71,7 @@ function setup(gymPage=false,inventoryMode="error"){
     "#hhj-manual-gym":manualGym,"#hhj-manual-status":manualStatus,
     "#hhj-manual-confirm":manualConfirm};
   panel.lists={"#hhj-refresh":[refresh],"[data-tab]":tabs,"[data-field]":[],
-    "[data-plan]":[],"[data-goal]":[],"[data-step]":[],"[data-mode]":modes,"[data-compare-mode]":comparisons,"[data-hours]":hours};
+    "[data-plan]":[],"[data-goal]":[],"[data-step]":[],"[data-refill-used]":[],"[data-refill-clear]":[],"[data-mode]":modes,"[data-compare-mode]":comparisons,"[data-hours]":hours};
   return {launcher,panel,refresh,tabs,modes,comparisons,hours,manualConfirm,requests};
 }
 test("TornPDA script opens with readable six-tab panel",()=>{
@@ -336,4 +336,27 @@ test("Today prioritises a compact planned action and does not claim an action is
   assert.match(app.panel.innerHTML,/MAXIMUM WEEKLY GAIN/);
   assert.match(app.panel.innerHTML,/configured, not verified cash on hand/);
   assert.match(app.panel.innerHTML,/swipe horizontally for more/);
+});
+
+test("Today correctly shows today's refill USED when Torn API energy is true",async()=>{
+  const app=setup(false,"partial",true);
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  assert.match(app.panel.innerHTML,/Today.s 30-point refill/);
+  assert.match(app.panel.innerHTML,/Already used/);
+  assert.match(app.panel.innerHTML,/Used today/);
+  assert.ok(!app.panel.innerHTML.includes("Verified ready"));
+  assert.ok(!app.panel.innerHTML.includes("Train before confirmed available daily refill"));
+  app.tabs.find(x=>x.dataset.tab==="steps").onclick();
+  const cutoff=new Date().toISOString().slice(0,10);
+  const todays=app.panel.innerHTML.split("2026-").slice(0,1);
+  assert.ok(!app.panel.innerHTML.includes("Train before confirmed available daily refill"));
+});
+test("Today indicates refill AVAILABLE only when API energy false",async()=>{
+  const app=setup(false,"partial",false);
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  assert.match(app.panel.innerHTML,/Not yet used/);
+  assert.match(app.panel.innerHTML,/Available/);
+  assert.match(app.panel.innerHTML,/Mark today.s refill used/);
 });
