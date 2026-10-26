@@ -1,5 +1,35 @@
 # Torn Happy Jump Helper
 
+## v0.7.0 — Compact TornPDA compatibility release (CURRENT)
+
+**Why:** On the user's Android TornPDA installation, the former ~5 KB remote loader displayed the HJ button but Torn's Content Security Policy blocked its `new Function` evaluation. Replacing it with the complete ~111 KB script stopped the button appearing again. There is no confirmed official TornPDA byte limit; do not treat file size as a proven cause.
+
+**Solution:** [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js) is now a **~22 KB single-file userscript**, injected directly by TornPDA. It **does not use `eval`, `new Function`, dynamic imports, external scripts or `@require`**. It creates its floating HJ button immediately without requesting Torn's API. The code has no account-specific data or real API key.
+
+### Current compact functionality
+
+- **Today:** current base battle stats, gym, happiness, energy, drug/booster cooldowns, conservative next scheduled manual action, seven-day indicative natural/Xanax training gain, configured budget.
+- **Compare:** natural-energy and Xanax weekly training forecasts side by side; an explicitly **single prepared Happy jump** scenario for illustration, not a fabricated repeatable week of jumps.
+- **Plan:** UTC next 24 hours or seven days, minute-level conditional energy/Xanax/refill actions. Recheck actual cooldowns and gym access before acting. Future cooldown uses an assumed 7h Xanax length and is not guaranteed.
+- **Gyms:** current gym data and only manually verified visible, owned or unlocked-to-buy alternatives. Verification must happen while the Torn Gym page is open.
+- **Perks & books:** only training-relevant perk descriptions, filtered Book inventory, advice to save 5%-stat books until 200m for the full +10m cap, other book timing cautions.
+- **Progress:** locally stored daily stat snapshots and approximate 50m/100m/200m/1b single-stat targets, without public account uploads.
+- **Settings:** weekly budget, daily refill comparison, extra manually configured gym gain percentage.
+
+### Reinstall instructions
+
+1. **Remove/disable both older Happy Jump Helper variants** (the ~5 KB lazy loader and the ~111 KB self-contained v0.6.3 build). Avoid duplicate scripts with the same name.
+2. Install only the raw `Torn-Happy-Jump-Helper.user.js` URL from this repository. Verify the script says **v0.7.0** and source size about **22 KB**; injection **END**.
+3. Reload Torn inside TornPDA. The floating **HJ ◉** button should appear without making any API requests. Tap it and manually press **Refresh Torn data**.
+4. If the button is still missing, separately update the [HJ Injection Diagnostic](Torn-HJ-Injection-Test.user.js) to v1.3 and report its **Direct script version** and **Main script phase**. Do not disable or bypass CSP.
+
+### Trade-offs and accuracy
+
+This compact edition intentionally **simplifies** the previous 111 KB full-feature planner: it does not yet reproduce all advanced price-book combinations, probabilistic cooldown scenarios, exact gym membership scraping or a fully optimised recurring Happy-jump schedule. The separate [`Torn-Happy-Jump-Helper.full.js`](Torn-Happy-Jump-Helper.full.js) is retained as the **v0.6.3 development/reference engine**, but it is *not the file to install* in TornPDA.
+
+Known conservative rule: Torn v2 `/user/refills` `energy:true` means the 30-point refill is **already used**. Missing API status is treated as unknown, not available. A manually marked refill-used day expires at 00:00 UTC. All gameplay remains manual and all requests are read-only GET. The current compact version passes **51 simulated tests** (legacy engine plus compact startup/refill tests) but still requires live device confirmation.
+
+
 ## v0.6.3 — CSP-safe self-contained TornPDA installation
 
 **Critical installation change:** Torn's Content Security Policy forbids `unsafe-eval` on some pages. The previous 5 KB launcher fetched the 110 KB engine via `PDA_httpGet`, then used `new Function(fetchedSource)`; Torn's Item Market page blocked that runtime compilation and showed a CSP error. No browser security changes or exemptions should be made.
