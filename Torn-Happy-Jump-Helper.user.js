@@ -518,7 +518,7 @@
     if(!["training","happyjump"].includes(cfg.scheduleMode))cfg.scheduleMode="training";
     if(![24,168].includes(Number(cfg.scheduleHours)))cfg.scheduleHours=24;
     const gymSaved=JSON.parse(localStorage.getItem("hhj-verified-gyms-v1")||"null");
-    if(gymSaved&&typeof gymSaved==="object"&&Date.now()-Number(gymSaved.at||0)<7*86400000){
+    if(gymSaved&&typeof gymSaved==="object"&&Date.now()-Number(gymSaved.at||0)<86400000){
       verifiedGyms=gymSaved.statuses&&typeof gymSaved.statuses==="object"?gymSaved.statuses:{};
       gymVerifiedAt=Number(gymSaved.at||0);
     }
@@ -813,7 +813,7 @@
       '<div class="card hero"><div class="label">Currently active</div><h3>'+
       escape(active?.name||data.gym?.gym?.name||"Not loaded")+'</h3>'+
       '<p>'+(active?active.dots.toFixed(1)+' dots · '+active.energyCost+' E per train':'Refresh current gym data')+'</p>'+
-      '<p class="tiny">Page verification last confirmed: '+escape(age)+'. Gym permissions expire after seven days.</p></div>'+
+      '<p class="tiny">Page verification last confirmed: '+escape(age)+'. Gym verification expires after 24 hours.</p></div>'+
       (better.length?'<h3>Better eligible gyms</h3>'+
         better.map(g=>'<div class="card"><h3>'+escape(g.name)+'</h3>'+
           '<p>'+g.dots.toFixed(1)+' dots for '+escape(input?.statName||cfg.stat)+
@@ -1069,7 +1069,7 @@
       [['today','Today'],['compare','Compare'],['steps','Plan'],['gyms','Gyms'],['bonuses','Perks'],['settings','Settings']].map(([k,n])=>
       '<button type="button" data-tab="'+k+'" aria-selected="'+(activeTab===k?'true':'false')+'">'+n+'</button>').join('')+
       '</nav><div class="body">'+body+
-      '<p class="tiny">IamEEKY · v0.3 beta · All gameplay steps are manual</p></div>';
+      '<p class="tiny">IamEEKY · v0.4 beta · All gameplay steps are manual</p></div>';
     panel.querySelector('#hhj-close').onclick=()=>{opened=false;panel.style.display='none';};
     for(const btn of panel.querySelectorAll('#hhj-refresh'))btn.onclick=refresh;
     const capture=panel.querySelector('#hhj-capture-gyms');
