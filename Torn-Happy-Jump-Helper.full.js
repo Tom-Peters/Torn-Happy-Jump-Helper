@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.6.2
-// @description  Full read-only Happy Jump Helper engine, loaded on demand by the small TornPDA launcher.
+// @version      0.6.3
+// @description  Self-contained read-only TornPDA training planner; CSP-safe with no runtime code evaluation.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
 // @match        https://torn.com/*
@@ -16,7 +16,7 @@
   // Minimal first-instruction status marker: a separate tiny diagnostic can
   // distinguish "never executed" from "failed during initialization".
   if(typeof window!=="undefined"){
-    window.__TornHappyJumpStage={version:"0.6.2",phase:"starting"};
+    window.__TornHappyJumpStage={version:"0.6.3",phase:"starting"};
     if(typeof window.setTimeout==="function")window.setTimeout(()=>{
       if(window.__TornHappyJumpStage?.phase==="mounted")return;
       const parent=document.body;
@@ -765,7 +765,7 @@
     document.addEventListener("DOMContentLoaded",mountHelper,{once:true});
   }
   // This flag can be checked in TornPDA Developer Tools without API access.
-  window.__TornHappyJumpLoaded="0.6.2";
+  window.__TornHappyJumpLoaded="0.6.3";
   if(window.__TornHappyJumpStage)window.__TornHappyJumpStage.phase=mountHelper()?"mounted":"waiting-body";
   launcher.addEventListener("click",()=>{
     mountHelper();
