@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.3.0
+// @version      0.4.0
 // @description  Live read-only TornPDA happy-jump planner. No gameplay actions.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -466,7 +466,7 @@
   // Model excludes future gym unlocks/events and therefore is a scenario, not ETA certainty.
   function targetProjection(input, weeklyGain, weeklyCost, thresholds=[5e7,1e8,2e8,1e9]){
     const initial=+input?.stat||0;
-    if(!(initial>0)&&!Number.isFinite(initial))return [];
+    if(!(initial>0)||!Number.isFinite(initial))return [];
     if(!(weeklyGain>0)||!Number.isFinite(weeklyGain))
       return thresholds.map(target=>({target,weeks:null,eta:null,cost:null}));
     const delta=Math.max(100000,initial*0.05);
@@ -498,11 +498,12 @@
   if(!location.hostname.endsWith("torn.com") || document.getElementById("hhj-launch"))return;
   let data={}, quotes={}, lastRefresh=0, errors=[],selected="", opened=false,busy=false;
   let inventoryWarning="",activeTab="today",showAll=false;
+  let gymEvidence=[],gymNotice="",verifiedGyms={},gymVerifiedAt=0;
   const completedSteps=new Set(); // Local tick-boxes only, never Torn gameplay actions.
   const defaults={budget:10000000,stat:"dexterity",statGoal:"weakest",objective:"growth",
     maxJumpsDaily:6,maxE:150,
     candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
-    autoPerks:true,xanaxHours:7,viewUnit:"week",returnHours:0,
+    autoPerks:true,xanaxHours:7,viewUnit:"week",scheduleMode:"training",scheduleHours:24,returnHours:0,bookGymMilestone:50000000,
     refill:"both",gymOverride:0,theme:"dark"};
   let cfg={...defaults};
   try{
@@ -514,6 +515,13 @@
     if(!["growth","value"].includes(cfg.objective))cfg.objective="growth";
     if(typeof cfg.refill==="boolean")cfg.refill=cfg.refill?"yes":"no";
     if(!["yes","no","both"].includes(cfg.refill))cfg.refill="both";
+    if(!["training","happyjump"].includes(cfg.scheduleMode))cfg.scheduleMode="training";
+    if(![24,168].includes(Number(cfg.scheduleHours)))cfg.scheduleHours=24;
+    const gymSaved=JSON.parse(localStorage.getItem("hhj-verified-gyms-v1")||"null");
+    if(gymSaved&&typeof gymSaved==="object"&&Date.now()-Number(gymSaved.at||0)<7*86400000){
+      verifiedGyms=gymSaved.statuses&&typeof gymSaved.statuses==="object"?gymSaved.statuses:{};
+      gymVerifiedAt=Number(gymSaved.at||0);
+    }
   }catch(_){}
   const style=document.createElement("style");
   style.textContent = `
@@ -576,6 +584,59 @@
   const panel=document.createElement("section");panel.id="hhj-panel";panel.style.display="none";panel.setAttribute("aria-label","Happy Jump Helper");panel.setAttribute("role","dialog");
   document.body.append(launcher,panel);
   launcher.addEventListener("click",()=>{opened=!opened;panel.style.display=opened?"flex":"none";if(opened)render();});
+  function captureVisibleGyms(){
+    gymNotice="";
+    if(!/\/gym\.php$/i.test(location.pathname||"")){
+      gymNotice="Open Torn's Gym page inside TornPDA, then tap Capture visible gyms again. Nothing is clicked or changed in Torn.";
+      gymEvidence=[];return;
+    }
+    const catalog=gymCatalog(data.gyms),found=new Map(),root=document.body;
+    // Only inspect nodes already rendered on the user-opened Gym page after
+    // a deliberate press of Capture. Never click, fetch or request a Torn page.
+    const nodes=Array.from(root.querySelectorAll("h2,h3,h4,span,button,a,li,[class*='gym']"))
+      .slice(0,6000);
+    for(const node of nodes){
+      if(node.closest?.("#hhj-panel"))continue;
+      const t=(node.innerText||node.textContent||"").replace(/\s+/g," ").trim();
+      if(!t||t.length>90)continue;
+      const gym=catalog.find(g=>t===g.name||t===g.name+" Gym");
+      if(!gym)continue;
+      // The gym's name must be visibly rendered; class-based hidden children
+      // are not evidence of unlock/availability.
+      if(node.getClientRects&&node.getClientRects().length===0)continue;
+      let el=node,context="";
+      for(let j=0;j<3&&el;j++,el=el.parentElement){
+        const str=(el.innerText||"").replace(/\s+/g," ").slice(0,450);
+        if(str.length>gym.name.length&&str.length<450){context=str;break;}
+      }
+      const status=/locked|not yet unlocked|in progress|earn.*exp/i.test(context)?"locked":
+        /buy membership|purchase membership|membership cost/i.test(context)?"buy":
+        /\bactivate\b|\bselect gym\b|\bselected\b|\bactive\b/i.test(context)?"owned":"seen";
+      if(!found.has(gym.id))found.set(gym.id,{id:gym.id,name:gym.name,status,
+        snippet:context.slice(0,220)});
+    }
+    gymEvidence=[...found.values()];
+    // Always keep current active gym known, regardless of page presentation.
+    const current=data.gym?.gym?.id;
+    if(current!=null&&!found.has(+current)){
+      const x=catalog.find(g=>g.id===+current);
+      if(x)gymEvidence.push({id:x.id,name:x.name,status:"owned",snippet:"Current gym verified by Torn API"});
+    }
+    // Auto-detected memberships are display evidence only, NOT authorisation
+    // to recommend: user explicitly confirms each relevant gym below.
+    gymNotice=gymEvidence.length
+      ?"Found "+gymEvidence.length+" visible gym entries. Confirm Owned or Unlocked to buy for the gyms you can actually access."
+      :"No individual gym tiles could be confirmed from the current screen. Only your active gym will be recommended.";
+  }
+  function saveGymVerification(id,status){
+    const candidate=gymEvidence.find(x=>x.id===+id);
+    if(!candidate)return;
+    if(["owned","buy"].includes(status))verifiedGyms[String(id)]=status;
+    else delete verifiedGyms[String(id)];
+    gymVerifiedAt=Date.now();
+    try{localStorage.setItem("hhj-verified-gyms-v1",
+      JSON.stringify({at:gymVerifiedAt,statuses:verifiedGyms}));}catch(_){}
+  }
   function readyState() {
     const bars=data.bars?.bars||{}, e=bars.energy||{}, h=bars.happy||{};
     const rawGym=data.gym?.gym||{},list=data.gyms?.gyms||[];
