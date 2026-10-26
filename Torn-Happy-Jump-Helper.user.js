@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.4.0
+// @version      0.4.1
 // @description  Live read-only TornPDA happy-jump planner. No gameplay actions.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -534,7 +534,7 @@
   }catch(_){}
   const style=document.createElement("style");
   style.textContent = `
-#hhj-launch{position:fixed!important;bottom:90px;right:12px;z-index:2147483646!important;background:#155e72!important;color:#fff!important;border:2px solid #a5f3fc!important;border-radius:999px!important;padding:12px 16px!important;font:800 15px system-ui,sans-serif!important;box-shadow:0 4px 22px #000b!important;cursor:pointer}
+#hhj-launch{position:fixed!important;top:44%!important;bottom:auto!important;right:7px;z-index:2147483646!important;background:#155e72!important;color:#fff!important;border:2px solid #a5f3fc!important;border-radius:999px!important;padding:12px 16px!important;font:800 15px system-ui,sans-serif!important;box-shadow:0 4px 22px #000b!important;cursor:pointer}
 #hhj-panel{--hj-bg:#0a111c;--hj-card:#182639;--hj-raised:#20344b;--hj-text:#f5f8ff;--hj-muted:#c3d0e2;--hj-line:#50677f;--hj-link:#a3e4ff;--hj-accent:#62f0d0;--hj-alert:#3b3024;position:fixed!important;inset:8px 8px 12px!important;max-width:610px!important;margin:auto!important;z-index:2147483647!important;display:flex;flex-direction:column;overflow:hidden!important;border:2px solid var(--hj-line)!important;border-radius:17px!important;color:var(--hj-text)!important;background:var(--hj-bg)!important;box-shadow:0 0 0 200vmax #0009,0 18px 50px #000a!important;font:15px/1.48 system-ui,-apple-system,sans-serif!important;color-scheme:dark!important}
 #hhj-panel[data-theme=light]{--hj-bg:#f5f8ff;--hj-card:#fff;--hj-raised:#e9f0f8;--hj-text:#142238;--hj-muted:#334960;--hj-line:#a7b5c9;--hj-link:#07537d;--hj-accent:#077f72;--hj-alert:#fff1d5;color-scheme:light!important}
 #hhj-panel *,#hhj-panel *:before,#hhj-panel *:after{box-sizing:border-box!important}
@@ -591,8 +591,35 @@
   document.documentElement.appendChild(style);
   const launcher=document.createElement("button");launcher.id="hhj-launch";launcher.type="button";launcher.textContent="HJ ◉";launcher.setAttribute("aria-label","Open Happy Jump Helper");
   const panel=document.createElement("section");panel.id="hhj-panel";panel.style.display="none";panel.setAttribute("aria-label","Happy Jump Helper");panel.setAttribute("role","dialog");
-  document.body.append(launcher,panel);
-  launcher.addEventListener("click",()=>{opened=!opened;panel.style.display=opened?"flex":"none";if(opened)render();});
+  // TornPDA can inject before <body> exists, and Torn can replace body during
+  // navigation. Never let either situation permanently remove the launcher.
+  function mountHelper(){
+    const root=document.body||document.documentElement;
+    if(!root)return false;
+    if(!document.getElementById("hhj-launch"))root.appendChild(launcher);
+    if(!document.getElementById("hhj-panel"))root.appendChild(panel);
+    return true;
+  }
+  if(!mountHelper()&&typeof document.addEventListener==="function"){
+    document.addEventListener("DOMContentLoaded",mountHelper,{once:true});
+  }
+  launcher.addEventListener("click",()=>{
+    mountHelper();
+    opened=!opened;panel.style.display=opened?"flex":"none";
+    if(opened){
+      try{render();}
+      catch(error){
+        panel.innerHTML='<div style="background:#111a2a;color:#fff;padding:20px;line-height:1.5">'+
+          '<h3>Happy Jump Helper could not open</h3><p>'+
+          escape(error?.message||"Unexpected UI error")+'</p>'+
+          '<p>Reload Torn inside TornPDA, then try again. No gameplay action was attempted.</p>'+
+          '<button id="hhj-emergency-close" type="button">Close</button></div>';
+        panel.querySelector("#hhj-emergency-close")?.addEventListener("click",()=>{
+          opened=false;panel.style.display="none";
+        });
+      }
+    }
+  });
   function captureVisibleGyms(){
     gymNotice="";
     if(!/\/gym\.php$/i.test(location.pathname||"")){
@@ -1234,5 +1261,12 @@
       '<div class="warn">The future schedule is conditional on assumed cooldowns, exact check-ins, no overdoses and uninterrupted access. No Torn actions are automated.</div></div>';
   }
   function titleMini(k,v){return '<div><div class="label">'+escape(k)+'</div><b>'+escape(v)+'</b></div>';}
-  window.setInterval(()=>{if(opened)countdown();},1000); // only local countdown; NO automatic API calls
+  let lastMountCheck=0;
+  window.setInterval(()=>{
+    if(opened)countdown();
+    if(Date.now()-lastMountCheck>=5000){
+      lastMountCheck=Date.now();
+      mountHelper(); // DOM-only recovery after Torn re-renders; never calls the API
+    }
+  },1000); // only local countdown and DOM attachment; NO automatic API calls
 })();
