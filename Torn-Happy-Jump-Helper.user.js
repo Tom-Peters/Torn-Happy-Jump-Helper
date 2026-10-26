@@ -147,29 +147,45 @@
     return {baseline:normal,options:available};
   }
   function score(input) {
-    // Compare both refill choices under one weekly budget when requested.
     const modes=input.refillMode==="both"?[false,true]:[!!input.refill];
-    const reference=baseline({...input,refill:false})[0];
-    const all={baseline:[],options:[],naturalBenchmark:reference};
+    const start=Math.ceil((input.now||Date.now()/1000)/60)*60;
+    const natural=baseline({...input,refill:false})[0];
+    const all={baseline:[],options:[],naturalBenchmark:natural};
+    const contexts={energy:input.currentEnergy,happy:input.currentHappy,
+      drugCooldown:input.drugCooldown,boosterCooldown:input.boosterCooldown,
+      refillUsed:input.refillUsed,regenInterval:input.regenInterval,
+      regenIncrement:input.regenIncrement,available:input.available,
+      xanaxHours:input.xanaxHours};
     for(const refill of modes){
       const plans=strategies({...input,refill});
       for(const [kind,entries] of [["baseline",plans.baseline],["options",plans.options]]){
-        for(const x of entries){
-          all[kind].push({...x,refill,id:(refill?"refills:":"no-refills:")+x.id,
-            name:x.name+(modes.length>1?(refill?" · with refill":" · no refill"):""),
-            increment:x.gain-reference.gain});
+        for(const old of entries){
+          const p={...old,refill,id:(refill?"refills:":"no-refills:")+old.id,
+            name:old.name+(modes.length>1?(refill?" · with refill":" · no refill"):"")};
+          const timeline=schedule(input,p,start,contexts);
+          const valid=timeline.known && !timeline.overBudget &&
+            (kind==="baseline"||timeline.jumps>0);
+          all[kind].push({...p,weeklyGain:timeline.gain,
+            gain:timeline.gain,increment:0,cost:timeline.cost,
+            known:valid,realJumps:timeline.jumps,jumps:timeline.jumps,
+            perJump:timeline.perJump,timeline});
         }
       }
     }
-    const combined=[...all.baseline,...all.options];
-    const affordable=combined.filter(x=>x.known&&x.cost<=input.budget);
-    const speed=[...affordable].sort((a,b)=>b.gain-a.gain)[0]||null;
-    const value=affordable.filter(x=>x.increment>0&&x.cost>reference.cost)
-      .map(x=>({...x,value:x.increment/(x.cost-reference.cost)}))
+    // Compare the actual simulated energy schedule, not the earlier
+    // capacity approximation which could over-count energy while stacked.
+    const reference=all.baseline.find(x=>x.id==="no-refills:normal") ||
+      all.baseline.find(x=>x.name.includes("Natural training"));
+    const naturalGain=reference?.gain||0,naturalCost=reference?.cost||0;
+    all.naturalBenchmark={...reference,gain:naturalGain,cost:naturalCost};
+    for(const p of [...all.baseline,...all.options])p.increment=p.gain-naturalGain;
+    const eligible=[...all.baseline,...all.options].filter(x=>x.known&&x.cost<=input.budget);
+    const speed=[...eligible].sort((a,b)=>b.gain-a.gain)[0]||null;
+    const value=eligible.filter(x=>x.increment>0&&x.cost>naturalCost)
+      .map(x=>({...x,value:x.increment/(x.cost-naturalCost)}))
       .sort((a,b)=>b.value-a.value)[0]||null;
     return {...all,speed,value};
   }
-
   // Pure minute-by-minute projection. Every timestamp is exact for the chosen
   // assumptions, not a guarantee of random drug cooldowns or human attendance.
   function schedule(input, plan, from, opts={}) {
@@ -374,6 +390,7 @@
   const defaults={budget:10000000,stat:"dexterity",statGoal:"weakest",objective:"growth",
     maxJumpsDaily:6,maxE:150,
     candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
+    autoPerks:true,xanaxHours:7,viewUnit:"week",
     refill:"both",gymOverride:0,theme:"dark"};
   let cfg={...defaults};
   try{
@@ -471,16 +488,25 @@
     const apiDots=state.selectedGym?.modifiers?.[key];
     const dots=cfg.gymOverride>0?clamp(cfg.gymOverride,0.1,20):(Number.isFinite(apiDots)?apiDots/10:0);
     const bval=state.bs[key]?.value;
+    const perkAudit=auditPerks(data.perks,key);
     if(!Number.isFinite(bval)||!dots||!Number.isFinite(state.h.maximum))return null;
     return {stat:bval,statName:key,baseHappy:state.h.maximum,dots,gymCost,
-      mod:1+clamp(cfg.modifierPercent,-50,300)/100,
+      mod:(1+clamp(cfg.modifierPercent,-50,300)/100)*(cfg.autoPerks?perkAudit.factor:1),
       maxE:state.maxE,regenHour:state.e.interval>0
         ? 3600*state.e.increment/state.e.interval
         : (state.maxE>=150?30:20),
       refill:cfg.refill!=="no",refillMode:cfg.refill,maxJumpsDaily:cfg.maxJumpsDaily,
       budget:cfg.budget,candyPercent:cfg.candyPercent,boosterReduction:cfg.boosterReduction,
       dvdHappy:cfg.dvdHappy,boosterCap:cfg.boosterCap,
-      books:Object.fromEntries(Object.entries(quotes).map(([k,v])=>[k,fresh(v)?v:null])),owned:state.owned,inventoryReady:!!data.inventory,happyLoss:cfg.happyLoss};
+      books:Object.fromEntries(Object.entries(quotes).map(([k,v])=>[k,fresh(v)?v:null])),
+       owned:state.owned,inventoryReady:!!data.inventory,happyLoss:cfg.happyLoss,
+       now:Math.floor(Date.now()/1000),currentEnergy:state.e.current,
+       currentHappy:state.h.current,drugCooldown:data.cooldowns?.cooldowns?.drug||0,
+       boosterCooldown:data.cooldowns?.cooldowns?.booster||0,
+       regenInterval:state.e.interval||120,regenIncrement:state.e.increment||1,
+       refillUsed:data.refills?.refills?.energy===false,
+       available:!(data.travel?.travel?.destination&&data.travel.travel.destination!=="Torn"),
+       xanaxHours:cfg.xanaxHours,perkAudit};
   }
   async function request(path){
     // Exclusively the official read-only HTTPS v2 API. Do not log the key or URL.
@@ -502,6 +528,9 @@
     const endpoints={
       bars:"/user/bars",cooldowns:"/user/cooldowns",stats:"/user/battlestats",
       gym:"/user/gym",gyms:"/torn/gyms",inventory:"/user/inventory?cat=Drug&limit=250",
+      perks:"/user/perks",merits:"/user/merits",education:"/user/education",
+      job:"/user/job",property:"/user/property",stocks:"/user/stocks",
+      faction:"/faction/upgrades",
       refills:"/user/refills",travel:"/user/travel",points:"/market/pointsmarket"
     };
     for(const [name,item] of Object.entries(ITEMS))endpoints["price_"+name]="/market/"+item.id+"/itemmarket?limit=100";
@@ -520,7 +549,7 @@
         }else if(label==="inventory"){
           const combined=[...(result.inventory?.items||[])];
           let partial=false;
-          for(const category of ["Candy","Booster"]){
+          for(const category of ["Candy","Booster","Book"]){
             try{
               const followup=await request("/user/inventory?cat="+category+"&limit=250");
               combined.push(...(followup.inventory?.items||[]));
