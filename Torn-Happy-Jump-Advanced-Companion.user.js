@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Advanced Companion
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#companion
-// @version      0.9.1
+// @version      0.9.2
 // @description  Read-only perks, book timing, gyms and stat goals for stable HJ 0.7
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", API="https://api.torn.com/v2", VER="0.9.1", ID="hhj-advanced-companion";
+const KEY="###PDA-APIKEY###", API="https://api.torn.com/v2", VER="0.9.2", ID="hhj-advanced-companion";
 if(!/^(www\.)?torn\.com$/i.test(location.hostname))return;
 const ST=["strength","defense","speed","dexterity"];
 const BOOKS={744:["strength","stat"],745:["speed","stat"],746:["defense","stat"],747:["dexterity","stat"],
@@ -229,6 +229,14 @@ panel.append(header,body);
 const css=document.createElement("style");css.id=ID+"-css";
 css.textContent="#"+ID+" button,#"+ID+" select,#"+ID+" input{background:#29465f;border:1px solid #59778b;border-radius:8px;padding:8px;color:white;font:inherit}#"+ID+" .hhja-nav{display:flex;gap:5px;overflow:auto;position:sticky;top:0;background:#0d1b29;padding:4px 0}#"+ID+" .hhja-nav button{flex:0 0 auto}#"+ID+" .hhja-nav button.on{background:#078b82}#"+ID+" .hhja-box{margin:10px 0;padding:12px;border:1px solid #456678;border-radius:12px;background:#1a3043}#"+ID+" .hhja-box h3{margin:0 0 10px;font-size:16px}#"+ID+" .hhja-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;flex-wrap:wrap}#"+ID+" .hhja-small{opacity:.7;font-size:12px}#"+ID+" p{margin:8px 0}";
 const tabs=[["today","Overview"],["gyms","Gyms"],["perks","Perks"],["books","Books"],["goals","Goals"],["settings","Settings"]];
+const floatButton=document.createElement("button");
+floatButton.id=ID+"-shortcut";
+floatButton.type="button";
+floatButton.textContent="ADV";
+floatButton.setAttribute("aria-label","Open Happy Jump Advanced Companion");
+floatButton.style.cssText="position:fixed!important;top:43%!important;left:6px!important;z-index:2147483647!important;background:#087f77!important;color:white!important;border:2px solid #8ffbe4!important;border-radius:20px!important;padding:11px!important;min-height:44px!important;font:800 13px system-ui!important;box-shadow:0 4px 18px #000a!important;display:block!important;visibility:visible!important;opacity:1!important;";
+floatButton.addEventListener("click",launchAdvanced);
+
 function show(){
  body.innerHTML='<nav class="hhja-nav">'+tabs.map(([key,title])=>
   '<button type="button" data-tab="'+key+'"'+(tab===key?' class="on"':'')+'>'+title+'</button>').join("")+
@@ -243,11 +251,13 @@ function show(){
 let watching=null;
 function launchAdvanced(){
  panel.style.display="block";
+ floatButton.style.display="none";
  show();
 }
 function attach(){
  const base=document.getElementById("hhj-compact-panel");
  if(!base||!document.body)return;
+ if(!document.getElementById(floatButton.id))document.body.appendChild(floatButton);
  if(!document.getElementById(panel.id))document.body.appendChild(panel);
  if(!document.getElementById(css.id))(document.head||document.body).appendChild(css);
  // The stable helper redraws its tab row by assigning innerHTML. Attaching
@@ -273,7 +283,7 @@ function attach(){
 panel.addEventListener("click",event=>{
  const t=event.target.closest("button");if(!t)return;
  if(t.dataset.tab){tab=t.dataset.tab;show();return}
- if(t.dataset.act==="close"){panel.style.display="none";return}
+ if(t.dataset.act==="close"){panel.style.display="none";floatButton.style.display="block";return}
  if(t.dataset.act==="refresh"){refresh();return}
  if(t.dataset.act==="save"){
   cfg.stat=body.querySelector("#hhja-stat")?.value||"speed";
