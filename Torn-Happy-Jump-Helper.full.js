@@ -667,8 +667,8 @@
 #hhj-panel .head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--hj-card);border-bottom:1px solid var(--hj-line);flex-shrink:0}
 #hhj-panel .head .brand{font-size:16px;font-weight:850;letter-spacing:.02em}
 #hhj-panel .tag{display:inline-block;font:800 10px/1 system-ui,sans-serif;letter-spacing:.04em;color:#051e1d;background:var(--hj-accent);padding:5px 7px;border-radius:6px;margin-left:5px}
-#hhj-panel .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--hj-card);gap:3px;padding:7px;border-bottom:1px solid var(--hj-line);flex-shrink:0}
-#hhj-panel .tabs button{font-size:12px!important;min-height:41px!important;padding:7px 3px!important;border-radius:9px!important;white-space:nowrap!important}
+#hhj-panel .tabs{display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;background:var(--hj-card);gap:3px;padding:7px;border-bottom:1px solid var(--hj-line);flex-shrink:0}
+#hhj-panel .tabs button{flex:0 0 auto;min-width:85px!important;font-size:12px!important;min-height:39px!important;padding:7px 10px!important;border-radius:9px!important;white-space:nowrap!important;scroll-snap-align:start}
 #hhj-panel .tabs button[aria-selected=true]{background:#127469!important;color:#fff!important;border:1px solid #7cfbe2!important}
 #hhj-panel .body{flex:1;overflow:auto;overscroll-behavior:contain;padding:12px 14px 35px;min-height:0}
 #hhj-panel .card{background:var(--hj-card);border:1px solid var(--hj-line);border-radius:13px;padding:14px;min-width:0;margin:0 0 10px}
@@ -682,7 +682,7 @@
 #hhj-panel .muted,#hhj-panel .tiny{color:var(--hj-muted)!important}
 #hhj-panel .tiny{font-size:12px!important}
 #hhj-panel .label{color:var(--hj-muted)!important;font-size:12px!important;font-weight:690;letter-spacing:.01em}
-#hhj-panel .metric{font-size:23px;font-weight:850;line-height:1.25;font-variant-numeric:tabular-nums;margin:4px 0 5px}
+#hhj-panel .metric{font-size:21px;font-weight:850;line-height:1.25;font-variant-numeric:tabular-nums;margin:4px 0 5px}
 #hhj-panel .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 #hhj-panel .between{display:flex;justify-content:space-between;align-items:center;gap:9px}
 #hhj-panel .status{background:var(--hj-card);border-radius:10px;border:1px solid var(--hj-line);padding:10px 12px;margin:8px 0}
@@ -902,7 +902,7 @@
     return {inventory:{items},categories:loaded,failed,partial:failed.length>0};
   }
   async function refresh(){
-    if(busy||Date.now()-lastRefresh<60000)return;
+    if(busy||Date.now()-lastRefresh<15000)return;
     if(KEY.includes("PDA-APIKEY")){
       errors=["TornPDA API key substitution is missing. Update and reload the small launcher."];
       render();return;
@@ -969,10 +969,16 @@
     const now=Math.floor(Date.now()/1000), reset=900-(now%900);
     const cd=data.cooldowns?.cooldowns||{};
     const fetchedAge=Math.max(0,(Date.now()-lastRefresh)/1000);
+    const actionTimer=panel.querySelector("#hhj-action-countdown");
+    if(actionTimer&&actionTimer.dataset?.time){
+      const remaining=(+actionTimer.dataset.time)-Date.now()/1000;
+      actionTimer.textContent=remaining>0?"In "+secs(remaining):
+        remaining>-60?"Scheduled now":"Time passed · refresh to replan";
+    }
     const btn=document.getElementById("hhj-timer");
     if(btn)btn.textContent="Happy reset "+secs(reset)+" · Drug "+secs((cd.drug||0)-fetchedAge)+" · Booster "+secs((cd.booster||0)-fetchedAge);
     const refreshButton=panel.querySelector("#hhj-refresh");
-    if(refreshButton&&!busy)refreshButton.disabled=Date.now()-lastRefresh<60000;
+    if(refreshButton&&!busy)refreshButton.disabled=Date.now()-lastRefresh<15000;
   }
 
 
@@ -1017,20 +1023,26 @@
   }
   function nextActionCard(plan){
     if(!plan?.timeline)return '';
-    const details=actionOverview(plan,Date.now()/1000);
-    const now=Date.now()/1000;
-    const next=details.next;
-    if(!next)return '<div class="card"><h3>No remaining planned action</h3><p>Refresh Torn data for a new seven-day schedule.</p></div>';
-    const remaining=next.time-now;
-    return '<div class="card hero"><div class="label">NEXT MANUAL ACTION</div>'+
-      '<h2>'+escape(next.kind==="train"?"Train in your gym":next.kind==="xanax"?"Xanax preparation":
-        next.kind==="refill"?"Energy refill":next.kind==="jump"?"Happy-jump preparation":next.kind)+'</h2>'+
-      '<p>'+escape(next.detail)+'</p>'+
-      '<div class="between"><b>'+new Date(next.time*1000).toISOString().slice(11,16)+' UTC</b>'+
-      '<b>'+ (remaining<60?'Due now':"In "+secs(remaining))+'</b></div>'+
-      '<div class="btnrow"><button class="primary" data-tab="steps">See timetable</button>'+
-      '<button data-recheck type="button">Refresh after doing it</button></div>'+
-      '<p class="tiny">Check Torn’s real energy, location and cooldowns before each manual action. This tool never trains or uses consumables.</p></div>';
+    const details=actionOverview(plan,Date.now()/1000),now=Date.now()/1000;
+    const action=details.next;
+    if(!action)return '<div class="card"><h3>No remaining planned action</h3><p>Refresh Torn data for an updated schedule.</p></div>';
+    const remaining=action.time-now;
+    const label=action.kind==="train"?"Gym training":action.kind==="xanax"?"Take Xanax":
+      action.kind==="refill"?"30-point energy refill":action.kind==="jump"?"Happy-jump preparation":action.kind;
+    const beforeRefill=action.kind==="train"&&/before.*refill/i.test(action.detail);
+    const then=details.today.find(x=>x.kind==="refill"&&x.time>=action.time&&x.time-action.time<=120);
+    const refill=data.refills?.refills?.energy===true?"Verified ready":
+      data.refills?.refills?.energy===false?"Already used today":"Not confirmed";
+    const due=remaining>0?"In "+secs(remaining):remaining>-60?"Scheduled now":"Time passed · refresh to replan";
+    return '<div class="card hero"><div class="between"><span class="label">NEXT PLANNED ACTION</span>'+
+      '<span class="tiny">'+new Date(action.time*1000).toISOString().slice(11,16)+' UTC</span></div>'+
+      '<h2>'+escape(label)+'</h2><p>'+escape(action.detail)+'</p>'+
+      (beforeRefill?'<p class="tiny"><b>Daily point refill: '+escape(refill)+'</b>'+
+        (then?' · Then refill energy':'')+
+        '. Train before a refill only if Torn confirms it is ready and you have 30 points.</p>':'')+
+      '<div class="between"><strong id="hhj-action-countdown" data-time="'+action.time+'">'+escape(due)+'</strong>'+
+      '<button data-tab="steps" type="button">Open timetable</button></div>'+
+      '<p class="tiny">Always confirm your energy, cooldowns and gym access in Torn first.</p></div>';
   }
   function planShoppingPanel(plan){
     const items=shoppingList(plan);
@@ -1283,7 +1295,7 @@
       '>Happy-jump schedule</button></div>';
     const noData='<div class="warn"><b>No verified plan yet.</b><p>Tap Refresh Torn data. A Limited API key is needed for battle stats. If your current gym was not identified, you can enter its dots in Settings.</p></div>';
     const refreshMarkup='<div class="row" style="margin-bottom:12px"><button class="primary" id="hhj-refresh" type="button" '+
-      (busy||Date.now()-lastRefresh<60000?"disabled":"")+'>'+(busy?"Refreshing…":"↻ Refresh Torn data")+
+      (busy||Date.now()-lastRefresh<15000?"disabled":"")+'>'+(busy?"Refreshing…":"↻ Refresh Torn data")+
       '</button><span class="tiny">'+(lastRefresh?"Updated "+new Date(lastRefresh).toLocaleTimeString():"Not loaded")+'</span></div>';
     const warnings=(inventoryWarning?'<div class="warn"><b>Inventory optional</b><p>'+escape(inventoryWarning)+'</p></div>':'')+
       (errors.length?'<details class="card"><summary>'+errors.length+' other API issue(s)</summary>'+
@@ -1306,16 +1318,15 @@
     let body='';
     if(activeTab==='today'){
       body=refreshMarkup+warnings+travelNotice+'<h2>Your next training decision</h2>'+modeButtons+'<div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
-        (recommended?nextActionCard(recommended)+'<div class="card hero"><div class="label">'+
-        (cfg.objective==='value'?'BEST VALUE RECOMMENDATION':'FASTEST GROWTH RECOMMENDATION')+'</div>'+
-        '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+displayGain(recommended)+'</div>'+
-        '<p>'+cost(recommended)+' weekly · '+fmt(recommended.jumps)+' Happy jumps/week</p>'+
-        '<p class="tiny">'+fmt(recommended.timeline?.energyTrained||0)+' E trained · '+
-        fmt(recommended.timeline?.lostRegen||0)+' E regen lost · '+
-        fmt(recommended.timeline?.counts.xanax||0)+' Xanax</p>'+
-        '<p class="muted">Target '+escape(input.statName)+' · Budget '+cash(cfg.budget)+'</p>'+
-        '<div class="btnrow"><button data-tab="steps" class="primary">View the steps</button>'+
-        '<button data-tab="compare">Compare all methods</button></div></div>':noData)+
+        (recommended?nextActionCard(recommended)+'<div class="card"><div class="label">'+
+        (cfg.objective==='value'?'BEST VALUE':'MAXIMUM WEEKLY GAIN')+'</div>'+
+        '<div class="between"><b>'+escape(recommended.name)+'</b><strong class="good">'+displayGain(recommended)+'</strong></div>'+
+        '<p class="tiny">'+cost(recommended)+' / week · '+fmt(recommended.timeline?.energyTrained||0)+
+        ' E trained · '+fmt(recommended.timeline?.counts.xanax||0)+' Xanax · '+
+        fmt(recommended.jumps)+' Happy jumps</p>'+
+        '<p class="tiny">Target '+escape(input.statName)+' · Budget '+cash(cfg.budget)+
+        ' (configured, not verified cash on hand)</p>'+
+        '<div class="btnrow"><button data-tab="compare">Compare all methods</button></div></div>':noData)+
         '<h3>Choose a stat</h3><div class="btnrow">'+
         STATS.map(k=>'<button type="button" data-quick-stat="'+k+'" '+
           (input?.statName===k?'class="primary"':'')+'>'+escape(k[0].toUpperCase()+k.slice(1))+'</button>').join("")+
@@ -1414,7 +1425,7 @@
     }
     panel.innerHTML='<header class="head"><span class="brand">⚡ HAPPY JUMP HELPER <span class="tag">READ ONLY</span></span>'+
       '<button type="button" id="hhj-close" aria-label="Close panel">✕</button></header>'+
-      '<nav class="tabs" aria-label="Pages">'+
+      '<nav class="tabs" aria-label="Pages — swipe horizontally for more">'+
       [['today','Today'],['compare','Compare'],['steps','Plan'],['gyms','Gyms'],['bonuses','Perks'],['progress','Progress'],['settings','Settings']].map(([k,n])=>
       '<button type="button" data-tab="'+k+'" aria-selected="'+(activeTab===k?'true':'false')+'">'+n+'</button>').join('')+
       '</nav><div class="body">'+body+
