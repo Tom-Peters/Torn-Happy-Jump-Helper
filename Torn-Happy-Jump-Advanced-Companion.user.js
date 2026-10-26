@@ -56,13 +56,25 @@ function gained(e,h,s,dots,gymE,factor){
  }
  return total;
 }
+function gymEligible(g,s){
+ const n=String(g?.name||"").toLowerCase();
+ const a=s.strength||0,b=s.speed||0,c=s.defense||0,d=s.dexterity||0;
+ if(n.includes("balboas"))return c+d>=1.25*(a+b);
+ if(n.includes("frontline"))return a+b>=1.25*(c+d);
+ if(n.includes("gym 3000"))return a>=1.25*Math.max(b,c,d);
+ if(n.includes("isoyamas"))return c>=1.25*Math.max(a,b,d);
+ if(n.includes("total rebound"))return b>=1.25*Math.max(a,c,d);
+ if(n==="elites")return d>=1.25*Math.max(a,b,c);
+ if(n.includes("sports science"))return false;
+ return true;
+}
 function auditGym(){
  const current=gym(),s=stats()[cfg.stat],E=data.bars?.bars?.energy?.maximum||150;
  const h=data.bars?.bars?.happy?.maximum||5000;
  const statuses=value("hhj-compact-v1:gyms",{});
  if(!current)return [];
  const baseline=gained(E,h,s,+current.modifiers?.[cfg.stat]/10,current.energy_cost||10,mod().factor);
- return (data.gyms?.gyms||[]).filter(x=>x.id!==current.id&&["buy","owned"].includes(statuses[x.id]))
+ return (data.gyms?.gyms||[]).filter(x=>x.id!==current.id&&["buy","owned"].includes(statuses[x.id])&&gymEligible(x,stats()))
   .map(x=>{
    const projected=gained(E,h,s,+x.modifiers?.[cfg.stat]/10,x.energy_cost||10,mod().factor);
    return {gym:x,status:statuses[x.id],projected,change:baseline>0?100*(projected/baseline-1):0};
@@ -123,9 +135,9 @@ function gyms(){
   ' dots for '+esc(cfg.stat):"No current gym data.");
  text+=box("Verified gym improvements",all.length?all.map(x=>
   '<p><b>'+esc(x.gym.name)+'</b> · <b>+'+x.change.toFixed(1)+'%</b> estimated improvement for the same energy session. '+
-  (x.status==="buy"?"Visible but unpurchased, membership "+money(x.gym.cost):
+  (x.status==="buy"?"Previously confirmed unlocked and unpurchased, membership "+money(x.gym.cost):
    "Already owned; switch manually in Torn.")+'</p>').join(""):
-  "No superior gym confirmed visible/unlocked. The full Torn catalogue is not proof of access.");
+  "No superior locally verified eligible gym. The full Torn catalogue is not proof of access; specialist gym restrictions are checked conservatively.");
  text+='<p class="hhja-small">Confirm gyms from Torn → Gym using the regular HJ Gyms tab. The companion reads those local confirmations only.</p>';
  return text;
 }
