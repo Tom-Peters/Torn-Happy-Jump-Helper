@@ -4,18 +4,30 @@ path=require("node:path"),vm=require("node:vm");
 const SOURCE=path.join(__dirname,"..","Torn-Happy-Jump-Advanced-Companion.user.js");
 function setup(){
  let requests=[];
- const map=new Map(),storage=new Map();
+ const map=new Map(),storage=new Map(),timers=[];
  const createElement=tag=>({
    tag,id:"",style:{},dataset:{},children:[],textContent:"",innerHTML:"",
    appendChild(x){this.children.push(x);if(x.id)map.set(x.id,x);return x;},
    append(...xs){xs.forEach(x=>this.appendChild(x));},
+   insertBefore(x,other){const i=this.children.indexOf(other);this.children.splice(i<0?0:i,0,x);if(x.id)map.set(x.id,x);return x;},
    addEventListener(k,fn){this["on"+k]=fn;},
+   setAttribute(){},
    get firstElementChild(){return this.children[0]||null;},
-   querySelector(){return null;}
+   get firstChild(){return this.children[0]||null;},
+   querySelector(sel){
+     if(sel[0]==="#"&&this.id===sel.slice(1))return this;
+     if(sel===".tabs"&&this.className==="tabs")return this;
+     for(const x of this.children){const hit=x.querySelector?.(sel);if(hit)return hit;}
+     return null;
+   }
  });
  const head=createElement("head"),body=createElement("body");
  const compact=createElement("section");compact.id="hhj-compact-panel";
- compact.appendChild(createElement("header"));body.appendChild(compact);
+ const header=createElement("header"),content=createElement("div"),nav=createElement("nav");
+ nav.className="tabs";
+ nav.appendChild(createElement("button"));
+ content.appendChild(nav);
+ compact.append(header,content);body.appendChild(compact);
  const document={body,head,createElement,getElementById(id){return map.get(id)||null;},addEventListener(){}};
  const localStorage={getItem(k){return storage.get(k)??null;},
    setItem(k,v){storage.set(k,String(v));},removeItem(k){storage.delete(k)}};
@@ -38,7 +50,7 @@ function setup(){
     {id:745,name:"Time Is In The Mind",amount:1,faction_owned:false}]}}
  };
  const browser={
-  document,window:{setInterval(){},__HHJAdvancedCompanion:null},
+  document,window:{setInterval(fn){timers.push(fn);},__HHJAdvancedCompanion:null},
   location:{hostname:"www.torn.com"},localStorage,
   PDA_httpGet:async(url,headers)=>{
    requests.push(url);assert.ok(url.startsWith("https://api.torn.com/v2/"));
@@ -51,7 +63,7 @@ function setup(){
   .replace(/\}\)\(\);\s*$/, "window.__HHJCompanionTest={refresh,mod,stats,auditGym,books,perks};})();");
  const sandbox=vm.createContext(browser,{codeGeneration:{strings:false,wasm:false}});
  vm.runInContext(source,sandbox,{timeout:4000});
- return {browser,document,map,requests,compact,sandbox,api:browser.window.__HHJCompanionTest};
+ return {browser,document,map,requests,compact,header,nav,timers,sandbox,api:browser.window.__HHJCompanionTest};
 }
 test("Companion is compact, CSP safe, and never changes stable HJ userscript",()=>{
  const s=fs.readFileSync(SOURCE,"utf8");
@@ -66,9 +78,11 @@ test("Advanced entry appears in stable panel without HTTP at boot",()=>{
  const p=setup();
  assert.equal(p.requests.length,0);
  assert.ok(p.document.getElementById("hhj-advanced-companion-open"));
- assert.equal(p.browser.window.__HHJAdvancedCompanion,"0.9.0");
+ assert.equal(p.browser.window.__HHJAdvancedCompanion,"0.9.1");
  assert.ok(p.document.getElementById("hhj-compact-panel"));
  const btn=p.document.getElementById("hhj-advanced-companion-open");
+ assert.equal(p.nav.children[0],btn,"Advanced must be FIRST tab, not clipped after the close button");
+ assert.ok(!p.header.children.includes(btn),"Do not append Advanced to the full-width header");
  btn.onclick();
  assert.equal(p.document.getElementById("hhj-advanced-companion").style.display,"block");
  assert.match(p.document.getElementById("hhj-advanced-companion").children[1].innerHTML,/Gyms/);
@@ -88,4 +102,20 @@ test("Manual Refresh loads relevant perks, books and gym proof only",async()=>{
  assert.ok(gym[0].change>0);
  assert.match(p.api.books(),/200,000,000 speed/);
  assert.match(p.api.books(),/Usability cannot be confirmed/i);
+});
+
+test("Advanced entry restores after stable v0.7 redraws the scrolling tab row",()=>{
+ const p=setup();
+ const first=p.nav.children[0];
+ assert.equal(first.textContent,"Advanced");
+ p.nav.children=p.nav.children.filter(x=>x!==first);
+ p.map.delete(first.id);
+ for(const fn of p.timers)fn();
+ const restored=p.nav.children[0];
+ assert.equal(restored.id,"hhj-advanced-companion-open");
+ assert.notEqual(restored,first,"Must attach a new element after the old tab was discarded");
+ assert.equal(p.nav.children.filter(x=>x.id==="hhj-advanced-companion-open").length,1);
+ for(const fn of p.timers)fn();
+ assert.equal(p.nav.children.filter(x=>x.id==="hhj-advanced-companion-open").length,1,
+   "Repeated restore intervals must never create duplicate Advanced buttons");
 });
