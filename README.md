@@ -1,3 +1,17 @@
+## v0.9.0 Enhanced Preview — the original optimiser in a smaller script
+
+The **78 KB v0.8 Advanced Preview did not display HJ** on the user's Android TornPDA. The working **23 KB v0.7.1** remains the default and has **not been modified**.
+
+The new [Enhanced v0.9.0 userscript](Torn-Happy-Jump-Helper-Enhanced.user.js) embeds the original deterministic v0.6 training **score/schedule engine** inside the working v0.7 mobile interface at build time. It is **32 KB**, with no `eval`, `new Function`, remotely downloaded code, or `@require`.
+
+Restored: seven-day minute-level training and Happy-jump scheduling; multiple candy/eDVD/Xanax stack candidates; tiered market basket costing with owned inventory; energy and refill-used semantics; relevant gym perk maths, verified gym specialist restrictions, and book advice. It retains Today, Compare, Plan, Gyms, Perks & Books, Progress and Settings.
+
+Some advanced settings and specialised features (full 31-day book activation planner, per-source bonus explanation, gym DOM capture, uncertain overdose modelling) are **still not restored**. Do not claim full parity. All training actions remain manual.
+
+**Optional test:** disable (but **do not delete**) v0.7.1 and any previous v0.8; install only
+`https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-Enhanced.user.js`,
+version **0.9.0**, injection **END**. Reload Torn and check HJ. If missing, disable Enhanced and re-enable compact v0.7.1. The build has a CSP-constrained boot test and a weekly optimiser API-fixture test, but **has not been verified on the user's phone**. No TornPDA script-size limit has been confirmed.
+
 # Torn Happy Jump Helper
 
 ## v0.8.0 Advanced Preview — full functionality restored, stable v0.7.1 preserved
