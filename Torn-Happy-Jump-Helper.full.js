@@ -607,7 +607,7 @@
   const defaults={budget:10000000,stat:"dexterity",statGoal:"weakest",objective:"growth",
     maxJumpsDaily:6,maxE:150,
     candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
-    autoPerks:true,xanaxHours:7,viewUnit:"week",scheduleMode:"training",scheduleHours:24,returnHours:0,bookGymMilestone:50000000,
+    autoPerks:true,xanaxHours:7,viewUnit:"week",scheduleMode:"training",compareMode:"all",scheduleHours:24,returnHours:0,bookGymMilestone:50000000,
     refill:"both",gymOverride:0,theme:"dark"};
   let cfg={...defaults};
   try{
@@ -620,6 +620,7 @@
     if(typeof cfg.refill==="boolean")cfg.refill=cfg.refill?"yes":"no";
     if(!["yes","no","both"].includes(cfg.refill))cfg.refill="both";
     if(!["training","happyjump"].includes(cfg.scheduleMode))cfg.scheduleMode="training";
+    if(!["all","training","happyjump"].includes(cfg.compareMode))cfg.compareMode="all";
     if(![24,168].includes(Number(cfg.scheduleHours)))cfg.scheduleHours=24;
     const gymSaved=JSON.parse(localStorage.getItem("hhj-verified-gyms-v1")||"null");
     if(gymSaved&&typeof gymSaved==="object"&&Date.now()-Number(gymSaved.at||0)<86400000){
@@ -1243,7 +1244,10 @@
         '<p class="muted">Target '+escape(input.statName)+' · Budget '+cash(cfg.budget)+'</p>'+
         '<div class="btnrow"><button data-tab="steps" class="primary">View the steps</button>'+
         '<button data-tab="compare">Compare all methods</button></div></div>':noData)+
-        '<h3>Current account</h3><div class="grid">'+
+        '<h3>Choose a stat</h3><div class="btnrow">'+
+        STATS.map(k=>'<button type="button" data-quick-stat="'+k+'" '+
+          (input?.statName===k?'class="primary"':'')+'>'+escape(k[0].toUpperCase()+k.slice(1))+'</button>').join("")+
+        '</div><h3>Current account</h3><div class="grid">'+
         tile('Energy',fmt(live.e.current)+' / '+fmt(live.e.maximum))+
         tile('Happiness',fmt(live.h.current)+' / '+fmt(live.h.maximum))+
         tile('Gym',live.selectedGym?.name||data.gym?.gym?.name||'Unknown')+
@@ -1257,11 +1261,16 @@
       body='<h2>Compare training methods</h2><p class="muted">Target: '+escape(input?.statName||cfg.stat)+
         ' · Budget '+cash(cfg.budget)+'</p><div class="btnrow">'+
         '<button data-goal="growth" '+(cfg.objective==='growth'?'class="primary"':'')+'>Maximum stats</button>'+
-        '<button data-goal="value" '+(cfg.objective==='value'?'class="primary"':'')+'>Best value</button></div>'+modeButtons;
+        '<button data-goal="value" '+(cfg.objective==='value'?'class="primary"':'')+'>Best value</button></div>'+
+        '<div class="btnrow"><button data-compare-mode="all" '+(cfg.compareMode==="all"?'class="primary"':'')+'>All methods</button>'+
+        '<button data-compare-mode="training" '+(cfg.compareMode==="training"?'class="primary"':'')+'>Regular</button>'+
+        '<button data-compare-mode="happyjump" '+(cfg.compareMode==="happyjump"?'class="primary"':'')+'>Happy jumps</button></div>';
       if(!plans)body+=refreshMarkup+warnings+noData;
       else{
         const base=plans.naturalBenchmark;
-        const ranked=[...list].sort((a,b)=>{
+        const comparable=cfg.compareMode==="all"?[...plans.baseline,...plans.options]:
+          cfg.compareMode==="happyjump"?[...plans.options]:[...plans.baseline];
+        const ranked=comparable.sort((a,b)=>{
           const ae=+(a.known&&a.cost<=cfg.budget),be=+(b.known&&b.cost<=cfg.budget);
           if(ae!==be)return be-ae;
           if(cfg.objective==='value'){
@@ -1286,7 +1295,7 @@
               '<div class="figures"><span>'+cost(p)+'</span><span>'+fmt(p.jumps)+' jumps / week</span>'+
               '<span>'+gainDelta+' vs natural'+cp+'</span></div></button>';
           }).join('')+
-          '<button id="hhj-more" type="button">'+(showAll?'Show fewer methods':'Show all '+list.length+' methods')+'</button>'+
+          '<button id="hhj-more" type="button">'+(showAll?'Show fewer methods':'Show all '+ranked.length+' methods')+'</button>'+
           '<div class="warn"><b>Simulation, not a guaranteed forecast</b><p>Excludes overdoses, exact cooldown variability, addiction and rehab, market slippage and your future online schedule.</p></div>';
       }
     }else if(activeTab==='steps'){
@@ -1382,6 +1391,11 @@
       try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
       selected='';completedSteps.clear();render();
     };
+    for(const btn of panel.querySelectorAll('[data-quick-stat]'))btn.onclick=()=>{
+      cfg.statGoal="focus";cfg.stat=btn.dataset.quickStat;selected="";
+      try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
+      render();
+    };
     for(const btn of panel.querySelectorAll('[data-mode]'))btn.onclick=()=>{
       cfg.scheduleMode=btn.dataset.mode;selected='';showAll=false;
       try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
@@ -1392,13 +1406,21 @@
       try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
       render();
     };
+    for(const btn of panel.querySelectorAll('[data-compare-mode]'))btn.onclick=()=>{
+      cfg.compareMode=btn.dataset.compareMode;showAll=false;
+      try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
+      render();
+    };
     for(const btn of panel.querySelectorAll('[data-goal]'))btn.onclick=()=>{
       cfg.objective=btn.dataset.goal;selected='';
       try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
       render();
     };
     for(const btn of panel.querySelectorAll('[data-plan]'))btn.onclick=()=>{
-      selected=btn.dataset.plan;completedSteps.clear();activeTab='steps';render();
+      selected=btn.dataset.plan;
+      cfg.scheduleMode=plans?.options?.some(p=>p.id===selected)?"happyjump":"training";
+      try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
+      completedSteps.clear();activeTab='steps';render();
       panel.querySelector('.body')?.scrollTo(0,0);
     };
     const more=panel.querySelector('#hhj-more');
