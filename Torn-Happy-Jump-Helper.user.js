@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.2.0
+// @version      0.3.0
 // @description  Live read-only TornPDA happy-jump planner. No gameplay actions.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -198,7 +198,7 @@
       stat=input.stat, totalGain=0, spentE=0,lostRegen=0, nextDrug=start+Math.max(0,opts.drugCooldown||0),
       boosterSeconds=Math.max(0,opts.boosterCooldown||0), regenBank=0,
       prep=0,jumps=0,cashEstimate=0, cashKnown=true, trainCount=0,
-      lastDay=-1,refilledToday=false;
+      lastDay=-1,refilledToday=false,jumpsToday=0;
     const refills=!!plan.refill, isXan=plan.id?.includes("xanonly"),
       isNormal=plan.id?.includes("normal")&&!isXan,
       isJump=!isNormal&&!isXan;
@@ -247,7 +247,7 @@
     let nextXan=start;
     for(let t=start;t<end;t+=60){
       const day=Math.floor(t/86400);
-      if(day!==lastDay){lastDay=day;refilledToday=day===Math.floor(start/86400)&&opts.refillUsed===true;}
+      if(day!==lastDay){lastDay=day;jumpsToday=0;refilledToday=day===Math.floor(start/86400)&&opts.refillUsed===true;}
       if(t%900===0)h=Math.min(h,input.baseHappy);
       if(t>start){
         boosterSeconds=Math.max(0,boosterSeconds-60);
@@ -276,7 +276,7 @@
           nextDrug=t+cdX;nextXan=nextDrug;
           add(t,"xanax","Manually stack Xanax "+prep+"/"+requiredXan+" • +250 E",250);
         }
-        if(prep>=requiredXan&&t>=nextDrug&&t%900===60&&
+        if(prep>=requiredXan&&jumpsToday<clamp(input.maxJumpsDaily,1,8)&&t>=nextDrug&&t%900===60&&
           e>=Math.min(limit,normalCap+requiredXan*250)&&
           boosterSeconds+boosterHours*3600<=input.boosterCap*3600){
           const required={ecstasy:1};
@@ -287,7 +287,7 @@
             const boosterHappy=(plan.count||0)*ITEMS[plan.type].happy*(1+clamp(input.candyPercent,0,800)/100)
               +(plan.dvds||0)*input.dvdHappy;
             boosterSeconds+=boosterHours*3600;
-            h=Math.min(99999,2*(h+boosterHappy));jumps++;
+            h=Math.min(99999,2*(h+boosterHappy));jumps++;jumpsToday++;
             add(t,"jump","Manual boosters → Ecstasy → gym. Predicted Happy "+Math.round(h).toLocaleString());
             train(t,"Happy-jump gym training");
             useRefill(t);
@@ -684,6 +684,8 @@
     panel.dataset.theme=cfg.theme==="light"?"light":"dark";
     const tile=(label,val)=>'<div class="tile"><div class="label">'+escape(label)+'</div><div class="metric">'+escape(val)+'</div></div>';
     const cost=x=>x.known?cash(x.cost):"Price unavailable";
+    const displayGain=x=>cfg.viewUnit==="jump"?
+      (x.jumps?fmt(x.perJump)+" / jump":"No Happy jump"):fmt(x.gain)+" / week";
     const noData='<div class="warn"><b>No verified plan yet.</b><p>Tap Refresh Torn data. A Limited API key is needed for battle stats. If your current gym was not identified, you can enter its dots in Settings.</p></div>';
     const refreshMarkup='<div class="row" style="margin-bottom:12px"><button class="primary" id="hhj-refresh" type="button" '+
       (busy||Date.now()-lastRefresh<60000?"disabled":"")+'>'+(busy?"Refreshing…":"↻ Refresh Torn data")+
@@ -709,7 +711,7 @@
       body=refreshMarkup+warnings+travelNotice+'<h2>Your next training decision</h2><div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
         (recommended?'<div class="card hero"><div class="label">'+
         (cfg.objective==='value'?'BEST VALUE RECOMMENDATION':'FASTEST GROWTH RECOMMENDATION')+'</div>'+
-        '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+fmt(recommended.gain)+' <span style="font-size:13px">stats/week</span></div>'+
+        '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+displayGain(recommended)+'</div>'+
         '<p>'+cost(recommended)+' weekly · '+fmt(recommended.jumps)+' Happy jumps/week</p>'+
         '<p class="muted">Target '+escape(input.statName)+' · Budget '+cash(cfg.budget)+'</p>'+
         '<div class="btnrow"><button data-tab="steps" class="primary">View the steps</button>'+
@@ -752,7 +754,7 @@
             return '<button class="plan'+(selected===p.id?' chosen':'')+
               '" type="button" data-plan="'+escape(p.id)+'"><div class="between"><span class="heading">'+
               escape(p.name)+'</span><span class="tiny">'+note+'</span></div>'+
-              '<div class="metric">'+fmt(p.gain)+' <span style="font-size:12px">stats / week</span></div>'+
+              '<div class="metric">'+displayGain(p)+'</div>'+
               '<div class="figures"><span>'+cost(p)+'</span><span>'+fmt(p.jumps)+' jumps / week</span>'+
               '<span>'+gainDelta+' vs natural'+cp+'</span></div></button>';
           }).join('')+
@@ -797,7 +799,7 @@
       [['today','Overview'],['compare','Compare'],['steps','Steps'],['settings','Settings']].map(([k,n])=>
       '<button type="button" data-tab="'+k+'" aria-selected="'+(activeTab===k?'true':'false')+'">'+n+'</button>').join('')+
       '</nav><div class="body">'+body+
-      '<p class="tiny">IamEEKY · v0.2 · All gameplay steps are manual</p></div>';
+      '<p class="tiny">IamEEKY · v0.3 beta · All gameplay steps are manual</p></div>';
     panel.querySelector('#hhj-close').onclick=()=>{opened=false;panel.style.display='none';};
     for(const btn of panel.querySelectorAll('#hhj-refresh'))btn.onclick=refresh;
     for(const btn of panel.querySelectorAll('[data-tab]'))btn.onclick=()=>{
