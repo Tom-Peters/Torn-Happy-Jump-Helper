@@ -27,7 +27,20 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
-## v0.6.3 — Remove unsafe-eval CSP failure (implemented)
+## v0.7.0 — Restore HJ button with reduced self-contained TornPDA build (CURRENT)
+
+- [x] Replace failed 111 KB v0.6.3 install with compact ~22 KB script
+- [x] Direct code injection, no runtime eval, dynamic script loader or CSP bypass
+- [x] Preserve fast button mount before any API work
+- [x] Keep read-only Today, Compare, Plan, Gyms, Perks/Books, Progress and Settings basics
+- [x] Conservative daily refill semantics and manual reset at UTC midnight
+- [x] Add compact-specific startup and no-double-refill tests, leaving legacy full-engine suite intact
+- [ ] Test compact v0.7 button and API refresh on the real user's TornPDA device
+- [ ] Reintroduce advanced v0.6.3 features selectively without another startup/injection regression
+- [ ] Review TornPDA documentation for any official script size limit or supported CSP-safe module loading mechanism
+- [ ] Calibrate single-jump vs weekly long-term training comparisons before claiming an optimal Happy-jump schedule
+
+## v0.6.3 — Remove unsafe-eval CSP failure (historical: superseded by compact 0.7.0)
 
 - [x] Replace 5KB launcher with self-contained installable userscript
 - [x] Eliminate `new Function` remote-engine execution, avoiding CSP unsafe-eval violation on Item Market
