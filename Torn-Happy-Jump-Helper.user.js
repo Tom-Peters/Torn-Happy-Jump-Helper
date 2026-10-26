@@ -857,19 +857,35 @@
   }
   function insights(live,input,plans){
     const tips=[];
-    if (input.maxE<150)tips.push("Donator status raises the energy cap to 150 and natural regeneration to 30 E/hour. Compare its cost before buying additional boosters.");
-    if (input.baseHappy<5025)tips.push("A well-staffed Private Island can raise base happiness to 5,025. Compare rental cost and the improvement in every train.");
-    if (input.stat>=100000)tips.push("This stat is already fairly developed. Check the net weekly gains column: normal Xanax training can beat Happy stacking after lost regeneration.");
-    if (input.stat>=1000000)tips.push("At high stats, prioritise sustainable energy per day, the strongest eligible gym and training bonuses; consider stat enhancers separately.");
-    if (cfg.candyPercent===0)tips.push("Check Voracity candy perks and World Diabetes Day (13–15 November); set the actual bonus manually only while it applies.");
-    if (cfg.happyLoss!==0.25)tips.push("A 3-star Fitness Center offers Goal Oriented, halving happy lost from gym training; choose 0.25 only if you receive that bonus.");
-    if (cfg.dvdHappy!==5000)tips.push("A 10-star Adult Novelties job may double eDVD happiness to 5,000, but weigh job changes against other benefits.");
-    if (cfg.modifierPercent===0)tips.push("Enter verified education, Steadfast faction, company, book and gym-gain bonuses to improve estimates.");
-    if (data.refills?.refills?.energy===false && cfg.refill!=="no")tips.push("Today's points energy refill appears unavailable; the weekly projection assumes seven future daily refills, not an immediately available refill.");
-    if (plans.options.some(p=>!p.known))tips.push("Some candidate costs are unverified because item quotes are absent, stale or too shallow. Do not treat those as free.");
-    const natural=plans.baseline[0], xan=plans.baseline[1];
-    if(xan.known && xan.gain>natural.gain)tips.push("Regular Xanax use is an alternative: modelled at "+fmt(xan.gain-natural.gain)+" more stats/week than natural training, before overdose and addiction costs.");
-    return '<h3>Ways to improve stat growth</h3><div class="tile"><ul>'+tips.map(s=>'<li>'+escape(s)+'</li>').join("")+'</ul></div>';
+    const best=plans.speed;
+    const bestJump=plans.options.filter(x=>x.known&&x.jumps>0&&x.cost<=cfg.budget)
+      .sort((a,b)=>b.gain-a.gain)[0];
+    if(best?.id.includes("xanonly")&&bestJump){
+      tips.push("Why regular Xanax currently wins: "+fmt(best.gain)+" projected stats versus "+
+        fmt(bestJump.gain)+" from the highest-gain affordable Happy jump plan. "+
+        "Regular training puts "+fmt(best.timeline.energyTrained)+" E into the gym; "+
+        "the jump strategy puts "+fmt(bestJump.timeline.energyTrained)+" E in and forfeits "+
+        fmt(bestJump.timeline.lostRegen)+" E natural regeneration. The difference is "+
+        fmt(best.gain-bestJump.gain)+" stats/week under the model's assumptions.");
+    }else if(bestJump){
+      tips.push("Highest-gain affordable Happy-jump plan: "+bestJump.name+
+        " • "+fmt(bestJump.jumps)+" planned jumps/week • "+fmt(bestJump.timeline.energyTrained)+" E trained.");
+    }
+    if(input.maxE<150)tips.push("Donator status can increase the energy cap and regeneration speed; model it against subscription or donator-pack costs.");
+    if(input.baseHappy<5025)tips.push("A staffed Private Island can raise base happiness; compare rental costs. This helper uses current maximum Happy from your bars.");
+    if(input.stat>=400000)tips.push("Above roughly 400k per stat, energy volume commonly dominates Happy stacking. At your current stat level the app must justify every jump against regular training.");
+    if(cfg.candyPercent===0)tips.push("Check faction Voracity candy effects and World Diabetes Day, 13–15 November, before assuming a candy-based jump is optimal.");
+    if(cfg.happyLoss!==0.25)tips.push("If you receive the Fitness Center Goal Oriented job bonus, select 0.25 Happy loss per E in Settings; otherwise the default remains 0.5.");
+    if(cfg.dvdHappy!==5000)tips.push("An eligible Adult Novelties perk increases eDVD Happy; compare its job opportunity cost first.");
+    if(data.perks && !input.perkAudit?.bonuses.length)tips.push("API perks were retrieved, but no gym multiplier was positively identified. Open Perks for an itemised audit and configure any missing bonuses manually.");
+    if(data.refills?.refills?.energy===false && cfg.refill!=="no")tips.push("The points refill has already been used today. The timetable excludes today's additional refill, but may schedule future daily refills.");
+    if(plans.options.some(p=>!p.known))tips.push("Some plans are excluded because they exceed your cash limit, lack verified item quotes, or cannot complete a Happy jump.");
+    const natural=plans.naturalBenchmark;
+    const bestXan=plans.baseline.filter(p=>p.id.includes("xanonly")&&p.known).sort((a,b)=>b.gain-a.gain)[0];
+    if(bestXan && bestXan.gain>natural.gain)tips.push("Prompt Xanax training beats free energy-only training by "+
+      fmt(bestXan.gain-natural.gain)+" projected stats/week, costing "+cash(bestXan.cost)+
+      ". Xanax usage is "+fmt(bestXan.timeline.counts.xanax||0)+" doses in this model.");
+    return '<h3>Why these results?</h3><div class="card"><ul>'+tips.map(s=>'<li>'+escape(s)+'</li>').join("")+'</ul></div>';
   }
   function steps(p,live,input){
     const booster=p.count?fmt(p.count)+" × "+ITEMS[p.type].label:(p.dvds?fmt(p.dvds)+" × Erotic DVD":"none");
