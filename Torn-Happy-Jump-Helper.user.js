@@ -100,7 +100,10 @@
     const perks=clamp(input.candyPercent,0,250)/100;
     for (const s of candidates) {
       const dvdHappy=clamp(input.dvdHappy,2500,5000);
-      const perBoosterHours=(s.count*0.5+s.dvds*6)*(1-clamp(input.boosterReduction,0,0.75));
+      const perBoosterHours=s.count*0.5*(1-clamp(input.boosterReduction,0,0.75))+s.dvds*6;
+      // A single jump must fit under the actual booster cooldown ceiling.
+      // Consumable cooldown reductions do not reduce eDVD cooldowns.
+      if (perBoosterHours>input.boosterCap) continue;
       const prepHours=s.xanax*7; // average 6-8h Xanax cooldown, ecstasy must follow
       const lockHours=prepHours+3.85; // average Ecstasy cooldown
       const maxWeeklyByBooster=perBoosterHours>0?Math.floor(168/perBoosterHours):56;
@@ -266,7 +269,7 @@
     if(!opened)return;
     const live=readyState(), input=buildInput(), plans=input?score(input):null;
     const chosen=plans?.options.find(p=>p.id===selected) || plans?.speed || null;
-    if(chosen && !selected)selected=chosen.id;
+    if(chosen && !plans?.options.some(p=>p.id===selected))selected=chosen.id;
     const title=(txt,val)=>'<div class="tile"><div class="label">'+txt+'</div><b>'+val+'</b></div>';
     const info='<div class="grid">'+
       title("Energy",fmt(live.e.current)+" / "+fmt(live.e.maximum))+
@@ -337,7 +340,7 @@
     const needNow=p.xanax?["Allow drug cooldown to expire. Bank energy with "+p.xanax+" manually taken Xanax, spaced by their actual 6–8 hour drug cooldowns. Never take another drug while on cooldown."]:["Build a full energy bar by natural regeneration first."];
     const canUseBooster=(currentCd.booster||0)<input.boosterCap*3600;
     const canDrug=(currentCd.drug||0)===0;
-    const ready=canUseBooster&&canDrug&&live.e.current>=live.e.maximum;
+    const ready=canUseBooster&&canDrug&&live.e.current>=live.e.maximum&&live.h.current>=live.h.maximum;
     const list=[
       "Check the in-game cooldowns, maximum booster cooldown, items and gym. "+(ready?"Current immediate readiness checks pass.":"Not currently ready for a complete immediate jump."),
       ...needNow,
