@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.7.0
+// @version      0.7.1
 // @description  Compact CSP-safe TornPDA gym, Happy jump and book planner (read only)
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.0";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.1";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
  xanax:206,ecstasy:197,lollipop:310,dvd:366
@@ -153,16 +153,18 @@ async function refresh(){
 }
 function save(){put("settings",cfg);lastPlan=plans();draw()}
 const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed;z-index:2147483646;inset:12% 8px 9% 8px;max-width:580px;margin:auto;background:#0b1726;border:2px solid #52d9c5;border-radius:15px;color:white;font:14px/1.4 system-ui;overflow:hidden;box-shadow:0 8px 50px #000c";
-const content=document.createElement("div");content.style.cssText="height:calc(100% - 72px);overflow:auto;padding:12px";
-const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#182b42";
+const content=document.createElement("div");content.style.cssText="height:calc(100% - 60px);overflow:auto;padding:10px;overscroll-behavior:contain";
+const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;background:#182b42";
 header.innerHTML="<b>⚡ HAPPY JUMP HELPER</b><span>READ ONLY · v"+VER+"</span><button data-act='close'>✕</button>";
 ui.append(header,content);
 const button=document.createElement("button");button.id="hhj-launch";button.textContent="HJ ◉";button.type="button";
 button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483647!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";
-const css=document.createElement("style");css.textContent="#hhj-compact-panel button,#hhj-compact-panel select,#hhj-compact-panel input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}#hhj-compact-panel button.on{background:#087e74;border-color:#4be6cf}#hhj-compact-panel button:disabled{opacity:.45}#hhj-compact-panel .tabs{display:flex;overflow-x:auto;gap:5px;padding-bottom:8px}#hhj-compact-panel .card{background:#172a40;border:1px solid #426078;border-radius:12px;margin:9px 0;padding:12px}#hhj-compact-panel .hero{border-color:#58decc}#hhj-compact-panel .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}#hhj-compact-panel .sub{opacity:.75;font-size:12px}#hhj-compact-panel h3{margin:6px 0 12px;font-size:16px}#hhj-compact-panel .good{color:#86f1d7}#hhj-compact-panel .warn{color:#ffd598}";
+const launcherStyle=button.style.cssText;
+function showLauncher(visible){button.style.cssText=launcherStyle.replace("display:block!important","display:"+(visible?"block":"none")+"!important")}
+const css=document.createElement("style");css.textContent="#hhj-compact-panel button,#hhj-compact-panel select,#hhj-compact-panel input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}#hhj-compact-panel button.on{background:#087e74;border-color:#4be6cf}#hhj-compact-panel button:disabled{opacity:.45}#hhj-compact-panel .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}#hhj-compact-panel .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}#hhj-compact-panel .card{background:#172a40;border:1px solid #426078;border-radius:12px;margin:9px 0;padding:12px}#hhj-compact-panel .hero{border-color:#58decc}#hhj-compact-panel .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}#hhj-compact-panel .choices{justify-content:flex-start;gap:8px}#hhj-compact-panel .choices button{min-width:90px}#hhj-compact-panel .sub{opacity:.75;font-size:12px}#hhj-compact-panel h3{margin:6px 0 12px;font-size:16px}#hhj-compact-panel .good{color:#86f1d7}#hhj-compact-panel .warn{color:#ffd598}";
 function mount(){if(!document.body)return;for(const el of [button,ui])if(!document.getElementById(el.id))document.body.appendChild(el);
  if(!document.getElementById("hhj-mini-css")){css.id="hhj-mini-css";(document.head||document.body).appendChild(css)}}
-function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
+function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
 function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
 function today(){
  const p=loadInput(),a=activePlan(),next=a?.events.find(x=>x.t>=Date.now()/1000),
@@ -174,8 +176,13 @@ function today(){
  out+=card("Next manual action",next?
   "<div class='row'><b>"+esc(next.kind)+"</b><b>"+utc(next.t)+"</b></div><p>"+esc(next.detail)+"</p><p class='sub'>Actual Torn values take priority. This is a conditional forecast.</p><button data-act='tab' data-val='plan'>View plan</button>":
   "No remaining actions are scheduled. Refresh to replan.","hero");
- out+=card("Daily point refill",'<div class="row"><b>'+(refill()==="used"?"USED":refill()==="ready"?"AVAILABLE":"UNKNOWN")+
-  '</b><button data-act="mark-used">Mark used today</button></div><p class="sub">API true means used; missing values never count as ready. Any manual mark expires at UTC midnight.</p>');
+ const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);
+ out+=card("Daily point refill",'<div class="row"><b>'+(refillState==="used"?"USED":refillState==="ready"?"AVAILABLE":"UNKNOWN")+
+  '</b>'+(refillState==="used"?(marked?'<button data-act="clear-refill">Clear manual mark</button>':'<span class="sub">Next reset 00:00 UTC</span>'):
+  '<button data-act="mark-used">Mark used today</button>')+
+  '</div><p class="sub">'+(refillState==="used"?"No further refill is scheduled today. ":
+  "Check Torn before spending points. ")+
+  'API true means used; missing values never count as ready. Manual marks expire at UTC midnight.</p>');
  if(a)out+=card("Projected seven-day training","<div class='row'><b>"+esc(a.method)+"</b><b class='good'>+"+fmt(a.gain)+" "+esc(cfg.stat)+"</b></div>"+
   "<p>"+cash(a.cost)+" budgeted · "+fmt(a.energy)+" energy trained · "+a.count.xanax+" Xanax</p><p class='sub'>"+esc(a.note)+"</p>");
  out+=card("Live snapshot",'<div class="row"><span>Energy</span><b>'+fmt(p.energy)+"/"+fmt(p.maxE)+'</b></div>'+
@@ -251,12 +258,14 @@ function draw(){
  '</nav>'+(tab==="today"?today():tab==="compare"?compare():tab==="plan"?plan():
  tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():settings())+
  '<p class="sub">IamEEKY · Forecast only · No automated Torn actions · v'+VER+'</p>';
+ const tabs=content.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");
+ if(tabs&&selected)tabs.scrollLeft=Math.max(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);
 }
-button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";if(opened)draw()});
+button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";showLauncher(!opened);if(opened)draw()});
 ui.addEventListener("click",event=>{
  const b=event.target.closest("button");if(!b)return;
  const act=b.dataset.act,val=b.dataset.val;
- if(act==="close"){opened=false;ui.style.display="none"}
+ if(act==="close"){opened=false;ui.style.display="none";showLauncher(true)}
  if(act==="refresh")refresh();
  if(act==="tab"){tab=val;draw()}
  if(act==="stat"){cfg.stat=val;selectedMethod="auto";save()}
@@ -264,6 +273,7 @@ ui.addEventListener("click",event=>{
  if(act==="choose"){selectedMethod=val;tab="plan";draw()}
  if(act==="horizon"){cfg.horizon=+val;save()}
  if(act==="mark-used"){put("used-day",day(Date.now()/1000));lastPlan=plans();draw()}
+ if(act==="clear-refill"){put("used-day",null);lastPlan=plans();draw()}
  if(act==="clearhistory"){history=[];put("history",[]);draw()}
  if(act==="gym-owned"||act==="gym-buy"){const id=+content.querySelector("#hhj-gymlist")?.value;
   if(id&&/\/gym\.php$/.test(location.pathname||"")){verified[id]=act==="gym-owned"?"owned":"buy";put("gyms",verified);draw()}}
