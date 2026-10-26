@@ -27,6 +27,29 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
+## v0.4 — Shipped: gym-verified training planner and future targets
+
+- [x] Replace Per week / Per jump display selector with **Training schedule** vs **Happy-jump schedule**
+- [x] Next **24 hours** of UTC action steps shown by default; optional **full seven days**
+- [x] Use official `torn/gyms` gym multiplier and energy-cost records while distinguishing them from user-specific access
+- [x] Manual read-only Gym-page capture and explicit verification of owned / visible-to-buy gyms; 24-hour local verification expiry
+- [x] Include **visible unlocked but unpurchased** gyms in comparisons, displaying their one-off membership price
+- [x] Exclude locked, unverified or unseen gyms, specialist gyms failing stat ratios and gyms not training the target stat
+- [x] Compare better confirmed gyms by gain for the same energy session; never switch or buy automatically
+- [x] Filter Perks down to descriptions affecting gym, training, energy, Happy, consumables and cooldowns
+- [x] 50m, 100m and 1b single-stat forecasts with compounding gain estimates, dates and projected ongoing spend
+- [x] Book activation month/threshold guidance, including 200m for capped 5%-stat books and a configurable gym-book review milestone
+- [x] Unit tests for gym visibility/access constraints, specialist eligibility, perk relevance and targets; simulated mobile rendering
+
+### Remaining accuracy improvements
+
+- [ ] Validate TornPDA gym-page DOM detection against the live current layout on Android and iOS
+- [ ] Expand accurate book inventory typing and distinguish usable books from display-only copies if official read-only API evidence becomes available
+- [ ] Re-run an adaptive post-train calibration for the weekly schedule and future ETA model
+- [ ] Recompute gym-specific calendar scenarios after a verified *manual* change in current gym; never assume an unpurchased gym has been bought
+- [ ] Account for future unlocks, faction upgrades, market trends and events in long-term scenarios rather than holding all settings constant
+- [ ] Different per-stat gym/perk profiles for multi-stat balanced progression rather than applying single-stat pace to every target
+
 ## v0.3 — Timestamped simulator and perk/book evidence (delivered)
 
 - [x] Minute-resolution UTC action timetable for the next seven days, user-confirmed parameters and 6–8h Xanax cooldown assumption
