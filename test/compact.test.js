@@ -55,7 +55,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<30000,"Keep the direct install small to avoid the prior missing-button regression");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.7\.0/);
+  assert.match(src,/@version\s+0\.7\.1/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
