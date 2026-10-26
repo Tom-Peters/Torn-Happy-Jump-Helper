@@ -14,7 +14,7 @@
 const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.0";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
- xanax:206,ecstasy:197,lollipop:36,dvd:366
+ xanax:206,ecstasy:197,lollipop:310,dvd:366
 };
 const fmt=n=>Number.isFinite(n)?Math.round(n).toLocaleString("en-US"):"—";
 const cash=n=>Number.isFinite(n)?"$"+fmt(n):"Price unknown";
@@ -54,7 +54,7 @@ function basket(item,n,stock=0){
 }
 function loadInput(){
  const g=gym(),b=stats(),k=cfg.stat,bar=energy(),h=happy();
- if(!g||!(b[k]>0)||!Number.isFinite(+g.modifiers?.[k])||!(h.maximum>0))return null;
+ if(!g||!(b[k]>0)||!(+g.modifiers?.[k]>0)||!(h.maximum>0))return null;
  return {gym:g,stat:k,value:b[k],dots:g.modifiers[k]/10,cost:g.energy_cost||10,
  energy:bar.current||0,maxE:bar.maximum||150,regen:bar.interval||120,inc:bar.increment||1,
  happy:h.current||h.maximum,maxH:h.maximum,drug:cd().drug||0,booster:cd().booster||0,
@@ -129,7 +129,7 @@ async function refresh(){
   gym:"/user/gym",gyms:"/torn/gyms",refills:"/user/refills",perks:"/user/perks"};
  for(const [k,id] of Object.entries(ITEMS))paths["m_"+k]="/market/"+id+"/itemmarket?limit=100";
  paths.m_points="/market/pointsmarket";
- let next={};const jobs=Object.entries(paths);
+ let next={};inv={};prices={};const jobs=Object.entries(paths);
  let index=0;
  const worker=async()=>{while(index<jobs.length){const [name,path]=jobs[index++];try{
    const v=await api(path);if(name.startsWith("m_"))prices[name.slice(2)]=name==="m_points"?
@@ -272,5 +272,5 @@ ui.addEventListener("click",event=>{
 });
 mount();document.addEventListener?.("DOMContentLoaded",mount,{once:true});
 window.setInterval(()=>{mount();},5000);
-if(typeof window!=="undefined")window.__TornHappyJumpLoaded=VER;
+if(typeof window!=="undefined"){window.__TornHappyJumpLoaded=VER;window.__TornHappyJumpStage={version:VER,phase:"mounted"};}
 })();
