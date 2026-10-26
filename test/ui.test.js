@@ -19,7 +19,7 @@ function createNode(tag){
 function setup(){
   const body=createNode("body"), root=createNode("html");
   const document={body,documentElement:root,createElement:createNode,getElementById:()=>null};
-  const tabs=["today","compare","steps","bonuses","settings"].map(name=>({dataset:{tab:name},onclick:null}));
+  const tabs=["today","compare","steps","gyms","bonuses","settings"].map(name=>({dataset:{tab:name},onclick:null}));
   const requests=[];
   const fixture={
     "/user/bars":{bars:{energy:{current:150,maximum:150,interval:120,increment:1},happy:{current:5000,maximum:5000}}},
@@ -61,6 +61,9 @@ test("TornPDA script opens with readable four-tab panel",()=>{
   assert.match(app.panel.innerHTML,/Plan/);
   assert.match(app.panel.innerHTML,/Settings/);
   assert.match(app.panel.innerHTML,/Perks/);
+  assert.match(app.panel.innerHTML,/Gyms/);
+  assert.match(app.panel.innerHTML,/Training schedule/);
+  assert.match(app.panel.innerHTML,/Happy-jump schedule/);
   assert.match(app.panel.innerHTML,/Refresh Torn data/);
   assert.equal(app.panel.dataset.theme,"dark");
   assert.equal(typeof app.refresh.onclick,"function");
@@ -80,11 +83,16 @@ test("API error 21 degrades inventory while stats, market, travel and tabs still
   assert.match(app.panel.innerHTML,/Compare training methods/);
   app.tabs.find(x=>x.dataset.tab==="settings").onclick();
   assert.match(app.panel.innerHTML,/High contrast dark/);
+  app.tabs.find(x=>x.dataset.tab==="steps").onclick();
+  assert.match(app.panel.innerHTML,/Next 24 hours/);
+  assert.match(app.panel.innerHTML,/Full 7 days/);
+  app.tabs.find(x=>x.dataset.tab==="gyms").onclick();
+  assert.match(app.panel.innerHTML,/Capture visible gyms/);
   app.tabs.find(x=>x.dataset.tab==="bonuses").onclick();
-  assert.match(app.panel.innerHTML,/Passive effects & books/);
+  assert.match(app.panel.innerHTML,/Training-related perks/);
   assert.match(app.panel.innerHTML,/Book inventory unavailable/);
   app.tabs.find(x=>x.dataset.tab==="settings").onclick();
   assert.match(app.panel.innerHTML,/Compare both choices/);
-  assert.match(app.panel.innerHTML,/Stats per Happy jump/);
+  assert.match(app.panel.innerHTML,/Regular training \(no jumps\)/);
   assert.ok(app.requests.every(x=>x.url.startsWith("https://api.torn.com/v2/")));
 });
