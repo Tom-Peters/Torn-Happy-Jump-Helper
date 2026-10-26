@@ -406,7 +406,94 @@
         ownership:"Found in inventory; unread/usable status NOT verifiable from this API."};
     });
   }
-  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO};
+
+  // Exact Torn API v2 gym records are global metadata, NOT proof of membership.
+  // Status must be affirmed from an explicitly user-observed gym page.
+  function gymCatalog(data) {
+    const arr=Array.isArray(data?.gyms)?data.gyms:Array.isArray(data)?data:[];
+    return arr.filter(x=>x&&Number.isFinite(+x.id)&&typeof x.name==="string")
+      .map(x=>({id:+x.id,name:x.name,cost:+x.cost||0,
+        energyCost:+x.energy_cost||10,
+        class:String(x.class||""),
+        modifiers:x.modifiers||{}, note:x.note||""}));
+  }
+  function gymEligibility(gym,stats={}){
+    const name=gym?.name?.toLowerCase()||"";
+    const val=k=>Math.max(0,+stats[k]||0);
+    const arr=["strength","speed","defense","dexterity"].map(val);
+    const [str,spd,def,dex]=arr;
+    if(name.includes("balboas"))return def+dex >=1.25*(str+spd);
+    if(name.includes("frontline"))return str+spd >=1.25*(def+dex);
+    if(name.includes("gym 3000"))return str >=1.25*Math.max(spd,def,dex);
+    if(name.includes("isoyamas"))return def>=1.25*Math.max(str,spd,dex);
+    if(name.includes("total rebound"))return spd>=1.25*Math.max(str,def,dex);
+    if(name==="elites")return dex>=1.25*Math.max(str,spd,def);
+    // The Sports Science Lab has a lifetime drug-use threshold that this
+    // planner cannot prove; positive manual availability confirmation is needed.
+    return true;
+  }
+  function gymSuggestions(catalog, activeId, verified={}, stat="dexterity", stats={}, context={}) {
+    const current=catalog.find(x=>x.id===+activeId)||null;
+    const dots=g=>(Number(g?.modifiers?.[stat])||0)/10;
+    const activeDots=dots(current);
+    const baseline=(+context.energy||150)>0&&activeDots>0&&+context.stat>=0
+      ?gainTrain(context.energy,context.happy||5025,context.stat,activeDots,
+        context.mod||1,current.energyCost,context.happyLoss||0.5):null;
+    const results=[];
+    for(const gym of catalog){
+      const status=gym.id===+activeId?"active":verified[String(gym.id)];
+      if(!["active","owned","buy"].includes(status))continue;
+      if(!gymEligibility(gym,stats))continue;
+      if(gym.name.toLowerCase().includes("sports science")&&!verified[String(gym.id)])continue;
+      if(dots(gym)<=0)continue;
+      const gain=baseline!==null
+        ?gainTrain(context.energy,context.happy||5025,context.stat,dots(gym),
+          context.mod||1,gym.energyCost,context.happyLoss||0.5):null;
+      const improvement=(gain!==null&&baseline>0)?(gain/baseline-1)*100:
+        (activeDots?100*(dots(gym)/activeDots-1):null);
+      results.push({...gym,status,dots:dots(gym),gain,improvement,
+        action:status==="buy"?"Buy membership manually":
+          status==="owned"?"Switch gym manually":"Current gym"});
+    }
+    return results.sort((a,b)=>b.dots-a.dots);
+  }
+  function trainingPerkRows(rows=[]){
+    const material=/(gym|train(?:ing)?|energy|happ(?:y|iness)|booster|cooldown|candy|candies|xanax|ecstasy|drug|refill|erotic\s*dvd)/i;
+    return rows.filter(x=>typeof x.description==="string"&&material.test(x.description));
+  }
+  // Project ONE targeted base stat by recomputing marginal gain as the stat
+  // grows, instead of linearly multiplying the current week's gain forever.
+  // Model excludes future gym unlocks/events and therefore is a scenario, not ETA certainty.
+  function targetProjection(input, weeklyGain, weeklyCost, thresholds=[5e7,1e8,2e8,1e9]){
+    const initial=+input?.stat||0;
+    if(!(initial>0)&&!Number.isFinite(initial))return [];
+    if(!(weeklyGain>0)||!Number.isFinite(weeklyGain))
+      return thresholds.map(target=>({target,weeks:null,eta:null,cost:null}));
+    const delta=Math.max(100000,initial*0.05);
+    const trainSample=1000, base=gainTrain(trainSample,input.baseHappy,initial,input.dots,
+      input.mod,input.gymCost,input.happyLoss);
+    const better=gainTrain(trainSample,input.baseHappy,initial+delta,input.dots,
+      input.mod,input.gymCost,input.happyLoss);
+    // Use finite-difference sensitivity adjusted to the actual weekly plan.
+    const slope=base>0?Math.max(0,weeklyGain*(better-base)/(delta*base)):0;
+    let v=initial;
+    const checkpoints=thresholds.map(target=>({target:Math.max(0,Number(target))}));
+    const maxWeeks=5200;
+    for(let week=0;week<=maxWeeks;week++){
+      for(const point of checkpoints){
+        if(point.weeks!==undefined||v<point.target)continue;
+        point.weeks=week;
+        point.eta=new Date((input.now||Date.now()/1000)*1000+week*604800).toISOString().slice(0,10);
+        point.cost=Math.max(0,weeklyCost||0)*week;
+      }
+      if(checkpoints.every(p=>p.weeks!==undefined))break;
+      v+=Math.max(0,weeklyGain+slope*(v-initial));
+      if(!Number.isFinite(v))break;
+    }
+    return checkpoints.map(p=>p.weeks!==undefined?p:
+      {...p,weeks:null,eta:null,cost:null});
+  }
+  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection};
   if(typeof module!=="undefined" && module.exports) { module.exports=Engine; return; }
   if(!location.hostname.endsWith("torn.com") || document.getElementById("hhj-launch"))return;
   let data={}, quotes={}, lastRefresh=0, errors=[],selected="", opened=false,busy=false;
