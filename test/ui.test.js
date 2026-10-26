@@ -21,6 +21,7 @@ function setup(gymPage=false){
   const document={body,documentElement:root,createElement:createNode,getElementById:()=>null};
   const tabs=["today","compare","steps","gyms","bonuses","progress","settings"].map(name=>({dataset:{tab:name},onclick:null}));
   const modes=["training","happyjump"].map(mode=>({dataset:{mode},onclick:null}));
+  const comparisons=["all","training","happyjump"].map(mode=>({dataset:{compareMode:mode},onclick:null}));
   const hours=[24,168].map(h=>({dataset:{hours:String(h)},onclick:null}));
   const requests=[];
   const fixture={
@@ -60,8 +61,8 @@ function setup(gymPage=false){
     "#hhj-manual-gym":manualGym,"#hhj-manual-status":manualStatus,
     "#hhj-manual-confirm":manualConfirm};
   panel.lists={"#hhj-refresh":[refresh],"[data-tab]":tabs,"[data-field]":[],
-    "[data-plan]":[],"[data-goal]":[],"[data-step]":[],"[data-mode]":modes,"[data-hours]":hours};
-  return {launcher,panel,refresh,tabs,modes,hours,manualConfirm,requests};
+    "[data-plan]":[],"[data-goal]":[],"[data-step]":[],"[data-mode]":modes,"[data-compare-mode]":comparisons,"[data-hours]":hours};
+  return {launcher,panel,refresh,tabs,modes,comparisons,hours,manualConfirm,requests};
 }
 test("TornPDA script opens with readable six-tab panel",()=>{
   const app=setup();
@@ -113,9 +114,12 @@ test("schedule mode controls switch from regular training to jump-specific plans
   app.launcher.onclick();
   await app.refresh.onclick();
   app.tabs.find(x=>x.dataset.tab==="compare").onclick();
+  assert.match(app.panel.innerHTML,/All methods/);
+  app.comparisons.find(x=>x.dataset.compareMode==="training").onclick();
   assert.match(app.panel.innerHTML,/Regular Xanax training/);
-  app.modes.find(x=>x.dataset.mode==="happyjump").onclick();
+  app.comparisons.find(x=>x.dataset.compareMode==="happyjump").onclick();
   assert.match(app.panel.innerHTML,/Candy micro|eDVD/);
+  app.modes.find(x=>x.dataset.mode==="happyjump").onclick();
   app.tabs.find(x=>x.dataset.tab==="steps").onclick();
   assert.match(app.panel.innerHTML,/Next 24 hours/);
   app.hours.find(x=>x.dataset.hours==="168").onclick();
