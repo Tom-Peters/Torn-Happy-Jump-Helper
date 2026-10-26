@@ -27,6 +27,15 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
+## v0.6.3 — Remove unsafe-eval CSP failure (implemented)
+
+- [x] Replace 5KB launcher with self-contained installable userscript
+- [x] Eliminate `new Function` remote-engine execution, avoiding CSP unsafe-eval violation on Item Market
+- [x] Keep TornPDA `###PDA-APIKEY###` substitution local to installed script
+- [x] Run simulated DOM injection against actual installed file with runtime Function forbidden
+- [x] Preserve read-only v0.6.2 planner and its used-refill correction
+- [ ] Confirm full 111KB installation launches successfully on the user's current TornPDA build and Torn pages
+
 ## v0.6.2 — Correct refill-used semantics on real account (implemented)
 
 - [x] Reverse misinterpreted Torn v2 `refills.energy` boolean: `true` = used, `false` = unused
@@ -48,7 +57,7 @@
 
 ## v0.6 — Read-only Happy Jump Helper full feature overhaul (implemented)
 
-- [x] Preserve 5KB lazy TornPDA launcher with runtime key token and actionable errors
+- [x] Preserve read-only TornPDA API-key substitution and manual actions (self-contained installation replaced the historical lazy launcher in v0.6.3)
 - [x] Next manual training action with countdown and direct 24-hour timetable access
 - [x] Seven-tab mobile app, quick stat focus and independent All / Regular / Happy method comparison
 - [x] Weighted consumable market quotes, category-paged inventory, partial source provenance and conservative owned-item costs
