@@ -772,36 +772,29 @@
     if(refreshButton&&!busy)refreshButton.disabled=Date.now()-lastRefresh<60000;
   }
 
-  function showSchedule(plan,mode="week"){
+  function showSchedule(plan,hours=24){
     const timeline=plan?.timeline,events=timeline?.events||[];
-    if(!timeline)return '<div class="warn">Refresh live data to build a dated schedule.</div>';
-    const jumpEvents=events.filter(x=>x.kind==="jump");
-    const weekGain=fmt(timeline.gain),perJump=jumpEvents.length?fmt(timeline.gain/jumpEvents.length):"Not a jump";
-    const selector='<div class="btnrow"><button type="button" data-view="week" '+(mode==="week"?'class="primary"':'')+
-      '>Per week</button><button type="button" data-view="jump" '+(mode==="jump"?'class="primary"':'')+'>Per jump</button></div>';
-    const hero='<div class="card hero"><h3>Estimated '+(mode==="jump"?"gain per Happy jump":"seven-day gain")+'</h3>'+
-      '<div class="metric">'+(mode==="jump"?perJump:weekGain)+'</div>'+
-      '<p>'+fmt(timeline.jumps)+' jumps/week · '+fmt(timeline.energyTrained)+' E trained/week · '+
+    if(!timeline)return '<div class="warn">Refresh Torn data to build a dated timetable.</div>';
+    const duration=+hours===168?168:24;
+    const filtered=events.filter(e=>e.time>=timeline.start&&e.time<timeline.start+duration*3600);
+    const subset=showAll?filtered:filtered.slice(0,45);
+    const dates=subset.map(e=>'<div class="card"><div class="between"><span class="label">'+
+      new Date(e.time*1000).toISOString().slice(0,16).replace("T"," ")+' UTC</span>'+
+      '<span class="tiny">'+escape(e.kind.toUpperCase())+'</span></div><p>'+escape(e.detail)+'</p></div>').join("");
+    return '<div class="card hero"><h3>Seven-day projected gains</h3>'+
+      '<div class="metric">'+fmt(timeline.gain)+' stats/week</div>'+
+      '<p>'+fmt(timeline.jumps)+' Happy jumps · '+fmt(timeline.energyTrained)+' E trained · '+
       fmt(timeline.lostRegen)+' E regeneration lost</p>'+
-      '<p>Planned spend: '+(timeline.known?cash(timeline.cost):"Unknown or over budget")+
-      ' · '+fmt(timeline.counts.xanax||0)+' Xanax · '+fmt((timeline.counts.points||0)/30)+' refills</p></div>';
-    const eligible=mode==="jump"?events.filter(x=>x.kind==="jump"||x.kind==="train"||x.kind==="refill"):events;
-    const cutoff=showAll?eligible:eligible.slice(0,35);
-    const dates=cutoff.map((event,i)=>{
-      const time=new Date(event.time*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";
-      return '<div class="card"><div class="between"><span class="label">'+time+'</span>'+
-        '<span class="tiny">'+escape(event.kind.toUpperCase())+'</span></div>'+
-        '<p>'+escape(event.detail)+'</p></div>';
-    }).join("");
-    const note='<div class="warn"><b>Scheduled timestamps are conditional.</b>'+
-      '<p>These times assume every planned click is made exactly when shown, no overdoses and a '+timeline.assumptions.xanaxHours+
-      '-hour Xanax cooldown. Torn drug cooldowns vary; refresh after each actual action. Gym training is only possible when in Torn.'+
-      ' The script never performs these actions. Abroad schedules with no return time are hypothetical.</p></div>';
-    return selector+hero+
-      '<h3>UTC action timetable</h3>'+
-      (!events.length?'<div class="warn">No executable training events for this configuration. Check permissions, prices and cooldowns.</div>':dates)+
-      (eligible.length>35?'<button id="hhj-more"> '+(showAll?"Show first 35":"Show all "+eligible.length+" actions")+'</button>':'')+
-      note;
+      '<p>Spending: '+(timeline.known?cash(timeline.cost):"Unverified or over budget")+
+      ' · '+fmt(timeline.counts.xanax||0)+' Xanax · '+fmt((timeline.counts.points||0)/30)+' refills</p></div>'+
+      '<div class="btnrow"><button data-hours="24" '+(duration===24?'class="primary"':'')+
+      '>Next 24 hours</button><button data-hours="168" '+(duration===168?'class="primary"':'')+
+      '>Full 7 days</button></div>'+
+      '<h3>Manual actions · '+duration+' hours (UTC)</h3>'+
+      (dates||'<div class="card">No scheduled actions in this window. Try the full seven days.</div>')+
+      (filtered.length>45?'<button id="hhj-more">'+(showAll?'Show first 45':'Show all '+filtered.length+' actions')+'</button>':'')+
+      '<div class="warn">Future times assume a '+timeline.assumptions.xanaxHours+
+      '-hour Xanax cooldown, no overdoses, unchanged prices and manual actions exactly as listed. Refresh after real actions to replan.</div>';
   }
   function showBonuses(input,live,plans){
     const dataReady=!!data.perks,perks=input?.perkAudit||auditPerks(data.perks,cfg.stat);
