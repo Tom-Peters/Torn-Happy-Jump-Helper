@@ -2,6 +2,16 @@
 
 **Author: IamEEKY** · The script is strictly read-only. Nothing here authorises automated Torn actions.
 
+## v0.9.2 — Visible Advanced entry independently of full-width HJ header
+
+- [x] Avoid clipped Advanced button in v0.7's narrow header
+- [x] Insert Advanced into the first position in the stable HJ scrollable tab row
+- [x] Reinsert after HJ UI redraw, with MutationObserver and interval fallback
+- [x] Provide independent teal ADV shortcut as a positive script-injection indicator
+- [x] Preserve stable original v0.7.1 userscript with no edits
+- [x] CSP-restricted startup, tab re-render and no-auto-API tests; 62/62 passing
+- [ ] Verify whether v0.9.2 ADV shortcut appears on the user's actual phone
+
 ## v0.9 — Companion recovery (recommended stable-button trial)
 
 - [x] Keep the known-working 23 KB compact v0.7.1 HJ launcher enabled
