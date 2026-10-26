@@ -1,5 +1,33 @@
 # Torn Happy Jump Helper
 
+## v0.8.0 Advanced Preview — full functionality restored, stable v0.7.1 preserved
+
+The working compact v0.7.1 userscript is still the stable default at [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js). Because the compact rebuild removed many previously requested features, the complete v0.6 training engine and its original mobile dashboard are now available in a separate, **build-time-minified** single userscript: **[`Torn-Happy-Jump-Helper-Advanced.user.js`](Torn-Happy-Jump-Helper-Advanced.user.js)**.
+
+The preview is generated reproducibly from [`Torn-Happy-Jump-Helper.full.js`](Torn-Happy-Jump-Helper.full.js) by [`scripts/build-advanced.mjs`](scripts/build-advanced.mjs), using Terser on GitHub Actions **before distribution**, *not* at runtime. It is about **78 KB**, compared with ~111 KB unminified. TornPDA injects it as one normal `document-end` userscript. No `eval`, `new Function`, dynamic `@require`, or remote code downloader is used on Torn's pages. The real API key is never in the repository.
+
+### Features present in Advanced Preview (not all present in compact v0.7.1)
+
+- **Scheduled next actions** and full UTC minute-resolution seven-day forecast, with optional **24-hour** view; compares **ordinary training versus Happy-jump preparation** and reports projected gains, energy throughput, costs and lost natural regeneration
+- **Refill modes and correct `/user/refills` meaning** (`true` = used today), with a local daily-override control and midnight-UTC rollover
+- **Perks audit**, limited to relevant training/cooldown/energy/Happy bonuses, including eligible company, faction, education, merit, property, stocks and active books
+- **Owned-item-aware market baskets** with tiered item pricing, mixed daily energy plans, and an item **shopping list**
+- **Gym comparison** with confirmed *visible/unlocked* versus owned status, stat-ratio specialist restrictions, and unpurchased membership suggestions
+- **Book planner**, including capped 5%-stat books at 200m and configurable 31-day gym book review milestones
+- **Progress/history**, per-stat 50m/100m/200m/1b what-if projections, locally stored battle-stat observations
+- **Cooldown sensitivity**, travel-awareness and robust API-inventory category handling
+
+### How to try it safely
+
+1. **Disable** compact v0.7.1 in TornPDA's userscript settings (do **not** delete it).
+2. Install **only the Advanced Preview** script from the raw GitHub URL:
+   `https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-Advanced.user.js`
+3. Set injection to **END** and reload Torn. Confirm **v0.8.0**. If the floating HJ button appears, open the panel, press Refresh and compare the Today, Compare, Plan, Gyms and Perks tabs.
+4. **If the button does not appear or the panel fails**, disable Advanced Preview, re-enable compact v0.7.1, and reload Torn. No private account data or API key needs to be copied into GitHub.
+
+**Important:** v0.8.0 is a preview, not yet verified on the user's Android TornPDA build. Its automated boot test runs in a CSP-constrained JavaScript environment, and the legacy engine/UI tests pass, but that does not prove it will load on the user's phone. The ~78 KB script may still exceed some undocumented platform or page constraint; no official TornPDA file-size limit has been confirmed. Do not install both scripts together. All actions remain read-only forecasts.
+
+
 ## v0.7.1 — Screenshot-driven compact mobile polish
 
 A live Android TornPDA screenshot confirmed the compact script starts, refreshes Torn data and correctly displays the daily point refill as **USED**. Follow-up fixes:
