@@ -19,7 +19,7 @@ const extract=name=>{
   return full.slice(start,start+3+after)+"\n";
 };
 const decl=name=>{
-  const start=full.indexOf("  const "+name+" =");
+  const start=full.search(new RegExp("  const "+name+"\\s*="));
   if(start<0)throw Error("Missing original constant "+name);
   const tail=full.slice(start+3),after=tail.search(/\n  (?:function|async function|const|let|class) [A-Za-z_$]/);
   if(after<0)throw Error("No end "+name);
