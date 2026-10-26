@@ -1,5 +1,23 @@
 # Torn Happy Jump Helper
 
+## v0.5 — Small TornPDA launcher (missing HJ button workaround)
+
+**Install only** [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js), which is now an approximately **5 KB** standalone startup launcher. All of the read-only planner code remains in [`Torn-Happy-Jump-Helper.full.js`](Torn-Happy-Jump-Helper.full.js), but **do not import the large full file directly as a second TornPDA userscript**.
+
+The tiny launcher inserts the prominent HJ button immediately, without loading inventory, fetching markets, accessing the API or parsing the full simulator. **On the first tap**, it downloads the full helper from the fixed public HTTPS GitHub raw URL via TornPDA's supported `PDA_httpGet` function, verifies the identifying source markers, replaces TornPDA's API-key token in memory, starts the full interface, and clicks its HJ button to show the dashboard. It never writes to Torn or stores the API key. The downloaded code is executable code from the same GitHub repository, so trust the repository and review changes before updating.
+
+If the download, script evaluation or UI start fails, the **small HJ button stays visible** and a status panel shows the HTTP or JavaScript error. No background refresh or Torn actions are initiated by the loader.
+
+**Upgrade steps:**
+1. **Delete or disable the previous Happy Jump Helper userscript**, including duplicates.
+2. Import the latest **`Torn-Happy-Jump-Helper.user.js`** raw URL in TornPDA; the installed script must show **v0.5.0** and approximately 5 KB of source, with injection **END**.
+3. Reload Torn inside TornPDA. The floating **HJ ◉** button should now be visible *before* you request any API data.
+4. Tap **HJ ◉** once. The loader should briefly say it is downloading and starting the main helper. If not, capture the error text.
+5. If you have the separate HJ diagnostic installed, update it to **v1.2.0**. It reports **Small HJ launcher** independently of the full engine, whose phase is normally *NOT STARTED* until you tap the button. You can remove the diagnostic after it works.
+
+This architecture is a compatibility workaround for an **unconfirmed** early-injection / script-size or parse issue in TornPDA. No official platform size limit has been established. The current build passes automated unit, UI and downloader-error simulations but still requires verification on a real device.
+
+
 **By IamEEKY** · Read-only TornPDA userscript · Experimental / estimates
 
 An on-demand, live-API planning panel for Torn training. It **never performs Torn gameplay actions**: no item use, gym training, purchases, refills, background scraping, simulated taps, or automatic gameplay requests.
