@@ -852,58 +852,85 @@
     if(content.error)throw new Error("Torn API error "+String(content.error.code||"unknown"));
     return content;
   }
+  async function readInventory(){
+    const categories=["Drug","Candy","Booster","Book"];
+    const items=[],loaded=[],failed=[];
+    for(const category of categories){
+      let categoryOK=true;
+      for(let offset=0;offset<1000;offset+=250){
+        try{
+          const result=await request("/user/inventory?cat="+encodeURIComponent(category)+
+            "&limit=250&offset="+offset);
+          const entries=result.inventory?.items;
+          if(!Array.isArray(entries))throw Error("Invalid inventory response");
+          items.push(...entries);
+          const total=Number(result._metadata?.total);
+          if(entries.length<250||Number.isFinite(total)&&offset+entries.length>=total)break;
+          if(offset===750){categoryOK=false;failed.push(category+" (above 1,000 records)");}
+        }catch(error){
+          categoryOK=false;failed.push(category+" ("+String(error.message).slice(0,80)+")");
+          break;
+        }
+      }
+      if(categoryOK)loaded.push(category);
+    }
+    return {inventory:{items},categories:loaded,failed,partial:failed.length>0};
+  }
   async function refresh(){
     if(busy||Date.now()-lastRefresh<60000)return;
-    if(KEY.includes("PDA-APIKEY")){ errors=["Open this script in TornPDA with an API key configured."];render();return; }
-    busy=true;lastRefresh=Date.now();errors=[];inventoryWarning="";completedSteps.clear();render();
+    if(KEY.includes("PDA-APIKEY")){
+      errors=["TornPDA API key substitution is missing. Update and reload the small launcher."];
+      render();return;
+    }
+    busy=true;lastRefresh=Date.now();errors=[];inventoryWarning="";
+    completedSteps.clear();
+    // Do not combine unrelated failure domains: minimal access may permit
+    // bars and inventory while battle stats needs Limited permission.
     const endpoints={
       bars:"/user/bars",cooldowns:"/user/cooldowns",stats:"/user/battlestats",
-      gym:"/user/gym",gyms:"/torn/gyms",inventory:"/user/inventory?cat=Drug&limit=250",
-      // user/perks already returns the currently active job, faction,
-      // property, education, merit, stock and book descriptions grouped by source.
-      // Avoid unrelated, permission-heavy calls for no training benefit.
-      perks:"/user/perks",
+      gym:"/user/gym",gyms:"/torn/gyms",perks:"/user/perks",
       refills:"/user/refills",travel:"/user/travel",points:"/market/pointsmarket"
     };
-    for(const [name,item] of Object.entries(ITEMS))endpoints["price_"+name]="/market/"+item.id+"/itemmarket?limit=100";
-    // Sequential requests to avoid burst rates or triggering service overload.
-    for(const [label,path] of Object.entries(endpoints)){
-      try{
-        const result=await request(path);
-        if(label.startsWith("price_")){
-          const market=result.itemmarket;
-          quotes[label.slice(6)]={listings:market?.listings||[],
-            timestamp:market?.cache_timestamp||0,delay:market?.cache_delay||0};
-        } else if(label==="points"){
-          const offers=result.pointsmarket||[];
-          quotes.points={listings:offers.map(x=>({price:x.cost,amount:x.quantity})),
-            timestamp:Math.floor(Date.now()/1000)};
-        }else if(label==="inventory"){
-          const combined=[...(result.inventory?.items||[])];
-          let partial=false;
-          for(const category of ["Candy","Booster","Book"]){
-            try{
-              const followup=await request("/user/inventory?cat="+category+"&limit=250");
-              combined.push(...(followup.inventory?.items||[]));
-              if((followup._metadata?.total||0)>250)partial=true;
-            }catch(error){partial=true;inventoryWarning="Inventory partly unavailable ("+error.message+"). Purchase costs assume zero owned items.";}
-          }
-          if((result._metadata?.total||0)>250)partial=true;
-          if(partial){
-            data.inventory=null;
-            inventoryWarning=inventoryWarning||"Inventory exceeds one page. Conservative full-purchase prices used.";
-          }else data.inventory={inventory:{items:combined}};
-        }else data[label]=result;
-      }catch(err){
-        if(label==="inventory"){
-          data.inventory=null;
-          const code=err.message.match(/(?:error|code)\s*(\d+)/i)?.[1];
-          inventoryWarning=code==="21"
-            ?"Inventory lookup unavailable: Torn API error 21 (incorrect category). Your travel location may coincide but is not a confirmed cause. Prices assume you need to buy all items."
-            :"Inventory unavailable ("+err.message+"). Cost estimates assume buying all required items.";
-        }else errors.push(label+": "+err.message);
+    for(const [name,item] of Object.entries(ITEMS))
+      endpoints["price_"+name]="/market/"+item.id+"/itemmarket?limit=100";
+    // Clear stale responses rather than silently reusing last refresh's
+    // market quotes or account data when an endpoint fails.
+    data={};quotes={};
+    render();
+    const tasks=Object.entries(endpoints);
+    let cursor=0;
+    const process=async()=>{
+      while(cursor<tasks.length){
+        const [label,path]=tasks[cursor++];
+        try{
+          const result=await request(path);
+          if(label.startsWith("price_")){
+            const market=result.itemmarket;
+            if(!Array.isArray(market?.listings))
+              throw Error("Invalid itemmarket response");
+            quotes[label.slice(6)]={listings:market.listings,
+              timestamp:market.cache_timestamp||Math.floor(Date.now()/1000),
+              delay:market.cache_delay||0};
+          }else if(label==="points"){
+            const offers=result.pointsmarket;
+            if(!Array.isArray(offers))throw Error("Invalid pointsmarket response");
+            quotes.points={listings:offers.map(x=>({price:x.cost,amount:x.quantity})),
+              timestamp:Math.floor(Date.now()/1000)};
+          }else data[label]=result;
+        }catch(error){errors.push(label+": "+String(error.message).slice(0,110));}
       }
-    }
+    };
+    try{
+      await Promise.all([process(),process(),process(),(async()=>{
+        const inv=await readInventory();
+        data.inventory=inv.categories.length?inv:null;
+        if(inv.failed.length)
+          inventoryWarning="Some inventory categories failed: "+inv.failed.join(" · ")+
+            ". Missing categories use zero owned stock for conservative purchase estimates.";
+        if(!inv.categories.length&&!inv.failed.length)
+          inventoryWarning="Inventory returned no usable categories.";
+      })()]);
+    }catch(error){errors.push("Refresh: "+String(error.message).slice(0,120));}
     recordObservedStats();
     dataRevision++;planMemo.key="";
     busy=false;render();
@@ -1069,7 +1096,8 @@
     const categories=["faction","job","property","education","enhancer","book","stock","merit"];
     const stat=input?.statName||cfg.stat, current=input?.stat||0;
     const stats=Object.fromEntries(STATS.map(k=>[k,live.bs[k]?.value||0]));
-    const stock=data.inventory?.inventory?.items||null;
+    const stock=(data.inventory?.categories||[]).includes("Book")?
+      data.inventory.inventory.items:null;
     const books=bookAdvice(stock?stock.filter(i=>i.id>=744&&i.id<=787):null,
       stats,plans?.speed?.gain||0,stat);
     const relevant=trainingPerkRows(perkAudit.rows);
