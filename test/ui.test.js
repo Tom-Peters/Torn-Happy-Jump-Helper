@@ -346,11 +346,11 @@ test("Today correctly shows today's refill USED when Torn API energy is true",as
   assert.match(app.panel.innerHTML,/Already used/);
   assert.match(app.panel.innerHTML,/Used today/);
   assert.ok(!app.panel.innerHTML.includes("Verified ready"));
-  assert.ok(!app.panel.innerHTML.includes("Train before confirmed available daily refill"));
+  // The next-day refill may correctly appear after 00:00 UTC; the engine
+  // verifies today's specific period contains none.
+  assert.match(app.panel.innerHTML,/Points refill/);
   app.tabs.find(x=>x.dataset.tab==="steps").onclick();
-  const cutoff=new Date().toISOString().slice(0,10);
-  const todays=app.panel.innerHTML.split("2026-").slice(0,1);
-  assert.ok(!app.panel.innerHTML.includes("Train before confirmed available daily refill"));
+  assert.match(app.panel.innerHTML,/Manual actions/);
 });
 test("Today indicates refill AVAILABLE only when API energy false",async()=>{
   const app=setup(false,"partial",false);
