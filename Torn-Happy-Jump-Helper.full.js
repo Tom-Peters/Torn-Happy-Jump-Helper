@@ -1204,7 +1204,7 @@
     let body='';
     if(activeTab==='today'){
       body=refreshMarkup+warnings+travelNotice+'<h2>Your next training decision</h2>'+modeButtons+'<div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
-        (recommended?'<div class="card hero"><div class="label">'+
+        (recommended?nextActionCard(recommended)+'<div class="card hero"><div class="label">'+
         (cfg.objective==='value'?'BEST VALUE RECOMMENDATION':'FASTEST GROWTH RECOMMENDATION')+'</div>'+
         '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+displayGain(recommended)+'</div>'+
         '<p>'+cost(recommended)+' weekly · '+fmt(recommended.jumps)+' Happy jumps/week</p>'+
@@ -1268,6 +1268,8 @@
           steps(chosen,live,input)+'</details>':'')+
         '<div class="btnrow"><button data-tab="compare">Compare another plan</button>'+
         '<button data-tab="settings">Adjust assumptions</button></div>';
+    }else if(activeTab==='progress'){
+      body=refreshMarkup+warnings+showProgress(input,live,plans);
     }else if(activeTab==='gyms'){
       body=refreshMarkup+warnings+showGyms(input,live);
     }else if(activeTab==='bonuses'){
@@ -1303,12 +1305,18 @@
     panel.innerHTML='<header class="head"><span class="brand">⚡ HAPPY JUMP HELPER <span class="tag">READ ONLY</span></span>'+
       '<button type="button" id="hhj-close" aria-label="Close panel">✕</button></header>'+
       '<nav class="tabs" aria-label="Pages">'+
-      [['today','Today'],['compare','Compare'],['steps','Plan'],['gyms','Gyms'],['bonuses','Perks'],['settings','Settings']].map(([k,n])=>
+      [['today','Today'],['compare','Compare'],['steps','Plan'],['gyms','Gyms'],['bonuses','Perks'],['progress','Progress'],['settings','Settings']].map(([k,n])=>
       '<button type="button" data-tab="'+k+'" aria-selected="'+(activeTab===k?'true':'false')+'">'+n+'</button>').join('')+
       '</nav><div class="body">'+body+
-      '<p class="tiny">IamEEKY · v0.4 beta · All gameplay steps are manual</p></div>';
+      '<p class="tiny">IamEEKY · v0.6 beta · All gameplay steps are manual · No account data sent to GitHub</p></div>';
     panel.querySelector('#hhj-close').onclick=()=>{opened=false;panel.style.display='none';};
     for(const btn of panel.querySelectorAll('#hhj-refresh'))btn.onclick=refresh;
+    for(const btn of panel.querySelectorAll('[data-recheck]'))btn.onclick=refresh;
+    const resetHistory=panel.querySelector('[data-clear-history]');
+    if(resetHistory)resetHistory.onclick=()=>{
+      localHistory=[];try{localStorage.removeItem(HISTORY_KEY);}catch(_){}
+      render();
+    };
     const capture=panel.querySelector('#hhj-capture-gyms');
     if(capture)capture.onclick=()=>{captureVisibleGyms();render();};
     const manual=panel.querySelector('#hhj-manual-confirm');
