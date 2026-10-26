@@ -4,12 +4,24 @@
 
 An on-demand, live-API planning panel for Torn training. It **never performs Torn gameplay actions**: no item use, gym training, purchases, refills, background scraping, simulated taps, or automatic gameplay requests.
 
+## Version 0.2: mobile usability and budget optimisation
+
+- **Four readable tabs**: Overview, Compare, Steps, Settings. High-contrast dark theme by default and an optional bright light theme.
+- **Goal selection**: maximum stats vs cost efficiency; automatically train the weakest current battle stat, or focus one of the four stats.
+- **Refill comparison**: the optimiser now compares seven daily points-energy refills **and** no-refill methods under the same weekly budget, by default. You can also force refills on/off.
+- **Travel-aware**: a read-only travel API check displays a warning when abroad or flying.
+- **Inventory error 21**: Torn defines this as `Incorrect category`. We now request category-specific `Drug`, `Candy` and `Booster` inventory pages. If they fail or pagination exceeds one page, the helper continues with an explicit warning and **full-purchase cost estimates**; it never invents owned stock.
+- **Default preferences for a new installation**: $10m weekly, maximum stat growth, weakest stat first, up to six sessions/day, compare with/without point refills. They can all be edited locally. **No real personal stats or inventory are preloaded into the public source code.**
+- **Testing**: 15 deterministic calculation and TornPDA UI smoke tests including category error 21, navigation and travel alerts.
+
+`v0.2` is a working beta verified by simulated API/browser fixtures. It has **not** been tested against your actual live TornPDA session. Timers use the last manual snapshot; the weekly model is a capacity approximation, not a validated minute-by-minute scheduler.
+
 ## Install
 
 1. In TornPDA, open its **Userscripts** manager and add a new script from the `Torn-Happy-Jump-Helper.user.js` file (or its raw GitHub URL).
 2. Enable it for `https://www.torn.com/*` and open a normal Torn page **in TornPDA's browser**.
 3. In TornPDA, use the script's injection time **END**, open a Torn page and tap the small **HJ** floating launcher, then **Refresh Torn data** (manual request).
-4. Configure your target stat, weekly budget, booster limit, perks and actual available training time. The dashboard compares different jump families with normal and Xanax training.
+4. In Settings select dark or light theme, training target, optimisation objective, budget and perks. The Compare tab ranks Happy jumps, normal training and Xanax training, with optional daily point refills.
 5. Use the numbered checklist yourself. **Nothing in Torn is executed by this script.**
 
 ### API key and privacy disclosure
@@ -24,7 +36,7 @@ The script uses the key supplied by TornPDA using its native `###PDA-APIKEY###` 
 
 ## What it calculates
 
-- Live energy, current and base happiness, drug/booster cooldowns, current gym and four battle stats
+- Live energy, current and base happiness, drug/booster cooldowns, current gym, four battle stats and travel destination
 - Item holdings, item market listing costs (Xanax, Ecstasy, lollipop, chocolate, eDVD), point market quote
 - Configurable jump strategies (micro candy, large candy, 1–4 eDVD, 0–4 Xanax)
 - Estimated training gains at base happy vs boosted happy, using current gym, target stat and manual modifiers
