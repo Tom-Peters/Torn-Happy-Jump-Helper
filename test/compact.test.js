@@ -66,7 +66,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483647"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.7.0");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.7.1");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh Torn data/);
@@ -90,4 +90,44 @@ test("false refill flag is available, but manual used mark wins for UTC date",as
   a.storage.setItem("hhj-compact-v1:used-day",JSON.stringify("2026-10-26"));
   assert.equal(a.core.refillStatus(false,Date.parse("2026-10-26T21:23:00Z")/1000),"used");
   assert.equal(a.core.refillStatus(false,Date.parse("2026-10-27T00:01:00Z")/1000),"ready");
+});
+
+test("HJ launcher disappears behind the open panel and returns when panel closes",()=>{
+  const a=setup();
+  const panel=a.document.getElementById("hhj-compact-panel");
+  assert.match(a.btn.style.cssText,/display:block!important/);
+  a.btn.onclick();
+  assert.equal(panel.style.display,"block");
+  assert.match(a.btn.style.cssText,/display:none!important/);
+  panel.onclick({target:{closest(){return {dataset:{act:"close"}};}}});
+  assert.equal(panel.style.display,"none");
+  assert.match(a.btn.style.cssText,/display:block!important/);
+  a.btn.onclick();
+  assert.equal(panel.style.display,"block");
+  assert.match(a.btn.style.cssText,/display:none!important/);
+});
+test("compact tab bar uses horizontally scrollable non-wrapping buttons",()=>{
+  const a=setup();
+  const css=a.document.getElementById("hhj-mini-css").textContent;
+  assert.match(css,/\.tabs\{display:flex;overflow-x:auto/);
+  assert.match(css,/\.tabs button\{flex:0 0 auto;white-space:nowrap/);
+  assert.match(css,/position:sticky/);
+  a.btn.onclick();
+  assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/class="row choices"/);
+});
+test("used refill has no redundant Mark used action; manual override can be cleared",async()=>{
+  const used=setup(true);
+  used.btn.onclick();await used.refresh();
+  const usedHTML=used.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+  assert.match(usedHTML,/Next reset 00:00 UTC/);
+  assert.ok(!usedHTML.includes('data-act="mark-used"'));
+  const ready=setup(false);
+  ready.btn.onclick();await ready.refresh();
+  const p=ready.document.getElementById("hhj-compact-panel");
+  assert.match(p.children[1].innerHTML,/data-act="mark-used"/);
+  p.onclick({target:{closest(){return {dataset:{act:"mark-used"}};}}});
+  assert.match(p.children[1].innerHTML,/Clear manual mark/);
+  assert.ok(!p.children[1].innerHTML.includes('data-act="mark-used"'));
+  p.onclick({target:{closest(){return {dataset:{act:"clear-refill"}};}}});
+  assert.match(p.children[1].innerHTML,/data-act="mark-used"/);
 });
