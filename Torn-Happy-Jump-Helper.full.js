@@ -922,6 +922,73 @@
     if(refreshButton&&!busy)refreshButton.disabled=Date.now()-lastRefresh<60000;
   }
 
+
+  function nextActionCard(plan){
+    if(!plan?.timeline)return '';
+    const details=actionOverview(plan,Date.now()/1000);
+    const now=Date.now()/1000;
+    const next=details.next;
+    if(!next)return '<div class="card"><h3>No remaining planned action</h3><p>Refresh Torn data for a new seven-day schedule.</p></div>';
+    const remaining=next.time-now;
+    return '<div class="card hero"><div class="label">NEXT MANUAL ACTION</div>'+
+      '<h2>'+escape(next.kind==="train"?"Train in your gym":next.kind==="xanax"?"Xanax preparation":
+        next.kind==="refill"?"Energy refill":next.kind==="jump"?"Happy-jump preparation":next.kind)+'</h2>'+
+      '<p>'+escape(next.detail)+'</p>'+
+      '<div class="between"><b>'+new Date(next.time*1000).toISOString().slice(11,16)+' UTC</b>'+
+      '<b>'+ (remaining<60?'Due now':"In "+secs(remaining))+'</b></div>'+
+      '<div class="btnrow"><button class="primary" data-tab="steps">See timetable</button>'+
+      '<button data-recheck type="button">Refresh after doing it</button></div>'+
+      '<p class="tiny">Check Torn’s real energy, location and cooldowns before each manual action. This tool never trains or uses consumables.</p></div>';
+  }
+  function planShoppingPanel(plan){
+    const items=shoppingList(plan);
+    if(!items.length)return '<div class="card">No consumables are budgeted for this plan.</div>';
+    let out='<details class="card"><summary>Shopping & supply checklist</summary>'+
+      '<p class="tiny">Required items across seven days. Owned inventory is hourly cached; prices are a market snapshot and may move. Stock in your faction armory is not assumed to be available.</p>';
+    out+=items.map(x=>'<div class="between"><span><b>'+escape(x.label)+'</b> · need '+fmt(x.required)+
+      (x.owned!==null?' · owned '+fmt(x.owned):' · owned unknown')+
+      ' · buy <b>'+fmt(x.buy)+'</b></span><span>'+ (x.known?cash(x.cost):'Quote missing')+'</span></div>').join('');
+    return out+'</details>';
+  }
+  function dayBreakdown(plan){
+    const days=actionOverview(plan,0).byDay;
+    if(!days.length)return '';
+    return '<details class="card"><summary>Daily gain breakdown</summary>'+
+      '<p class="tiny">Day boundaries are UTC. Forecasts assume you perform the stated steps.</p>'+
+      days.map(d=>'<div class="between"><span>'+escape(d.date)+' · '+fmt(d.energy)+' E'+
+        (d.jumps?' · '+d.jumps+' jumps':'')+'</span>'+
+        '<strong>+'+fmt(d.gain)+' stats</strong></div>').join('')+'</details>';
+  }
+  function showProgress(input,live,plans){
+    const stats=STATS.map(k=>({key:k,value:Number(live.bs[k]?.value)||0}));
+    const first=localHistory[0],last=localHistory[localHistory.length-1];
+    const diffs=first&&last&&last.timestamp>first.timestamp?
+      STATS.map(k=>({key:k,delta:last.stats[k]-first.stats[k],
+        perDay:(last.stats[k]-first.stats[k])*86400/(last.timestamp-first.timestamp)})):[];
+    const best=plans?([...plans.baseline,...plans.options].filter(x=>x.known&&x.cost<=cfg.budget)
+      .sort((a,b)=>b.gain-a.gain)[0]):null;
+    const forecast=input&&best?targetProjection(input,best.gain,best.cost,[5e7,1e8,2e8,1e9]):[];
+    return '<h2>Progress & long-term goals</h2>'+
+      '<p class="muted">Local base battle-stat snapshots, captured only when you press Refresh. No account history, API keys or stats are uploaded by this helper.</p>'+
+      '<div class="card"><h3>Your current base stats</h3>'+
+      stats.map(x=>'<div class="between"><b>'+escape(x.key)+'</b><span>'+fmt(x.value)+'</span></div>').join('')+
+      '</div>'+
+      '<div class="card"><h3>Observed changes</h3>'+
+      (diffs.length?diffs.map(x=>'<div class="between"><span>'+escape(x.key)+'</span>'+
+        '<span>'+(x.delta>=0?'+':'')+fmt(x.delta)+' total · '+(x.perDay>=0?'+':'')+
+        fmt(x.perDay)+'/day</span></div>').join(''):
+        '<p>Refresh again at least an hour later to show actual stat changes.</p>')+
+      '<p class="tiny">These changes can include books, items or other bonuses. They are not assumed to be gym gains alone.</p></div>'+
+      '<h3>Estimated time to targets</h3>'+
+      '<p class="muted">For '+escape(input?.statName||cfg.stat)+' only · current active gym and budget · strongest affordable forecast. Recalculate when your gym, training, or bonuses change.</p>'+
+      (forecast.length?forecast.map(p=>'<div class="card"><div class="between"><b>'+fmt(p.target)+
+        ' '+escape(input.statName)+'</b><span>'+
+        (p.weeks===null?"No reliable ETA":p.weeks+" weeks")+'</span></div>'+
+        '<p>'+escape(p.eta||"Not projected")+" · "+(p.cost===null?"Cost unavailable":cash(p.cost))+
+        ' forecast total spend</p></div>').join(''):'<div class="warn">Refresh gym, stats and prices for milestone forecasts.</div>')+
+      '<div class="btnrow"><button type="button" data-tab="bonuses">See book timing</button>'+
+      '<button type="button" data-clear-history>Clear local history</button></div>';
+  }
   function showSchedule(plan,hours=24){
     const timeline=plan?.timeline,events=timeline?.events||[];
     if(!timeline)return '<div class="warn">Refresh Torn data to build a dated timetable.</div>';
@@ -942,6 +1009,7 @@
       '>Full 7 days</button></div>'+
       '<h3>Manual actions · '+duration+' hours (UTC)</h3>'+
       (dates||'<div class="card">No scheduled actions in this window. Try the full seven days.</div>')+
+      planShoppingPanel(plan)+dayBreakdown(plan)+
       (filtered.length>45?'<button id="hhj-more">'+(showAll?'Show first 45':'Show all '+filtered.length+' actions')+'</button>':'')+
       '<div class="warn">Future times assume a '+timeline.assumptions.xanaxHours+
       '-hour Xanax cooldown, no overdoses, unchanged prices and manual actions exactly as listed. Refresh after real actions to replan.</div>';
