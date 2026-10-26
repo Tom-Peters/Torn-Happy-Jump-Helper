@@ -365,7 +365,14 @@
     const needNow=p.xanax?["Allow drug cooldown to expire. Bank energy with "+p.xanax+" manually taken Xanax, spaced by their actual 6–8 hour drug cooldowns. Never take another drug while on cooldown."]:["Build a full energy bar by natural regeneration first."];
     const canUseBooster=(currentCd.booster||0)<input.boosterCap*3600;
     const canDrug=(currentCd.drug||0)===0;
-    const ready=canUseBooster&&canDrug&&(currentCd.booster||0)+p.perBoosterHours*3600<=input.boosterCap*3600&&live.e.current>=live.e.maximum&&live.h.current>=live.h.maximum;
+    const ready=p.xanax===0 && canUseBooster && canDrug &&
+      (currentCd.booster||0)+p.perBoosterHours*3600<=input.boosterCap*3600 &&
+      live.e.current>=live.e.maximum && live.h.current>=live.h.maximum;
+    const boosterWait=Math.max(0,(currentCd.booster||0)+p.perBoosterHours*3600-input.boosterCap*3600);
+    const drugWait=Math.max(0,currentCd.drug||0)+p.xanax*7*3600;
+    const indicativeSeconds=Math.max(boosterWait,drugWait);
+    const nextQuarter=Math.ceil((Date.now()/1000+indicativeSeconds+20)/900)*900;
+    const approxWindow=new Date((nextQuarter+20)*1000).toLocaleString();
     const list=[
       "Check the in-game cooldowns, maximum booster cooldown, items and gym. "+(ready?"Current immediate readiness checks pass.":"Not currently ready for a complete immediate jump."),
       ...needNow,
@@ -378,6 +385,8 @@
       "Re-check cooldowns and actual gains. Refresh this panel manually to re-optimise the next cycle."
     ];
     return '<h3>Selected plan: '+escape(p.name)+'</h3><div class="tile">'+
+      '<p><b>Indicative earliest jump window:</b> '+escape(approxWindow)+
+      ' (mean cooldowns; check actual drug cooldowns, inventory and energy availability).</p>'+
       '<div class="grid">'+titleMini("Estimated jump happy",fmt(p.happy))+titleMini("Energy used at jump",fmt(p.eachJump))+
       titleMini("Estimated jumps/week",fmt(p.jumps))+titleMini("Natural regen lost/week",fmt(p.lostRegen)+" E")+'</div>'+
       '<p>Required across 7 days: '+escape(requirements.join(" · "))+(p.counts.points?" · "+p.counts.points+" points":"")+'</p>'+
