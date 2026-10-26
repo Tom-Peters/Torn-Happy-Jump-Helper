@@ -19,7 +19,7 @@ test("advanced preview boots under Torn CSP with real full features and no auto 
       appendChild(x){this.children.push(x);if(x.id)mounted.set(x.id,x);return x;},
       setAttribute(){},
       addEventListener(k,fn){this["on"+k]=fn;},
-      querySelector(){return null;},querySelectorAll(){return [];},
+      querySelector(){return element("button");},querySelectorAll(){return [];},
       getClientRects(){return [{width:1}]}
     };
   }
