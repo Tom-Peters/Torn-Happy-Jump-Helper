@@ -76,7 +76,7 @@
       // PDA key replacement applies to the installed small loader, so copy
       // the substitution into the fetched source in memory; never store it.
       if(!API_KEY.includes("PDA-APIKEY"))
-        core=core.replace("###PDA-APIKEY###",()=>API_KEY);
+        core=core.replace("###PDA-"+"APIKEY###",()=>API_KEY);
       setStatus("Engine downloaded. Starting interface…");
       // The fetched code is from this repository's fixed HTTPS raw URL.
       // The helper makes only read-only Torn API requests.
