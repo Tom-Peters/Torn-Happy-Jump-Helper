@@ -4,6 +4,30 @@
 
 An on-demand, live-API planning panel for Torn training. It **never performs Torn gameplay actions**: no item use, gym training, purchases, refills, background scraping, simulated taps, or automatic gameplay requests.
 
+## Version 0.4 — Training schedules, gym verification and growth goals
+
+**The first 24 hours are shown by default.** In **Plan**, tap *Full 7 days* to expand the timetable. The old *Per week / Per jump* switch has been replaced by **Training schedule** (regular energy/Xanax training without Happy jumps) and **Happy-jump schedule** (only jump combinations). The selected schedule type also filters the Compare tab. Weekly totals remain visible, so strategies can still be compared on overall growth rather than falsely attributing all weekly gains to one jump.
+
+### Gym visibility and recommendations
+
+The official Torn API provides the **active** gym and a public catalogue of all gym training multipliers, but **does not report which memberships you own**. To avoid recommending locked or invisible gyms, go to Torn's **Gym page** within TornPDA, open **Gyms** in this helper, and tap **Capture visible gyms**. The button only inspects the already displayed page **after you press it**; it does not navigate, click, buy membership, select a gym or train.
+
+Confirm each visible gym as *Already purchased*, *Unlocked, buy membership*, or *Unverified/exclude*. When Torn's layout prevents reliable detection, expand **Can see a gym but capture missed it?** on the **Gym page** and manually confirm a gym that you genuinely see unlocked. Unverified, invisible or locked gyms are never recommended. Local verification expires after **24 hours**, so refresh after unlocking a new gym or when the list changes.
+
+The optimiser compares **gains for the same energy session**, with gym-specific dots and energy costs. Eligible specialist-gym stat-ratio restrictions are checked. A better owned gym is suggested as a **manual switch**; a visible unlocked but unpurchased gym is shown as a **manual membership purchase**, with its price. **The schedule continues to use your current active gym until you actually switch and refresh.**
+
+### Training-relevant passive effects only
+
+The **Perks** tab hides unrelated combat-effective stats, financial stock benefits, driving and other non-training perks. It shows only gym gains, Happy, natural Energy, drugs, boosters, candy, refills and relevant cooldown effects. It distinguishes positively parsed training modifiers from informational effects which cannot yet be quantified. No non-gym merit is silently included in stat-gain math.
+
+### Long-term goals and book months
+
+The Perks tab also projects **50m, 100m and 1b in the selected base stat**, including a changing-growth projection, estimated weeks, calendar dates and cost at the current chosen scenario's weekly spending. It uses *the current* gym, perks and costs without assuming future unlocks, events or market pricing remain constant. A date is a **scenario**, not a guaranteed delivery date.
+
+For the four 5%-stat books, it shows the full +10m cap at **200m of the matching stat**, and an approximate month/date to reconsider using it. For 31-day gym-gain books, choose a *gym-book review milestone* in Settings (default **50m**) to plan a later high-throughput training block. The 50m review threshold is your selectable planning rule, **not a mathematically optimal usage date**. There is no universal finite "best stat" at which to use a multiplicative gym book; opportunity cost, events and future training cadence matter. The helper will never consume any book. Used display copies cannot be distinguished reliably from genuinely unused books solely by inventory.
+
+**Scope and limitations:** future cooldowns are simulated with a configurable mean, the seven-day schedule assumes planned manual attendance and no overdoses, and long-term dates use a model of compounding gym gains. Live Torn account integration has not yet been tested on the user's actual device. Keep the read-only rule throughout.
+
 ## Version 0.3 — Conditional 7-day schedules and passive-effect audits
 
 **This is a read-only forecast, not automated gameplay.**
@@ -47,7 +71,7 @@ To validate locally, run `npm run check` (syntax, unit and simulated TornPDA int
 1. In TornPDA, open its **Userscripts** manager and add a new script from the `Torn-Happy-Jump-Helper.user.js` file (or its raw GitHub URL).
 2. Enable it for `https://www.torn.com/*` and open a normal Torn page **in TornPDA's browser**.
 3. In TornPDA, use the script's injection time **END**, open a Torn page and tap the small **HJ** floating launcher, then **Refresh Torn data** (manual request).
-4. In Settings select dark or light theme, training target, optimisation objective, budget and perks. The Compare tab ranks Happy jumps, normal training and Xanax training, with optional daily point refills.
+4. In Settings select dark or light theme, training target, budget, perks and schedule type. The Compare tab ranks only strategies of the chosen type, with optional daily point refills.
 5. Use the numbered checklist yourself. **Nothing in Torn is executed by this script.**
 
 ### API key and privacy disclosure
