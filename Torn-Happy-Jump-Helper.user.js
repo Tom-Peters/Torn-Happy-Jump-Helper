@@ -116,8 +116,12 @@
       const energy=Math.max(0,168*input.regenHour-lostRegen)+s.xanax*250*jumps+weekRefill;
       const jumpedE=Math.min(energy,jumps*(input.maxE+s.xanax*250)+weekRefill);
       const eachJump=jumpedE/jumps;
-      const jumpGain=gainTrain(eachJump,jumpHappy,input.stat,input.dots,input.mod,input.gymCost,input.happyLoss)*jumps;
-      const normalGain=gainRegular(Math.max(0,energy-jumpedE),input.baseHappy,input.stat,
+      let runningStat=input.stat, jumpGain=0;
+      for(let n=0;n<jumps;n++){
+        const g=gainTrain(eachJump,jumpHappy,runningStat,input.dots,input.mod,input.gymCost,input.happyLoss);
+        jumpGain+=g;runningStat+=g;
+      }
+      const normalGain=gainRegular(Math.max(0,energy-jumpedE),input.baseHappy,runningStat,
         input.dots,input.mod,input.gymCost,input.maxE,input.happyLoss);
       const totalGain=jumpGain+normalGain;
       const counts={xanax:s.xanax*jumps,ecstasy:jumps,dvd:s.dvds*jumps,points:input.refill?210:0};
@@ -290,13 +294,18 @@
       '</div><p class="tiny">Modifiers require manual confirmation. The simulation excludes OD risk, addiction/rehab penalties, event effects, exact timing and market slippage. Changing settings never performs a game action.</p>';
     let rec='<div class="warn">Load your data using Refresh Torn data. Battle stats require a Limited API key. Cost rankings require valid market listings.</div>';
     if(plans){
-      const best=x=>x?'<b>'+escape(x.name)+'</b> · '+fmt(x.gain)+' predicted stats/week · '+(x.known?cash(x.cost):"no price quote")+' · '+fmt(x.jumps)+' jumps/week':"No affordable option with verified prices";
+      const best=x=>x?'<b>'+escape(x.name)+'</b> · '+fmt(x.gain)+' predicted stats/week · '+(x.known?cash(x.cost):"no price quote")+
+        (x.increment>0 && x.cost>plans.baseline[0].cost?' · '+cash((x.cost-plans.baseline[0].cost)/x.increment)+'/extra stat':'')+
+        ' · '+fmt(x.jumps)+' jumps/week':"No affordable option with verified prices";
       rec='<h3>Best strategies under your budget</h3><div class="tile"><div class="label">Maximum weekly stat gain</div>'+best(plans.speed)+'</div>'+
         '<div class="tile" style="margin-top:7px"><div class="label">Best extra stats per extra dollar</div>'+best(plans.value)+'</div>'+
         '<p class="muted">Baseline: '+fmt(plans.baseline[0].gain)+' stat/week on '+fmt(plans.baseline[0].energy)+' energy. All gains are model estimates.</p>';
       const order=[...plans.baseline,...plans.options].sort((a,b)=>b.gain-a.gain);
-      rec+='<h3>Strategy comparison</h3><div class="scroll"><table><thead><tr><th>Strategy</th><th>Jump/wk</th><th>Stats/wk</th><th>Gain vs base</th><th>Weekly spend</th></tr></thead><tbody>'+
-        order.map(x=>'<tr class="choice '+(selected===x.id?"chosen":"")+'" data-plan="'+escape(x.id)+'"><td>'+escape(x.name)+'</td><td>'+fmt(x.jumps)+'</td><td>'+fmt(x.gain)+'</td><td>'+fmt(x.increment)+'</td><td>'+ (x.known?cash(x.cost):"missing quote")+'</td></tr>').join("")+
+      rec+='<h3>Strategy comparison</h3><div class="scroll"><table><thead><tr><th>Strategy</th><th>Jump/wk</th><th>Stats/wk</th><th>Gain vs base</th><th>Weekly spend</th><th>$/extra stat</th></tr></thead><tbody>'+
+        order.map(x=>'<tr class="choice '+(selected===x.id?"chosen":"")+'" data-plan="'+escape(x.id)+'"><td>'+escape(x.name)+'</td><td>'+fmt(x.jumps)+'</td><td>'+fmt(x.gain)+'</td><td>'+fmt(x.increment)+'</td><td>'+ (x.known?cash(x.cost):"missing quote")+'</td><td>'+(
+          x.known && x.increment>0 && x.cost>plans.baseline[0].cost
+          ?cash((x.cost-plans.baseline[0].cost)/x.increment):"—"
+        )+'</td></tr>').join("")+
         '</tbody></table></div><p class="tiny">Tap a strategy to inspect its required items and manual sequence. Prices are market orderbook estimates less known personal inventory; not guaranteed transaction prices.</p>';
       rec+=insights(live,input,plans);rec+=chosen?steps(chosen,live,input):"";
       const stale=Object.entries(quotes).filter(([k,v])=>!fresh(v)).map(([k])=>k);
