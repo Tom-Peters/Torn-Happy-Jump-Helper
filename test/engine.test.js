@@ -62,7 +62,7 @@ test("candy-only cooldown reduction doesn't discount eDVD cooldown",()=>{
   assert.equal(a.find(x=>x.count===12&&x.dvds===0&&x.xanax===0).perBoosterHours,4.5);
 });
 test("unknown market prices block paid plans but natural training remains valid",()=>{
-  const scored=E.score(input({books:{}}));
+  const scored=E.score(input({books:{},refillMode:"both"}));
   assert.ok(scored.options.every(x=>!x.known));
   assert.equal(scored.speed?.id,"no-refills:normal");
   assert.equal(scored.value,null);
