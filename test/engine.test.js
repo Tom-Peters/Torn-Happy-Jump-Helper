@@ -98,3 +98,63 @@ test("both refill strategies compete under one weekly budget",()=>{
   assert.ok(p.options.every(x=>x.id.startsWith(x.refill?"refills:":"no-refills:")));
   assert.ok(p.baseline.some(x=>x.cost===0&&x.refill===false));
 });
+
+test("timestamped week respects Torn quarter hour execution windows",()=>{
+  const i=input({refill:false,statName:"dexterity",currentEnergy:150,currentHappy:5025,
+    regenInterval:120,regenIncrement:1,xanaxHours:7,maxJumpsDaily:2});
+  const p=E.strategies(i).options.find(x=>x.xanax===0&&x.count===3);
+  p.refill=false;
+  const start=1793000000;
+  const output=E.schedule(i,p,start,{energy:150,happy:5025,regenInterval:120,regenIncrement:1});
+  const jumpEvents=output.events.filter(x=>x.kind==="jump");
+  assert.ok(jumpEvents.length>0);
+  assert.equal(jumpEvents.length,output.jumps);
+  assert.ok(jumpEvents.every(x=>x.time%900===60));
+  const counts={};
+  for(const j of jumpEvents){
+    const day=Math.floor(j.time/86400); counts[day]=(counts[day]||0)+1;
+  }
+  assert.ok(Object.values(counts).every(n=>n<=2));
+  assert.ok(output.events.every(x=>x.time>=Math.ceil(start/60)*60 && x.time<Math.ceil(start/60)*60+604800));
+  assert.ok(output.energyTrained>0);
+  assert.ok(Number.isFinite(output.gain));
+});
+test("four Xanax stacks require actual spacing and keep energy capped at 1000",()=>{
+  const i=input({refill:false,statName:"defense",maxJumpsDaily:8,budget:100000000,
+    currentEnergy:150,currentHappy:5025,regenInterval:120,regenIncrement:1});
+  const p=E.strategies(i).options.find(x=>x.xanax===4&&x.count===3);
+  p.refill=false;
+  const out=E.schedule(i,p,1793000000,{energy:150,happy:5025,xanaxHours:7,regenInterval:120,regenIncrement:1});
+  assert.ok(out.jumps>0);
+  const xan=out.events.filter(x=>x.kind==="xanax");
+  assert.ok(xan.length>=4);
+  for(let j=1;j<4;j++)assert.ok(xan[j].time-xan[j-1].time>=7*3600);
+  assert.ok(out.energyLeft<=1000);
+});
+test("perk auditing uses only scoped gym gains, not effective battle-stat merits",()=>{
+  const perks={perks:{faction:["Increases dexterity gym gains by 10%","Increases speed gym gains by 9%"],
+    merit:["Increases dexterity by 30% (passive)"],job:["Increase all gym gains by 3%"]}};
+  const info=E.auditPerks(perks,"dexterity");
+  assert.ok(info.factor>=1);
+  assert.ok(info.rows.some(x=>x.category==="merit"&&!x.applied));
+  assert.ok(info.rows.some(x=>x.category==="faction"&&!x.applied));
+});
+test("book advice identifies strategic 200m threshold and consumed-copy uncertainty",()=>{
+  const owned=[{id:747,name:"Book : A Job For Your Hands",amount:1,faction_owned:false},
+    {id:757,name:"Book : Get Hard Or Go Home",amount:1,faction_owned:false},
+    {id:783,name:"Book : Yes Please Diabetes",amount:1,faction_owned:false}];
+  const advice=E.bookAdvice(owned,{dexterity:1007916},250000);
+  assert.equal(advice.length,3);
+  assert.equal(advice[0].threshold,200000000);
+  assert.match(advice[0].recommendation,/200,000,000/);
+  assert.match(advice[0].ownership,/NOT verifiable/);
+  assert.ok(advice[2].recommendation.includes("Diabetes"));
+  assert.equal(E.bookAdvice(null,{},0).length,0);
+});
+test("stock benefit or passive fighting merit never silently adds gym multipliers",()=>{
+  const p=E.auditPerks({perks:{stock:["+10% passive Battle stats"],merit:["+30% defense"],
+    faction:["+5% all gym gains"]}},"strength");
+  assert.ok(p.factor>=1);
+  assert.ok(!p.rows.find(x=>x.category==="merit").applied);
+  assert.ok(!p.rows.find(x=>x.category==="stock").applied);
+});
