@@ -58,7 +58,7 @@ function setup(gymPage=false,inventoryMode="error",refillUsed=true){
     } else payload=fixture[endpoint]||{error:{code:4}};
     return {status:200,responseText:JSON.stringify(payload)};
   };
-  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8")
+  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
     .replace("###PDA-APIKEY###","test-placeholder-key");
   new Function("document","location","window","localStorage","PDA_httpGet",source)(
     document,{hostname:"www.torn.com",pathname:gymPage?"/gym.php":"/index.php"},{setInterval(){}},{getItem(){return null;},setItem(){}},PDA_httpGet);
@@ -218,74 +218,42 @@ test("Torn page global module.exports cannot suppress the HJ launcher",()=>{
   assert.ok(document.body.children.some(x=>x.id==="hhj-panel"));
   assert.equal(foreignModule.exports.otherScript,true);
   assert.ok(!foreignModule.exports.schedule,"foreign module should not be overwritten");
-  assert.equal(window.__TornHappyJumpLoaded,"0.6.2");
+  assert.equal(window.__TornHappyJumpLoaded,"0.6.3");
   assert.equal(window.__TornHappyJumpStage.phase,"mounted");
 });
 
-test("tiny TornPDA launcher appears before it downloads the heavyweight engine",async()=>{
-  const root=createNode("html"),body=createNode("body");
-  const origAppend=body.appendChild.bind(body);
-  body.appendChild=x=>{origAppend(x);x.remove=()=>{body.children=body.children.filter(y=>y!==x)};};
-  body.append=(...xs)=>xs.forEach(x=>body.appendChild(x));
-  const document={body,documentElement:root,createElement(tag){
-    const x=createNode(tag);
-    x.replaceChildren=(...xs)=>{x.children=xs;};
-    return x;
-  },getElementById(id){return body.children.find(x=>x.id===id)||null;},addEventListener(){}};
-  const window={setInterval(){},__HHJLoader:null};
-  const location={hostname:"www.torn.com"};
-  const core=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8");
-  const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
-    .replace("###PDA-APIKEY###","example-test-key");
-  assert.ok(installed.length<7000,"installable launcher must remain lightweight");
-  let downloaded="",clicked=0;
-  const PDA_httpGet=async url=>{
-    downloaded=url;
-    return {status:200,responseText:core};
-  };
-  function FakeFunction(source){
-    assert.match(source,/sourceURL=Torn-Happy-Jump-Helper.full.js/);
-    assert.ok(source.includes("example-test-key"),"TornPDA key substitution must reach fetched core");
-    return ()=>{
-      const real=document.createElement("button");
-      real.id="hhj-launch";
-      real.click=()=>{clicked++;};
-      body.appendChild(real);
-      window.__TornHappyJumpLoaded="0.6.2";
-    };
-  }
-  new Function("document","window","location","PDA_httpGet","Function",installed)(
-    document,window,location,PDA_httpGet,FakeFunction);
-  const launch=document.getElementById("hhj-quick-launch");
-  assert.ok(launch,"launcher must mount without API, engine or settings");
-  assert.equal(downloaded,"");
-  assert.equal(typeof launch.onclick,"function");
-  await launch.onclick();
-  assert.match(downloaded,/raw.githubusercontent.com\/Tom-Peters\/Torn-Happy-Jump-Helper/);
-  assert.equal(clicked,1);
-  assert.equal(window.__HHJLoader.status,"ready");
-  assert.equal(document.getElementById("hhj-quick-launch"),null);
-});
-test("launcher remains visible and shows error when heavyweight engine fails to download",async()=>{
-  const body=createNode("body"),document={
-    body,documentElement:createNode("html"),createElement(tag){
-      const x=createNode(tag);
-      x.replaceChildren=()=>{x.children=[];};
-      return x;
-    },getElementById(id){return body.children.find(x=>x.id===id)||null;},addEventListener(){}
-  };
-  const window={setInterval(){}},location={hostname:"www.torn.com"};
+test("installed userscript is self-contained and CSP-safe without eval or remote code loaders",()=>{
   const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
-  new Function("document","window","location","PDA_httpGet",installed)(
-    document,window,location,async()=>({status:503,responseText:"Unavailable"}));
-  assert.ok(document.getElementById("hhj-quick-launch"));
-  await document.getElementById("hhj-quick-launch").onclick();
-  assert.ok(document.getElementById("hhj-quick-launch"),
-    "launcher should remain clickable after load error");
-  const panel=document.getElementById("hhj-loader-status");
-  assert.ok(panel.children.some(x=>String(x.textContent).includes("HTTP 503")));
+  const engine=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8");
+  assert.equal(installed,engine,"the installed script must contain the tested full engine");
+  assert.match(installed,/@run-at\s+document-end/);
+  assert.match(installed,/@author\s+IamEEKY/);
+  assert.match(installed,/@version\s+0\.6\.3/);
+  assert.ok(installed.includes("###PDA-APIKEY###"));
+  assert.ok(!/\bnew\s+Function\s*\(|\beval\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(installed),
+    "CSP-unsafe code evaluation must never be in the installed helper");
+  assert.ok(!installed.includes("hhj-quick-launch"),
+    "the obsolete network/eval loader must not remain in the installable file");
 });
-
+test("directly installed script renders HJ without downloading JavaScript or using Function",()=>{
+  const body=createNode("body"),root=createNode("html");
+  const window={setInterval(){},__TornHappyJumpLoaded:null};
+  const document={body,documentElement:root,createElement:createNode,
+    addEventListener(){},getElementById(id){return body.children.find(x=>x.id===id)||null;}};
+  const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
+    .replace("###PDA-APIKEY###","test-only-key");
+  let networkRequests=0;
+  const PDA_httpGet=async()=>{networkRequests++;throw Error("This is only permitted after manual Refresh");};
+  function ForbiddenFunction(){throw Error("CSP unsafe-eval blocked");}
+  new Function("document","location","window","localStorage","PDA_httpGet","Function",installed)(
+    document,{hostname:"www.torn.com",pathname:"/itemmarket.php"},window,
+    {getItem(){return null;},setItem(){}},PDA_httpGet,ForbiddenFunction);
+  assert.ok(document.getElementById("hhj-launch"),"HJ floating button must be present");
+  assert.ok(document.getElementById("hhj-panel"),"Full UI must be mounted directly");
+  assert.equal(networkRequests,0,"No network requests before manual Refresh");
+  assert.equal(window.__TornHappyJumpStage.phase,"mounted");
+  assert.equal(window.__TornHappyJumpLoaded,"0.6.3");
+});
 test("Progress displays current base stats and supports empty local history",async()=>{
   const app=setup();
   app.launcher.onclick();
