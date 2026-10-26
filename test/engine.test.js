@@ -82,3 +82,8 @@ test("high-quantity market depth exhaustion is never silently underpriced",()=>{
   const shallow={...books,lollipop:{listings:[{price:1000,amount:1}]}};
   assert.equal(E.strategies(input({books:shallow})).options.find(x=>x.count===48&&x.xanax===0).known,false);
 });
+
+test("stacked 4 Xanax jump cannot train more than 1000 energy before refill",()=>{
+  const a=E.strategies(input({refill:false})).options.find(x=>x.xanax===4&&x.count===3);
+  assert.ok(a.eachJump<=1000);
+});
