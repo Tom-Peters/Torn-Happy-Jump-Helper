@@ -1,5 +1,22 @@
 # Torn Happy Jump Helper
 
+## v0.6.3 — CSP-safe self-contained TornPDA installation
+
+**Critical installation change:** Torn's Content Security Policy forbids `unsafe-eval` on some pages. The previous 5 KB launcher fetched the 110 KB engine via `PDA_httpGet`, then used `new Function(fetchedSource)`; Torn's Item Market page blocked that runtime compilation and showed a CSP error. No browser security changes or exemptions should be made.
+
+**v0.6.3 is one self-contained userscript.** The installable [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js) directly includes all the code from [`Torn-Happy-Jump-Helper.full.js`](Torn-Happy-Jump-Helper.full.js). TornPDA injects it as a normal userscript; it **never** calls `eval`, `new Function`, `import()`, blob script URLs or dynamic compilation. The engine uses its normal `###PDA-APIKEY###` placeholder, which TornPDA substitutes at injection time. Normal read-only Torn API GET requests still run only after the user explicitly presses Refresh.
+
+**Upgrade from v0.5–v0.6.2:**
+
+1. In TornPDA's Manage Scripts, **remove/disable the previous Happy Jump Helper** (the old ~5 KB HJ launcher), not just reload its browser tab.
+2. Import the **new** raw URL: `https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js`. Confirm **v0.6.3**, approximately **111 KB** of script, and injection **END**.
+3. Make sure **only one Happy Jump Helper** script is enabled. The separate optional HJ diagnostic can be disabled.
+4. Reload Torn inside TornPDA. The HJ button should be created **directly** without any code download. Open it and press Refresh to get current plans.
+5. If the HJ button is still missing, use the diagnostic or TornPDA Dev Tools to check installation and startup. The full script has not yet been confirmed on your specific device under CSP; report the actual result rather than disabling Torn's security protections.
+
+The former `new Function` loader is permanently removed from the installable source. Automated tests run the *actual installable file* in a simulated CSP-restricted environment and assert no API access occurs before the user's explicit refresh. Engine and simulated mobile tests **49/49 pass**, but live TornPDA verification is still required.
+
+
 ## v0.6.2 — Critical daily point refill status correction
 
 An Android TornPDA screenshot on 26 October 2026 showed the helper offering another 30-point energy refill even though the player had already spent it. The issue was **not** item pricing or cooldowns: the helper had reversed the meaning of `/user/refills → refills.energy`.
@@ -29,7 +46,7 @@ Both the lightweight launcher and the downloaded full engine display **v0.6.1**.
 
 ## Version 0.6 — Feature overhaul (current)
 
-**Install** the small [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js) only. It stays approximately **5 KB** and launches the [full engine](Torn-Happy-Jump-Helper.full.js) on the first HJ button press; the main simulator does not run until then. In TornPDA, keep injection on **END**. The script is strictly read-only: no training, drugs, refills or purchases are initiated by code.
+**Install** the single self-contained [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js) directly. As of v0.6.3, it contains the entire read-only planner and does not load or execute JavaScript dynamically. See the v0.6.3 upgrade instructions above. In TornPDA, keep injection on **END**. The script is strictly read-only: no training, drugs, refills or purchases are initiated by code.
 
 ### Seven-tab mobile workspace
 
@@ -62,9 +79,9 @@ Run `npm run check` (syntax + Node engine and simulated TornPDA UI tests). The e
 
 ## v0.5 — Small TornPDA launcher (missing HJ button workaround)
 
-**Install only** [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js), which is now an approximately **5 KB** standalone startup launcher. All of the read-only planner code remains in [`Torn-Happy-Jump-Helper.full.js`](Torn-Happy-Jump-Helper.full.js), but **do not import the large full file directly as a second TornPDA userscript**.
+**Historical v0.5 approach (removed in v0.6.3):** the installable userscript used to be a 5 KB startup launcher. All of the read-only planner code remains in [`Torn-Happy-Jump-Helper.full.js`](Torn-Happy-Jump-Helper.full.js), but **do not import the large full file directly as a second TornPDA userscript**.
 
-The tiny launcher inserts the prominent HJ button immediately, without loading inventory, fetching markets, accessing the API or parsing the full simulator. **On the first tap**, it downloads the full helper from the fixed public HTTPS GitHub raw URL via TornPDA's supported `PDA_httpGet` function, verifies the identifying source markers, replaces TornPDA's API-key token in memory, starts the full interface, and clicks its HJ button to show the dashboard. It never writes to Torn or stores the API key. The downloaded code is executable code from the same GitHub repository, so trust the repository and review changes before updating.
+The old v0.5 tiny launcher inserted the HJ button before fetching the full simulator. **On the first tap**, it downloads the full helper from the fixed public HTTPS GitHub raw URL via TornPDA's supported `PDA_httpGet` function, verifies the identifying source markers, replaces TornPDA's API-key token in memory, starts the full interface, and clicks its HJ button to show the dashboard. It never writes to Torn or stores the API key. The downloaded code is executable code from the same GitHub repository, so trust the repository and review changes before updating.
 
 If the download, script evaluation or UI start fails, the **small HJ button stays visible** and a status panel shows the HTTP or JavaScript error. No background refresh or Torn actions are initiated by the loader.
 
