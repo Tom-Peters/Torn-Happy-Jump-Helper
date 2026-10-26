@@ -251,15 +251,16 @@ function show(){
 let watching=null;
 function launchAdvanced(){
  panel.style.display="block";
- floatButton.style.display="none";
+ floatButton.style.setProperty("display","none","important");
  show();
 }
 function attach(){
- const base=document.getElementById("hhj-compact-panel");
- if(!base||!document.body)return;
+ if(!document.body)return;
  if(!document.getElementById(floatButton.id))document.body.appendChild(floatButton);
  if(!document.getElementById(panel.id))document.body.appendChild(panel);
  if(!document.getElementById(css.id))(document.head||document.body).appendChild(css);
+ const base=document.getElementById("hhj-compact-panel");
+ if(!base)return;
  // The stable helper redraws its tab row by assigning innerHTML. Attaching
  // after the title/version/close header was clipped on narrow TornPDA screens.
  // Inject into the actual horizontally scrolling tab row instead.
@@ -283,7 +284,7 @@ function attach(){
 panel.addEventListener("click",event=>{
  const t=event.target.closest("button");if(!t)return;
  if(t.dataset.tab){tab=t.dataset.tab;show();return}
- if(t.dataset.act==="close"){panel.style.display="none";floatButton.style.display="block";return}
+ if(t.dataset.act==="close"){panel.style.display="none";floatButton.style.setProperty("display","block","important");return}
  if(t.dataset.act==="refresh"){refresh();return}
  if(t.dataset.act==="save"){
   cfg.stat=body.querySelector("#hhja-stat")?.value||"speed";
