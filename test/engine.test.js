@@ -1,7 +1,7 @@
 "use strict";
 const test=require("node:test");
 const assert=require("node:assert/strict");
-const E=require("../Torn-Happy-Jump-Helper.user.js");
+const E=require("../Torn-Happy-Jump-Helper.full.js");
 const prices={lollipop:1000,chocolate:900,bigChocolate:2500,dvd:4300000,xanax:870000,ecstasy:40000,points:32000};
 const books=Object.fromEntries(Object.entries(prices).map(([kind,price])=>[kind,{
   listings:[{price,amount:50000}],timestamp:Date.now()/1000
