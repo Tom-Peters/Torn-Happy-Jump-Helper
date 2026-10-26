@@ -515,11 +515,13 @@
     const bval=state.bs[key]?.value;
     const perkAudit=auditPerks(data.perks,key);
     const perksAll=perkAudit.rows.map(x=>x.description).join(" | ");
-    const activeGoalOriented=/goal oriented|reduce(?:s|d)?\s+(?:happy|happiness)\s+loss.*50\s*%/i.test(perksAll);
-    const activeDvd=/erotic.{0,8}dvd.{0,50}(?:double|100\s*%)/i.test(perksAll);
+    const activeGoalOriented=/goal oriented|halve(?:s|d)?.{0,30}happ|reduce(?:s|d)?\s+(?:happy|happiness)\s+loss.*50\s*%/i.test(perksAll);
+    const activeDvd=/erotic.{0,8}dvd.{0,50}(?:double|twice|100\s*%)/i.test(perksAll);
     const activeCooldown=/self control is for losers|all consumable cooldowns.*50\s*%/i.test(perksAll);
-    const activeCandyBook=/yes please diabetes/i.test(perksAll);
-    const activeBliss=/ignorance is bliss/i.test(perksAll);
+    const activeCandyBook=/yes please diabetes|double(?:s|d)? candy/i.test(perksAll);
+    const activeBliss=/ignorance is bliss|happiness.{0,30}regenerat.{0,30}above max/i.test(perksAll);
+    const factionCandy=perkAudit.rows.filter(x=>x.category==="faction"&&/candy|candies/i.test(x.description)&&/happ/i.test(x.description)&&!/reduc|decreas/i.test(x.description));
+    const detectedCandy=factionCandy.reduce((mx,x)=>Math.max(mx,Number(x.description.match(/(\d+(?:\.\d+)?)\s*%/)?.[1]||0)),0);
     if(!Number.isFinite(bval)||!dots||!Number.isFinite(state.h.maximum))return null;
     return {stat:bval,statName:key,baseHappy:state.h.maximum,dots,gymCost,
       mod:(1+clamp(cfg.modifierPercent,-50,300)/100)*(cfg.autoPerks?perkAudit.factor:1),
@@ -527,7 +529,7 @@
         ? 3600*state.e.increment/state.e.interval
         : (state.maxE>=150?30:20),
       refill:cfg.refill!=="no",refillMode:cfg.refill,maxJumpsDaily:cfg.maxJumpsDaily,
-      budget:cfg.budget,candyPercent:cfg.candyPercent,boosterReduction:cfg.boosterReduction,
+      budget:cfg.budget,candyPercent:cfg.candyPercent>0?cfg.candyPercent:detectedCandy,boosterReduction:cfg.boosterReduction,
        consumableReduction:activeCooldown?0.5:0,ignoreHappyReset:activeBliss,
        candyBookMultiplier:activeCandyBook?2:1,
       dvdHappy:activeDvd?Math.max(5000,cfg.dvdHappy):cfg.dvdHappy,boosterCap:cfg.boosterCap,
