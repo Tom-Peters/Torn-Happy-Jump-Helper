@@ -272,8 +272,9 @@
   function render(){
     if(!opened)return;
     const live=readyState(), input=buildInput(), plans=input?score(input):null;
-    const chosen=plans?.options.find(p=>p.id===selected) || plans?.speed || null;
-    if(chosen && !plans?.options.some(p=>p.id===selected))selected=chosen.id;
+    const allPlans=plans?[...plans.baseline,...plans.options]:[];
+    const chosen=allPlans.find(p=>p.id===selected) || plans?.speed || null;
+    if(chosen && !allPlans.some(p=>p.id===selected))selected=chosen.id;
     const title=(txt,val)=>'<div class="tile"><div class="label">'+txt+'</div><b>'+val+'</b></div>';
     const info='<div class="grid">'+
       title("Energy",fmt(live.e.current)+" / "+fmt(live.e.maximum))+
@@ -307,7 +308,12 @@
           ?cash((x.cost-plans.baseline[0].cost)/x.increment):"—"
         )+'</td></tr>').join("")+
         '</tbody></table></div><p class="tiny">Tap a strategy to inspect its required items and manual sequence. Prices are market orderbook estimates less known personal inventory; not guaranteed transaction prices.</p>';
-      rec+=insights(live,input,plans);rec+=chosen?steps(chosen,live,input):"";
+      rec+=insights(live,input,plans);
+      if(chosen)rec+=chosen.jumps?steps(chosen,live,input):
+        '<h3>Selected plan: '+escape(chosen.name)+'</h3><div class="tile"><p>'+
+        escape(chosen.desc)+'</p><p>Estimated '+fmt(chosen.gain)+
+        ' stat gains/week, with '+(chosen.known?cash(chosen.cost):'unverified cost')+
+        '. This is a normal training strategy; no Happy jump is needed.</p></div>';
       const stale=Object.entries(quotes).filter(([k,v])=>!fresh(v)).map(([k])=>k);
       if(stale.length)rec+='<div class="warn">Prices not recently verified for: '+escape(stale.join(", "))+'. Refresh before purchasing.</div>';
     }
