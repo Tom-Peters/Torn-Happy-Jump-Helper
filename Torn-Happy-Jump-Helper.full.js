@@ -217,7 +217,7 @@
     const activity=[], counts={}, initialEnergy=clamp(opts.energy??normalCap,0,limit);
     let e=initialEnergy, h=Math.max(0,opts.happy??input.baseHappy),
       stat=input.stat, totalGain=0, spentE=0,lostRegen=0, nextDrug=start+Math.max(0,opts.drugCooldown||0),
-      boosterSeconds=Math.max(0,opts.boosterCooldown||0), regenBank=0,
+      boosterSeconds=Math.max(0,opts.boosterCooldown||0), regenBank=Math.max(0,regenInterval-clamp(opts.regenFirstSeconds??regenInterval,0,regenInterval)),
       prep=0,jumps=0,cashEstimate=0, cashKnown=true, trainCount=0,
       lastDay=-1,refilledToday=false,jumpsToday=0;
     const refills=!!plan.refill, isXan=plan.id?.includes("xanonly"),
@@ -226,26 +226,30 @@
     const requiredXan=isJump?(plan.xanax||0):0;
     const boosterHours=isJump?(plan.perBoosterHours||0):0;
     const add=(time,kind,detail,qty=0,gain=0)=>activity.push({time,kind,detail,qty,gain});
-    function unit(kind){const p=quotePrice(input.books[kind]);return Number.isFinite(p)?p:NaN;}
+    // Use the cost of the COMPLETE market basket. The original single-unit
+    // estimate under-priced large consumable runs and rejected owned supplies
+    // when the market was temporarily unavailable.
+    function payable(kind,after){
+      const owned=input.inventoryReady?Math.max(0,+input.owned?.[kind]||0):0;
+      return marketCost(input.books?.[kind],Math.max(0,after-owned));
+    }
     function canPay(items){
-      let due=0;
-      for(const [kind,quantity] of Object.entries(items)){
-        if(!quantity)continue;
-        const price=unit(kind);
-        if(!Number.isFinite(price))return false;
-        const qtyPurchased=Math.max(0,(counts[kind]||0)+quantity-(input.inventoryReady?(input.owned[kind]||0):0));
-        const prevQty=Math.max(0,(counts[kind]||0)-(input.inventoryReady?(input.owned[kind]||0):0));
-        due+=(qtyPurchased-prevQty)*price;
+      let extra=0;
+      for(const [kind,q] of Object.entries(items)){
+        if(!(q>0))continue;
+        const prior=payable(kind,counts[kind]||0);
+        const next=payable(kind,(counts[kind]||0)+q);
+        if(!prior.known||!next.known)return false;
+        extra+=next.cost-prior.cost;
       }
-      return cashEstimate+due<=input.budget;
+      return cashEstimate+extra<=input.budget;
     }
     function consume(time,kind,quantity){
-      const price=unit(kind);
-      if(!Number.isFinite(price)){cashKnown=false;return false;}
-      const prev=Math.max(0,(counts[kind]||0)-(input.inventoryReady?(input.owned[kind]||0):0));
+      const prior=payable(kind,counts[kind]||0);
+      const next=payable(kind,(counts[kind]||0)+quantity);
+      if(!prior.known||!next.known){cashKnown=false;return false;}
       counts[kind]=(counts[kind]||0)+quantity;
-      const newBuy=Math.max(0,counts[kind]-(input.inventoryReady?(input.owned[kind]||0):0));
-      cashEstimate+=(newBuy-prev)*price;
+      cashEstimate+=next.cost-prior.cost;
       return true;
     }
     function train(t,label){
@@ -340,10 +344,10 @@
       if(!quote.known){known=false;break;}
       cost+=quote.cost;
     }
-    return {start,end,events:activity,counts,gain:totalGain,perJump:jumps?totalGain/jumps:null,
+    return {start,end,events:activity,counts,gain:totalGain,perJump:jumps?activity.filter(x=>x.kind==="train"&&/Happy-jump gym training/.test(x.detail)).reduce((n,x)=>n+x.gain,0)/jumps:null,
       finalStat:stat,jumps,cost:known?cost:NaN,known:known&&cashKnown&&cost<=input.budget,
       overBudget:known&&cost>input.budget,energyTrained:spentE,energyLeft:e,lostRegen,
-      trainCount,assumptions:{xanaxHours:cdX/3600,ecstasyHours:cdE/3600,regenInterval,available},
+      trainCount,priceBreakdown:Object.fromEntries(Object.entries(counts).map(([kind,q])=>[kind,{required:q,owned:input.inventoryReady?(input.owned?.[kind]||0):null,buy:Math.max(0,q-(input.inventoryReady?(input.owned?.[kind]||0):0)),cost:payable(kind,q).cost}])),assumptions:{xanaxHours:cdX/3600,ecstasyHours:cdE/3600,regenInterval,available},
       error:available?"": "Gym access unavailable during travel. Resume on return."};
   }
   // API v2 user/perks provides descriptive strings grouped by source. Do NOT
@@ -765,6 +769,7 @@
        currentHappy:state.h.current,drugCooldown:data.cooldowns?.cooldowns?.drug||0,
        boosterCooldown:data.cooldowns?.cooldowns?.booster||0,
        regenInterval:state.e.interval||120,regenIncrement:state.e.increment||1,
+       regenFirstSeconds:state.e.tick_time||state.e.interval||120,
        refillUsed:data.refills?.refills?.energy===false,
        available:true, // Plans while abroad are conditional until return.
        xanaxHours:cfg.xanaxHours,returnHours:cfg.returnHours,perkAudit};
