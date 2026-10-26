@@ -1,0 +1,37 @@
+name: Build compact enhanced Happy Jump preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/build-enhanced.yml
+      - scripts/build-enhanced.mjs
+      - Torn-Happy-Jump-Helper.user.js
+      - Torn-Happy-Jump-Helper.full.js
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  enhanced:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-save --ignore-scripts --no-package-lock terser@5
+      - name: Build small enhanced script
+        run: |
+          node scripts/build-enhanced.mjs
+          node --check Torn-Happy-Jump-Helper-Enhanced.user.js
+          wc -c Torn-Happy-Jump-Helper-Enhanced.user.js
+      - name: Run existing regression tests
+        run: npm run check
+      - name: Commit enhanced preview
+        run: |
+          git config user.name IamEEKY
+          git config user.email 00000000+IamEEKY@users.noreply.github.com
+          git add Torn-Happy-Jump-Helper-Enhanced.user.js
+          if ! git diff --cached --quiet; then
+            git commit -m "build: regenerate compact enhanced read-only HJ preview"
+            git push
+          fi
