@@ -177,7 +177,7 @@
       cdE=clamp(opts.ecstasyHours||4,3,5)*3600, normalCap=Math.max(1,input.maxE),
       limit=1000, regenInterval=Math.max(30,opts.regenInterval||120),
       energyInc=Math.max(1,opts.regenIncrement||1), available=opts.available!==false;
-    const activity=[], counts={}, charged={}, initialEnergy=clamp(opts.energy??normalCap,0,limit);
+    const activity=[], counts={}, initialEnergy=clamp(opts.energy??normalCap,0,limit);
     let e=initialEnergy, h=Math.max(0,opts.happy??input.baseHappy),
       stat=input.stat, totalGain=0, spentE=0,lostRegen=0, nextDrug=start+Math.max(0,opts.drugCooldown||0),
       boosterSeconds=Math.max(0,opts.boosterCooldown||0), regenBank=0,
@@ -255,12 +255,13 @@
         // Keep a complete repeatable sequence: stack Xanax, wait for drug
         // cooldown to finish, then boost Happy and train at +1 min after :15.
         if(prep<requiredXan&&t>=nextDrug&&t>=nextXan&&
-          e<=limit-250&&canPay({xanax:1})){
+          e<limit&&canPay({xanax:1})){
           consume(t,"xanax",1);e=Math.min(limit,e+250);prep++;
           nextDrug=t+cdX;nextXan=nextDrug;
           add(t,"xanax","Manually stack Xanax "+prep+"/"+requiredXan+" • +250 E",250);
         }
         if(prep>=requiredXan&&t>=nextDrug&&t%900===60&&
+          e>=Math.min(limit,normalCap+requiredXan*250)&&
           boosterSeconds+boosterHours*3600<=input.boosterCap*3600){
           const required={ecstasy:1};
           if(plan.count)required[plan.type]=plan.count;
