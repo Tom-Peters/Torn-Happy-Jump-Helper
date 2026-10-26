@@ -167,7 +167,7 @@
   const defaults={budget:10000000,stat:"dexterity",statGoal:"weakest",objective:"growth",
     maxJumpsDaily:6,maxE:150,
     candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
-    refill:true,gymOverride:0};
+    refill:true,gymOverride:0,theme:"dark"};
   let cfg={...defaults};
   try{
     const saved=JSON.parse(localStorage.getItem("hhj-settings-v1")||"null");
@@ -346,7 +346,9 @@
     const cd=data.cooldowns?.cooldowns||{};
     const fetchedAge=Math.max(0,(Date.now()-lastRefresh)/1000);
     const btn=document.getElementById("hhj-timer");
-    if(btn)btn.textContent="Happy reset in "+secs(reset)+" · Drug "+secs((cd.drug||0)-fetchedAge)+" · Booster "+secs((cd.booster||0)-fetchedAge);
+    if(btn)btn.textContent="Happy reset "+secs(reset)+" · Drug "+secs((cd.drug||0)-fetchedAge)+" · Booster "+secs((cd.booster||0)-fetchedAge);
+    const refreshButton=panel.querySelector("#hhj-refresh");
+    if(refreshButton&&!busy)refreshButton.disabled=Date.now()-lastRefresh<60000;
   }
   function render(){
     if(!opened)return;
