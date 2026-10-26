@@ -219,7 +219,8 @@ test("tiny TornPDA launcher appears before it downloads the heavyweight engine",
   const window={setInterval(){},__HHJLoader:null};
   const location={hostname:"www.torn.com"};
   const core=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8");
-  const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
+  const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
+    .replace("###PDA-APIKEY###","example-test-key");
   assert.ok(installed.length<7000,"installable launcher must remain lightweight");
   let downloaded="",clicked=0;
   const PDA_httpGet=async url=>{
@@ -228,6 +229,7 @@ test("tiny TornPDA launcher appears before it downloads the heavyweight engine",
   };
   function FakeFunction(source){
     assert.match(source,/sourceURL=Torn-Happy-Jump-Helper.full.js/);
+    assert.ok(source.includes("example-test-key"),"TornPDA key substitution must reach fetched core");
     return ()=>{
       const real=document.createElement("button");
       real.id="hhj-launch";
