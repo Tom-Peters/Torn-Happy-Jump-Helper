@@ -1,5 +1,18 @@
 # Torn Happy Jump Helper
 
+## v0.6.2 — Critical daily point refill status correction
+
+An Android TornPDA screenshot on 26 October 2026 showed the helper offering another 30-point energy refill even though the player had already spent it. The issue was **not** item pricing or cooldowns: the helper had reversed the meaning of `/user/refills → refills.energy`.
+
+- **`true` means already used today**; **`false` means not yet used**. An absent, malformed or failed API response means **unknown**, never "verified ready".
+- The **Today**, **next-action**, **weekly schedule**, and **insights** now all use one consistent refill status resolver instead of independently interpreting the raw boolean.
+- A manual **Mark today's refill used** action is now available whenever the helper doesn't already show used. It saves only the UTC date in TornPDA's local storage, overrides stale API reports of availability, and expires after 00:00 UTC. **Clear local override** is also available. Neither button performs any gameplay action.
+- When the refill is already used, the simulator must not recommend **training energy before a refill** or inserting another refill on the same UTC day. Future-day refills remain conditional on the daily reset and must be confirmed in Torn.
+- New pure-engine tests cover `true`, `false`, missing/malformed values, same-day suppression, tomorrow's date rollover and user overrides. UI tests check the Used/Available labels and the manual control. **49 simulated tests passed.**
+
+**Do not follow any pre-v0.6.2 point-refill recommendation.** Reload Torn in TornPDA so the tiny launcher pulls the corrected full engine, manually refresh, and verify the Today status shows **Used today**. The helper remains GET-only and never spends points, drugs or energy.
+
+
 ## v0.6.1 — Real-device Today review fixes (26 October 2026)
 
 After verifying a screenshot of v0.6 running inside Android TornPDA, v0.6.1 corrects a real simulator error and improves the Today screen:
