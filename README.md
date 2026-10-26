@@ -1,3 +1,19 @@
+## v0.9.2 — Advanced button not visible on Android (CURRENT)
+
+A user with **stable compact HJ v0.7.1 working** could not find the **Advanced** action after installing the first companion. The companion v0.9.0 appended the action as a *fourth element at the end of the full-width title/version/close header*; on a narrow TornPDA screen that could be clipped by the panel's `overflow:hidden`. **This is a probable layout failure, not yet a proven cause of the user's device report.**
+
+The fixed [**Advanced Companion v0.9.2**](Torn-Happy-Jump-Advanced-Companion.user.js) now:
+
+- Inserts **Advanced as the first item** in the stable HJ's **horizontally scrollable tab row**, not the full-width header.
+- Automatically reinstalls the tab when stable HJ redraws the tab row using `innerHTML`, via MutationObserver where available plus a 1-second fallback.
+- Adds an **independent left-side teal ADV floating shortcut** as an explicit script-execution indicator and fallback entry even when the stable HJ panel is not yet mounted. The Advanced panel hides the shortcut while open.
+- Remains separate from, and does **not modify**, the stable v0.7.1 userscript. Read-only API GET requests happen only when the companion's Refresh control is pressed; no runtime eval or dynamic JS loader.
+- Passes the CSP-limited companion startup and DOM-redraw tests; the full repository suite is **62/62 passing**.
+
+**To install:** Keep only **stable HJ v0.7.1** and **Advanced Companion v0.9.2** enabled. Disable v0.8 Advanced Preview and any Enhanced replacement. In TornPDA Manage Scripts, explicitly **replace/update the old companion**, not the stable HJ script; its source must say v0.9.2. Set injection **END** and reload Torn. A teal **ADV** pill should appear on the *left side* of the page, independently of the normal **HJ ◉** pill on the right. Open HJ; **Advanced** should also be the first tab. If **neither** appears, the companion is not executing, and the next step is checking the installed source/version and script-enabled status (or running the tiny HJ injection diagnostic); do not change Torn's CSP settings.
+
+This companion is still an incremental restore: relevant gym/perk/book/goals analysis is included, but full advanced weekly multi-jump calculation is not yet part of it. The 32 KB Enhanced Preview is separate, experimental, and not required for this setup.
+
 ## Recommended Android recovery: keep v0.7.1 HJ enabled + separate Advanced Companion
 
 **The v0.8 Advanced Preview button does not appear on this user's TornPDA device when the stable v0.7.1 script is disabled.** There is no demonstrated official TornPDA script-size limit; do not claim a specific size is the proven cause.
