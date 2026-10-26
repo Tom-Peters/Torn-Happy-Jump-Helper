@@ -67,12 +67,13 @@ function setup(gymPage=false,inventoryMode="error",refillUsed=true){
   const refresh={onclick:null,disabled:false};
   const close={onclick:null};
   const manualGym={value:"10"},manualStatus={value:"buy"},manualConfirm={onclick:null};
+  const markUsed={onclick:null},clearUsed={onclick:null};
   panel.cache={"#hhj-refresh":refresh,"#hhj-close":close,"#hhj-timer":{textContent:""},
     "#hhj-manual-gym":manualGym,"#hhj-manual-status":manualStatus,
     "#hhj-manual-confirm":manualConfirm};
   panel.lists={"#hhj-refresh":[refresh],"[data-tab]":tabs,"[data-field]":[],
-    "[data-plan]":[],"[data-goal]":[],"[data-step]":[],"[data-refill-used]":[],"[data-refill-clear]":[],"[data-mode]":modes,"[data-compare-mode]":comparisons,"[data-hours]":hours};
-  return {launcher,panel,refresh,tabs,modes,comparisons,hours,manualConfirm,requests};
+    "[data-plan]":[],"[data-goal]":[],"[data-step]":[],"[data-refill-used]":[markUsed],"[data-refill-clear]":[clearUsed],"[data-mode]":modes,"[data-compare-mode]":comparisons,"[data-hours]":hours};
+  return {launcher,panel,refresh,tabs,modes,comparisons,hours,manualConfirm,markUsed,clearUsed,requests};
 }
 test("TornPDA script opens with readable six-tab panel",()=>{
   const app=setup();
@@ -359,4 +360,20 @@ test("Today indicates refill AVAILABLE only when API energy false",async()=>{
   assert.match(app.panel.innerHTML,/Not yet used/);
   assert.match(app.panel.innerHTML,/Available/);
   assert.match(app.panel.innerHTML,/Mark today.s refill used/);
+});
+
+test("manual user-confirmed used refill overrides a cached API available indication",async()=>{
+  const app=setup(false,"partial",false);
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  assert.match(app.panel.innerHTML,/Not yet used/);
+  assert.match(app.panel.innerHTML,/data-refill-used/);
+  assert.equal(typeof app.markUsed.onclick,"function");
+  app.markUsed.onclick();
+  assert.match(app.panel.innerHTML,/Already used/);
+  assert.match(app.panel.innerHTML,/Confirmed manually/);
+  assert.ok(!app.panel.innerHTML.includes("Verified ready"));
+  assert.match(app.panel.innerHTML,/Clear local override/);
+  app.clearUsed.onclick();
+  assert.match(app.panel.innerHTML,/Not yet used/);
 });
