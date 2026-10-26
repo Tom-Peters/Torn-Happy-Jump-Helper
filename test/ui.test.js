@@ -202,5 +202,6 @@ test("Torn page global module.exports cannot suppress the HJ launcher",()=>{
   assert.ok(document.body.children.some(x=>x.id==="hhj-panel"));
   assert.equal(foreignModule.exports.otherScript,true);
   assert.ok(!foreignModule.exports.schedule,"foreign module should not be overwritten");
-  assert.equal(window.__TornHappyJumpLoaded,"0.4.2");
+  assert.equal(window.__TornHappyJumpLoaded,"0.4.3");
+  assert.equal(window.__TornHappyJumpStage.phase,"mounted");
 });
