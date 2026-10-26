@@ -275,6 +275,15 @@
         }
         if(t%86400>=12*3600&&!refilledToday){if(e>=input.gymCost)train(t,"Train before daily refill");useRefill(t);}
       }else{
+        // A jump strategy still trains naturally available overflow energy.
+        // If the next jump is >one whole regen cycle away and no Xanax has
+        // been stacked for it yet, using capped energy avoids idle regen loss.
+        // Reserve a complete energy-bar regen window before the planned jump.
+        const regenCycle=normalCap*regenInterval/energyInc;
+        const untilReady=Math.max(0,nextDrug-t,boosterSeconds);
+        if(prep===0&&e>=normalCap&&untilReady>regenCycle+600){
+          train(t,"Train surplus natural energy while awaiting next Happy jump");
+        }
         // Keep a complete repeatable sequence: stack Xanax, wait for drug
         // cooldown to finish, then boost Happy and train at +1 min after :15.
         if(prep<requiredXan&&t>=nextDrug&&t>=nextXan&&
