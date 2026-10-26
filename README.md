@@ -43,7 +43,7 @@ For the four 5%-stat books, it shows the full +10m cap at **200m of the matching
 
 ### Passive effects and books
 
-- User-initiated API v2 reads: `user/perks`, `user/merits`, `user/education`, `user/job`, `user/property`, `user/stocks` and `faction/upgrades`, in addition to bars, gym, cooldowns, inventory, travel, markets and refills.
+- User-initiated API v2 reads `user/perks` to audit active job, property, education, stock, merit, faction and book effects by source. It no longer makes redundant calls to those unrelated detailed endpoints; other read-only requests cover bars, gym, cooldowns, inventory, travel, markets and refills.
 - The Perks tab shows actual source descriptions, **not invented or guessed bonuses**. Verified, positive gym-gain percentage descriptions are multiplied into the training estimate by source and target stat. Other effects are visible but are not silently treated as a gym-gain percentage. Merits affecting effective combat stats are **not** interchangeable with gym gains.
 - Current maximum Happy and max Energy are taken from bars, reflecting property / qualifying effects already included in those API values.
 - Recognisable current active perks for Goal Oriented Happy loss, doubled eDVDs, 50% consumable cooldown book, doubled-candy book, Ignorance Is Bliss reset exemption and eligible faction Candy happy percentage are also factored in if identified. Non-recognised descriptions and stock dividends, employee job points, faction point perks or unclaimed rewards require review rather than being fictionalised.
