@@ -745,7 +745,9 @@
           return b.gain-a.gain;
         });
         body+='<p class="tiny">'+ranked.filter(p=>p.known&&p.cost<=cfg.budget).length+
-          ' methods inside your weekly budget.</p>'+
+          ' methods inside your weekly budget, ranked from a seven-day event simulation.</p>'+
+          '<div class="btnrow"><button data-view="week" '+(cfg.viewUnit==="week"?'class="primary"':'')+'>Per week</button>'+
+          '<button data-view="jump" '+(cfg.viewUnit==="jump"?'class="primary"':'')+'>Per jump</button></div>'+
           (showAll?ranked:ranked.slice(0,8)).map(p=>{
             const note=!p.known?'Price missing':p.cost>cfg.budget?'Over budget':'Within budget';
             const gainDelta=(p.increment>=0?'+':'')+fmt(p.increment);
@@ -762,14 +764,15 @@
           '<div class="warn"><b>Simulation, not a guaranteed forecast</b><p>Excludes overdoses, exact cooldown variability, addiction and rehab, market slippage and your future online schedule.</p></div>';
       }
     }else if(activeTab==='steps'){
-      body='<h2>Manual training checklist</h2>'+travelNotice+
+      body='<h2>Seven-day training schedule</h2>'+travelNotice+
         '<div id="hhj-timer" class="status">Calculating cooldowns…</div>'+
-        (chosen?.jumps?steps(chosen,live,input):
-          chosen?'<div class="card hero"><h3>'+escape(chosen.name)+'</h3><p>'+escape(chosen.desc)+'</p>'+
-          '<p>Predicted '+fmt(chosen.gain)+' stats/week · '+cost(chosen)+
-          '</p><p>This method is normal training. No Happy-jump actions are required.</p></div>':noData)+
-        '<div class="btnrow"><button data-tab="compare">Choose another method</button>'+
+        (chosen?showSchedule(chosen,cfg.viewUnit):noData)+
+        (chosen?.jumps?'<details class="card"><summary>Manual preparation checklist</summary>'+
+          steps(chosen,live,input)+'</details>':'')+
+        '<div class="btnrow"><button data-tab="compare">Compare another plan</button>'+
         '<button data-tab="settings">Adjust assumptions</button></div>';
+    }else if(activeTab==='bonuses'){
+      body=refreshMarkup+warnings+showBonuses(input,live);
     }else{
       body='<h2>Settings</h2><p class="muted">Only your local helper settings change here. No Torn actions are performed.</p>'+
         '<div class="card"><h3>Training goals</h3><div class="grid">'+
@@ -780,6 +783,8 @@
         field('maxJumpsDaily','Maximum sessions each day','number','min="1" max="8"')+
         opt('refill','30-point daily energy refill',[['both','Compare both choices'],['yes','Always include'],['no','Never include']])+
         opt('theme','Appearance',[['dark','High contrast dark'],['light','Bright light']])+
+        opt('viewUnit','Gain display',[['week','Stats per week'],['jump','Stats per Happy jump']])+
+        field('returnHours','Hours until return to Torn (0 = hypothetical now)','number','min="0" max="168" step="1"')+
         '</div><p class="tiny">Balance trains whichever stat is currently lowest; it is recalculated on refresh rather than treating this week as a fully scheduled mixed-stat plan.</p></div>'+
         '<div class="card"><h3>Perks and estimates</h3><div class="grid">'+
         field('modifierPercent','Total verified gym bonus (%)','number','min="-50" max="300"')+
@@ -789,14 +794,16 @@
         opt('happyLoss','Happy lost / E',[[0.5,'0.5 normal'],[0.25,'0.25 eligible FC']])+
         field('gymOverride','Gym dots override (0 = API)','number','min="0" max="20" step="0.1"')+
         field('boosterCap','Booster cap (hours)','number','min="24" max="48"')+
+        field('xanaxHours','Assumed Xanax cooldown (6–8h)','number','min="6" max="8" step="0.25"')+
+        opt('autoPerks','Include detected gym bonuses',[[true,'Yes'],[false,'No']])+
         '</div><p class="tiny">Only enter bonuses that currently apply. Data and prices are model estimates.</p></div>'+
-        refresh+warnings+'<details class="card"><summary>Privacy / diagnostic notes</summary>'+
+        refreshMarkup+warnings+'<details class="card"><summary>Privacy / diagnostic notes</summary>'+
         '<p>Your API key is only used for GET requests to Torn. It is not saved, sent to GitHub or placed in the URL. Settings stay local to TornPDA.</p></details>';
     }
     panel.innerHTML='<header class="head"><span class="brand">⚡ HAPPY JUMP HELPER <span class="tag">READ ONLY</span></span>'+
       '<button type="button" id="hhj-close" aria-label="Close panel">✕</button></header>'+
       '<nav class="tabs" aria-label="Pages">'+
-      [['today','Overview'],['compare','Compare'],['steps','Steps'],['settings','Settings']].map(([k,n])=>
+      [['today','Today'],['compare','Compare'],['steps','Plan'],['bonuses','Perks'],['settings','Settings']].map(([k,n])=>
       '<button type="button" data-tab="'+k+'" aria-selected="'+(activeTab===k?'true':'false')+'">'+n+'</button>').join('')+
       '</nav><div class="body">'+body+
       '<p class="tiny">IamEEKY · v0.3 beta · All gameplay steps are manual</p></div>';
@@ -807,14 +814,22 @@
     };
     for(const fieldElement of panel.querySelectorAll('[data-field]'))fieldElement.onchange=()=>{
       const key=fieldElement.dataset.field;
-      if(['objective','stat','statGoal','theme'].includes(key))cfg[key]=fieldElement.value;
+      if(['objective','stat','statGoal','theme','viewUnit'].includes(key))cfg[key]=fieldElement.value;
+      else if(key==='autoPerks')cfg[key]=fieldElement.value==='true';
       else if(key==='refill')cfg[key]=fieldElement.value;
       else cfg[key]=clamp(fieldElement.value,0,1e12);
       if(key==='maxJumpsDaily')cfg[key]=clamp(cfg[key],1,8);
       if(key==='boosterCap')cfg[key]=clamp(cfg[key],24,48);
       if(key==='boosterReduction')cfg[key]=clamp(cfg[key],0,0.75);
+      if(key==='xanaxHours')cfg[key]=clamp(cfg[key],6,8);
+      if(key==='returnHours')cfg[key]=clamp(cfg[key],0,168);
       try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
       selected='';completedSteps.clear();render();
+    };
+    for(const btn of panel.querySelectorAll('[data-view]'))btn.onclick=()=>{
+      cfg.viewUnit=btn.dataset.view;
+      try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
+      render();
     };
     for(const btn of panel.querySelectorAll('[data-goal]'))btn.onclick=()=>{
       cfg.objective=btn.dataset.goal;selected='';
