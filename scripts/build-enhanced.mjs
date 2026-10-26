@@ -32,7 +32,7 @@ let engine="const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number.isFinite(+v)?+v:a)
 for(const n of selected)engine+=extract(n);
 engine=engine.replaceAll("ITEMS[","ADV_ITEMS[");
 engine+=decl("BOOK_INFO");
-const adapter=String.raw\`
+const adapter=String.raw`
 function actualInput(){
  const p=loadInput();if(!p)return null;
  const market={},owned={...inv};
@@ -68,7 +68,7 @@ function activePlan(){
  const eligible=arr.filter(x=>x.affordable&&(cfg.mode==="happy"?x.kind==="happy":x.kind==="training"));
  return eligible.sort((x,y)=>y.gain-x.gain)[0]||null;
 }
-\`;
+`;
 const start=body.indexOf("function simulate(");
 const end=body.indexOf("function projection(",start);
 if(start<0||end<0)throw Error("Cannot replace simple planner");
