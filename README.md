@@ -1,5 +1,19 @@
 # Torn Happy Jump Helper
 
+## v0.6.1 — Real-device Today review fixes (26 October 2026)
+
+After verifying a screenshot of v0.6 running inside Android TornPDA, v0.6.1 corrects a real simulator error and improves the Today screen:
+
+- **A 30-point daily refill fills energy to the normal cap** (150 for a donator, 100 otherwise). It does *not* add the full cap on top of an existing or Xanax-stacked balance. The forecast now models the amount genuinely restored and cannot stack a point refill above the cap.
+- A **pre-refill training suggestion** is only generated when a refill is actually budgeted and can follow it. The first day's refill must be explicitly reported **ready** by `user/refills`; used or unknown refills aren't assumed available. At subsequent UTC day boundaries the model allows the next daily refill.
+- **Next manual action** distinguishes time remaining, "scheduled now", and a stale action. The countdown updates every second rather than claiming an action is "due now" up to a minute early. If training before a refill, the card displays whether that refill was verified available.
+- The **Today** recommendation is more compact. Tabs are now horizontally swipeable in one row; swipe to reveal Progress/Settings. The forecast budget is labelled as a configuration, **not** a confirmed wallet balance.
+- The refresh button can be used again after **15 seconds** to replan following a real game action (previously it was blocked for 60 seconds). API calls remain manual.
+- Three new tests cover the observed **40 Energy** situation, used/unknown/unauthorized refill cases, and the compact action UI. **44/44 automated tests passed.**
+
+Both the lightweight launcher and the downloaded full engine display **v0.6.1**. A running copy of the full engine does not hot-reload, so restart Torn in TornPDA to obtain the new engine. The 5 KB launcher structure remains unchanged. Actual future drug cooldowns and game outcomes are not guaranteed; do not act on a projected refill without confirming it is available in Torn.
+
+
 ## Version 0.6 — Feature overhaul (current)
 
 **Install** the small [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js) only. It stays approximately **5 KB** and launches the [full engine](Torn-Happy-Jump-Helper.full.js) on the first HJ button press; the main simulator does not run until then. In TornPDA, keep injection on **END**. The script is strictly read-only: no training, drugs, refills or purchases are initiated by code.
