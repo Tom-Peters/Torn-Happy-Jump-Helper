@@ -66,6 +66,17 @@ To validate locally, run `npm run check` (syntax, unit and simulated TornPDA int
 
 `v0.2` is a working beta verified by simulated API/browser fixtures. It has **not** been tested against your actual live TornPDA session. Timers use the last manual snapshot; the weekly model is a capacity approximation, not a validated minute-by-minute scheduler.
 
+## Troubleshooting — missing HJ launcher (v0.4.1)
+
+The launcher should appear as a contrasting **HJ ◉** pill around the middle-right side of Torn's page. v0.4.1 specifically fixes startup before `document.body` exists and remounts the launcher after Torn navigates or replaces the page body. The remount check is DOM-only and makes **no API calls**. A launcher click also displays a self-contained error message if the dashboard cannot render.
+
+1. In TornPDA's **Manage Scripts**, confirm **Torn Happy Jump Helper** is enabled and its injection timing is **END**.
+2. Open `https://www.torn.com/` in TornPDA's own browser (not an external browser), then reload the page.
+3. If the HJ pill is still missing, open the script in TornPDA and replace it with the [current raw script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js); make sure there are no duplicate copies enabled.
+4. For error details, TornPDA's Developer Tools are available from its browser title/URL menu → **Open Dev Tools** → **Terminal**. The helper does not replace the app's developer console.
+
+The fix is covered by an automated test that injects the script before the DOM has a body, then replaces that body and verifies the launcher returns. Live device compatibility still requires a manual check.
+
 ## Install
 
 1. In TornPDA, open its **Userscripts** manager and add a new script from the `Torn-Happy-Jump-Helper.user.js` file (or its raw GitHub URL).
