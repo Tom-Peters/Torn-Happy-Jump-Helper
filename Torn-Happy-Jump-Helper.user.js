@@ -538,7 +538,7 @@
 #hhj-panel .head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--hj-card);border-bottom:1px solid var(--hj-line);flex-shrink:0}
 #hhj-panel .head .brand{font-size:16px;font-weight:850;letter-spacing:.02em}
 #hhj-panel .tag{display:inline-block;font:800 10px/1 system-ui,sans-serif;letter-spacing:.04em;color:#051e1d;background:var(--hj-accent);padding:5px 7px;border-radius:6px;margin-left:5px}
-#hhj-panel .tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--hj-card);gap:3px;padding:7px;border-bottom:1px solid var(--hj-line);flex-shrink:0}
+#hhj-panel .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--hj-card);gap:3px;padding:7px;border-bottom:1px solid var(--hj-line);flex-shrink:0}
 #hhj-panel .tabs button{font-size:12px!important;min-height:43px!important;padding:7px 3px!important;border-radius:9px!important}
 #hhj-panel .tabs button[aria-selected=true]{background:#127469!important;color:#fff!important;border:1px solid #7cfbe2!important}
 #hhj-panel .body{flex:1;overflow:auto;overscroll-behavior:contain;padding:12px 14px 35px;min-height:0}
@@ -796,6 +796,48 @@
       '<div class="warn">Future times assume a '+timeline.assumptions.xanaxHours+
       '-hour Xanax cooldown, no overdoses, unchanged prices and manual actions exactly as listed. Refresh after real actions to replan.</div>';
   }
+  function showGyms(input,live){
+    const catalog=gymCatalog(data.gyms);
+    const activeId=data.gym?.gym?.id;
+    const stats=Object.fromEntries(STATS.map(k=>[k,live.bs[k]?.value||0]));
+    const suggestions=gymSuggestions(catalog,activeId,verifiedGyms,
+      input?.statName||cfg.stat,stats,{
+        energy:Math.max(10,live.e.maximum||150),stat:input?.stat||0,
+        happy:input?.baseHappy||5025,mod:input?.mod||1,happyLoss:input?.happyLoss||0.5
+      });
+    const active=suggestions.find(g=>g.status==="active")||null;
+    const better=suggestions.filter(g=>g.status!=="active"&&g.improvement>0.2);
+    const age=gymVerifiedAt?new Date(gymVerifiedAt).toLocaleDateString():"Never";
+    let out='<h2>Gyms for '+escape(input?.statName||cfg.stat)+'</h2>'+
+      '<p class="muted">Only the active gym and gyms you have explicitly confirmed as owned or visible to purchase can be recommended. Torn API does not disclose your full gym membership/unlock list.</p>'+
+      '<div class="card hero"><div class="label">Currently active</div><h3>'+
+      escape(active?.name||data.gym?.gym?.name||"Not loaded")+'</h3>'+
+      '<p>'+(active?active.dots.toFixed(1)+' dots · '+active.energyCost+' E per train':'Refresh current gym data')+'</p>'+
+      '<p class="tiny">Page verification last confirmed: '+escape(age)+'. Gym permissions expire after seven days.</p></div>'+
+      (better.length?'<h3>Better eligible gyms</h3>'+
+        better.map(g=>'<div class="card"><h3>'+escape(g.name)+'</h3>'+
+          '<p>'+g.dots.toFixed(1)+' dots for '+escape(input?.statName||cfg.stat)+
+          ' · '+g.energyCost+' E/train · <b>+'+g.improvement.toFixed(1)+'% projected gain</b> for the same energy session</p>'+
+          '<p>'+(g.status==="buy"?'Visible and unlocked, but not purchased. Membership '+cash(g.cost)+'. Buy manually in Torn.':
+          'Owned and available; switch manually in Torn.')+'</p></div>').join(""):
+        '<div class="card"><p>No superior *verified, eligible* gym was found for your selected stat. An unverified gym is never assumed accessible.</p></div>')+
+      '<h3>Confirm gyms visible in Torn</h3>'+
+      '<div class="card"><p>Open <b>Torn → Gym</b> and, while you are looking at its gym list, tap Capture below. The helper reads the already visible page only after this tap. It does not open or press anything in Torn.</p>'+
+      '<button id="hhj-capture-gyms" class="primary" type="button">Capture visible gyms</button>'+
+      (gymNotice?'<p class="muted">'+escape(gymNotice)+'</p>':'')+'</div>';
+    if(gymEvidence.length){
+      out+='<div class="card"><h3>Visible gym verification</h3>'+
+        '<p class="tiny">Please confirm these gym tiles against Torn. Unverified and locked gyms will never be recommended.</p>'+
+        gymEvidence.map(item=>{
+          const status=verifiedGyms[String(item.id)]||"unknown";
+          const choices=[["unknown","Unverified / exclude"],["owned","Already purchased"],["buy","Unlocked, buy membership"],["locked","Locked / not available"]];
+          return '<label>'+escape(item.name)+' <span class="tiny">(page suggested: '+escape(item.status)+')</span>'+
+            '<select data-gym-check="'+item.id+'">'+choices.map(([v,t])=>
+            '<option value="'+v+'" '+(status===v?'selected':'')+'>'+t+'</option>').join("")+'</select></label>';
+        }).join("")+'</div>';
+    }
+    return out;
+  }
   function showBonuses(input,live,plans){
     const dataReady=!!data.perks,perks=input?.perkAudit||auditPerks(data.perks,cfg.stat);
     const groups=["faction","job","property","education","enhancer","book","stock","merit"];
@@ -951,6 +993,8 @@
           steps(chosen,live,input)+'</details>':'')+
         '<div class="btnrow"><button data-tab="compare">Compare another plan</button>'+
         '<button data-tab="settings">Adjust assumptions</button></div>';
+    }else if(activeTab==='gyms'){
+      body=refreshMarkup+warnings+showGyms(input,live);
     }else if(activeTab==='bonuses'){
       body=refreshMarkup+warnings+showBonuses(input,live,plans);
     }else{
@@ -983,12 +1027,17 @@
     panel.innerHTML='<header class="head"><span class="brand">⚡ HAPPY JUMP HELPER <span class="tag">READ ONLY</span></span>'+
       '<button type="button" id="hhj-close" aria-label="Close panel">✕</button></header>'+
       '<nav class="tabs" aria-label="Pages">'+
-      [['today','Today'],['compare','Compare'],['steps','Plan'],['bonuses','Perks'],['settings','Settings']].map(([k,n])=>
+      [['today','Today'],['compare','Compare'],['steps','Plan'],['gyms','Gyms'],['bonuses','Perks'],['settings','Settings']].map(([k,n])=>
       '<button type="button" data-tab="'+k+'" aria-selected="'+(activeTab===k?'true':'false')+'">'+n+'</button>').join('')+
       '</nav><div class="body">'+body+
       '<p class="tiny">IamEEKY · v0.3 beta · All gameplay steps are manual</p></div>';
     panel.querySelector('#hhj-close').onclick=()=>{opened=false;panel.style.display='none';};
     for(const btn of panel.querySelectorAll('#hhj-refresh'))btn.onclick=refresh;
+    const capture=panel.querySelector('#hhj-capture-gyms');
+    if(capture)capture.onclick=()=>{captureVisibleGyms();render();};
+    for(const select of panel.querySelectorAll('[data-gym-check]'))select.onchange=()=>{
+      saveGymVerification(select.dataset.gymCheck,select.value);render();
+    };
     for(const btn of panel.querySelectorAll('[data-tab]'))btn.onclick=()=>{
       activeTab=btn.dataset.tab;render();panel.querySelector('.body')?.scrollTo(0,0);
     };
