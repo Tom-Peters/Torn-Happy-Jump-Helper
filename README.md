@@ -1,3 +1,15 @@
+## Recommended Android recovery: keep v0.7.1 HJ enabled + separate Advanced Companion
+
+**The v0.8 Advanced Preview button does not appear on this user's TornPDA device when the stable v0.7.1 script is disabled.** There is no demonstrated official TornPDA script-size limit; do not claim a specific size is the proven cause.
+
+The safer option is **[`Torn-Happy-Jump-Advanced-Companion.user.js`](Torn-Happy-Jump-Advanced-Companion.user.js)** (v0.9.0, about 17 KB), a separate read-only userscript that requires the **working v0.7.1** script to remain enabled. The companion attaches an **Advanced** button inside the existing dashboard header. It does not change or replace the existing floating HJ launcher, does not load dynamic JavaScript, and makes no API requests until its own Refresh is pressed.
+
+**Install:** Re-enable compact v0.7.1, disable v0.8 Advanced Preview and any experimental Enhanced replacement while testing Companion, install the Companion raw file at `https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Advanced-Companion.user.js` as a second userscript (injection **END**), reload Torn, open the existing HJ button, then press **Advanced** in the HJ header. **Do not disable v0.7.1 for this companion.**
+
+The companion restores training-relevant company/faction/education/merit/stock perk auditing, strictly verified eligible gym alternatives and approximate gain differences, owned Book-category advice including the 200m capped-stat-book milestones, and single-stat 50m/100m/200m/1b projections. It can use the existing compact HJ's displayed projected weekly gains, or a separately entered fallback pace. If the companion doesn't work, disable only the companion; the proven floating HJ should continue working.
+
+**Feature boundary:** The Companion is not yet a complete replacement for the original multi-strategy seven-day optimiser; the normal v0.7 timetable remains in the main HJ interface. The separately built **Enhanced Preview** is another experimental all-in-one option, but its 32 KB script is **not yet confirmed on the device** and should not be enabled simultaneously with compact + Companion. No automated Torn gameplay is performed. Local personal data and API keys are not published.
+
 ## v0.9.0 Enhanced Preview — the original optimiser in a smaller script
 
 The **78 KB v0.8 Advanced Preview did not display HJ** on the user's Android TornPDA. The working **23 KB v0.7.1** remains the default and has **not been modified**.
