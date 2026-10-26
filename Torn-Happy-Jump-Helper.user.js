@@ -7,6 +7,8 @@
 // @match        https://www.torn.com/*
 // @match        https://torn.com/*
 // @run-at       document-end
+// @updateURL    https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js
+// @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js
 // @grant        none
 // ==/UserScript==
 (function(){
