@@ -293,7 +293,7 @@
     const endpoints={
       bars:"/user/bars",cooldowns:"/user/cooldowns",stats:"/user/battlestats",
       gym:"/user/gym",gyms:"/torn/gyms",inventory:"/user/inventory?cat=Drug&limit=250",
-      refills:"/user/refills",points:"/market/pointsmarket"
+      refills:"/user/refills",travel:"/user/travel",points:"/market/pointsmarket"
     };
     for(const [name,item] of Object.entries(ITEMS))endpoints["price_"+name]="/market/"+item.id+"/itemmarket?limit=100";
     // Sequential requests to avoid burst rates or triggering service overload.
@@ -367,6 +367,10 @@
     const warnings=(inventoryWarning?'<div class="warn"><b>Inventory optional</b><p>'+escape(inventoryWarning)+'</p></div>':'')+
       (errors.length?'<details class="card"><summary>'+errors.length+' other API issue(s)</summary>'+
       '<p>'+errors.map(escape).join('<br>')+'</p></details>':'');
+    const travel=data.travel?.travel;
+    const away=travel&&(travel.destination!=="Torn"||(travel.time_left||0)>0);
+    const travelNotice=away?'<div class="warn"><b>Travel detected</b><p>Destination: '+
+      escape(travel.destination)+'. If you are travelling or abroad, treat this as a preparation plan and confirm gym access after returning to Torn.</p></div>':"";
     const statsExist=STATS.every(k=>Number.isFinite(live.bs[k]?.value));
     const total=STATS.reduce((sum,k)=>sum+(live.bs[k]?.value||0),0);
     const high=statsExist?Math.max(...STATS.map(k=>live.bs[k].value)):1;
@@ -378,7 +382,7 @@
       '<div class="card">Battle stats will appear here after a successful API refresh. No personal stats are stored in the GitHub repository.</div>';
     let body='';
     if(activeTab==='today'){
-      body=refreshMarkup+warnings+'<h2>Your next training decision</h2><div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
+      body=refreshMarkup+warnings+travelNotice+'<h2>Your next training decision</h2><div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
         (recommended?'<div class="card hero"><div class="label">'+
         (cfg.objective==='value'?'BEST VALUE RECOMMENDATION':'FASTEST GROWTH RECOMMENDATION')+'</div>'+
         '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+fmt(recommended.gain)+' <span style="font-size:13px">stats/week</span></div>'+
@@ -432,7 +436,8 @@
           '<div class="warn"><b>Simulation, not a guaranteed forecast</b><p>Excludes overdoses, exact cooldown variability, addiction and rehab, market slippage and your future online schedule.</p></div>';
       }
     }else if(activeTab==='steps'){
-      body='<h2>Manual training checklist</h2><div id="hhj-timer" class="status">Calculating cooldowns…</div>'+
+      body='<h2>Manual training checklist</h2>'+travelNotice+
+        '<div id="hhj-timer" class="status">Calculating cooldowns…</div>'+
         (chosen?.jumps?steps(chosen,live,input):
           chosen?'<div class="card hero"><h3>'+escape(chosen.name)+'</h3><p>'+escape(chosen.desc)+'</p>'+
           '<p>Predicted '+fmt(chosen.gain)+' stats/week · '+cost(chosen)+
