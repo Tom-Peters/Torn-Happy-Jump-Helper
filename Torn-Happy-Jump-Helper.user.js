@@ -842,15 +842,26 @@
   function render(){
     if(!opened)return;
     const live=readyState(), input=buildInput(), plans=input?score(input):null;
-    const list=plans?[...plans.baseline,...plans.options]:[];
-    const recommended=plans?(cfg.objective==="value"?(plans.value||plans.speed):plans.speed):null;
+    const list=plans?(cfg.scheduleMode==="happyjump"?plans.options:plans.baseline):[];
+    const affordable=list.filter(x=>x.known&&x.cost<=cfg.budget&&(cfg.scheduleMode!=="happyjump"||x.jumps>0));
+    const recommended=[...affordable].sort((a,b)=>{
+      if(cfg.objective==="value"&&plans){
+        const base=plans.naturalBenchmark;
+        const v=x=>x.increment>0&&x.cost>base.cost?x.increment/(x.cost-base.cost):-1;
+        if(v(a)!==v(b))return v(b)-v(a);
+      }
+      return b.gain-a.gain;
+    })[0]||null;
     const chosen=list.find(x=>x.id===selected)||recommended||null;
     if(chosen&&!list.some(x=>x.id===selected))selected=chosen.id;
     panel.dataset.theme=cfg.theme==="light"?"light":"dark";
     const tile=(label,val)=>'<div class="tile"><div class="label">'+escape(label)+'</div><div class="metric">'+escape(val)+'</div></div>';
     const cost=x=>x.known?cash(x.cost):"Price unavailable";
-    const displayGain=x=>cfg.viewUnit==="jump"?
-      (x.jumps?fmt(x.perJump)+" / jump":"No Happy jump"):fmt(x.gain)+" / week";
+    const displayGain=x=>fmt(x.gain)+" / week";
+    const modeButtons='<div class="btnrow"><button data-mode="training" '+
+      (cfg.scheduleMode==="training"?'class="primary"':'')+'>Training schedule</button>'+
+      '<button data-mode="happyjump" '+(cfg.scheduleMode==="happyjump"?'class="primary"':'')+
+      '>Happy-jump schedule</button></div>';
     const noData='<div class="warn"><b>No verified plan yet.</b><p>Tap Refresh Torn data. A Limited API key is needed for battle stats. If your current gym was not identified, you can enter its dots in Settings.</p></div>';
     const refreshMarkup='<div class="row" style="margin-bottom:12px"><button class="primary" id="hhj-refresh" type="button" '+
       (busy||Date.now()-lastRefresh<60000?"disabled":"")+'>'+(busy?"Refreshing…":"↻ Refresh Torn data")+
@@ -875,7 +886,7 @@
       '<div class="card">Battle stats will appear here after a successful API refresh. No personal stats are stored in the GitHub repository.</div>';
     let body='';
     if(activeTab==='today'){
-      body=refreshMarkup+warnings+travelNotice+'<h2>Your next training decision</h2><div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
+      body=refreshMarkup+warnings+travelNotice+'<h2>Your next training decision</h2>'+modeButtons+'<div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
         (recommended?'<div class="card hero"><div class="label">'+
         (cfg.objective==='value'?'BEST VALUE RECOMMENDATION':'FASTEST GROWTH RECOMMENDATION')+'</div>'+
         '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+displayGain(recommended)+'</div>'+
@@ -900,7 +911,7 @@
       body='<h2>Compare training methods</h2><p class="muted">Target: '+escape(input?.statName||cfg.stat)+
         ' · Budget '+cash(cfg.budget)+'</p><div class="btnrow">'+
         '<button data-goal="growth" '+(cfg.objective==='growth'?'class="primary"':'')+'>Maximum stats</button>'+
-        '<button data-goal="value" '+(cfg.objective==='value'?'class="primary"':'')+'>Best value</button></div>';
+        '<button data-goal="value" '+(cfg.objective==='value'?'class="primary"':'')+'>Best value</button></div>'+modeButtons;
       if(!plans)body+=refreshMarkup+warnings+noData;
       else{
         const base=plans.naturalBenchmark;
@@ -916,8 +927,7 @@
         });
         body+='<p class="tiny">'+ranked.filter(p=>p.known&&p.cost<=cfg.budget).length+
           ' methods inside your weekly budget, ranked from a seven-day event simulation.</p>'+
-          '<div class="btnrow"><button data-view="week" '+(cfg.viewUnit==="week"?'class="primary"':'')+'>Per week</button>'+
-          '<button data-view="jump" '+(cfg.viewUnit==="jump"?'class="primary"':'')+'>Per jump</button></div>'+
+          '<p class="tiny">Weekly gains are retained for a fair comparison. Choose a method to open its timetable.</p>'+
           (showAll?ranked:ranked.slice(0,8)).map(p=>{
             const note=!p.known?'Price missing':p.cost>cfg.budget?'Over budget':'Within budget';
             const gainDelta=(p.increment>=0?'+':'')+fmt(p.increment);
@@ -934,9 +944,9 @@
           '<div class="warn"><b>Simulation, not a guaranteed forecast</b><p>Excludes overdoses, exact cooldown variability, addiction and rehab, market slippage and your future online schedule.</p></div>';
       }
     }else if(activeTab==='steps'){
-      body='<h2>Seven-day training schedule</h2>'+travelNotice+
+      body='<h2>Your training timetable</h2>'+modeButtons+travelNotice+
         '<div id="hhj-timer" class="status">Calculating cooldowns…</div>'+
-        (chosen?showSchedule(chosen,cfg.viewUnit):noData)+
+        (chosen?showSchedule(chosen,cfg.scheduleHours):noData)+
         (chosen?.jumps?'<details class="card"><summary>Manual preparation checklist</summary>'+
           steps(chosen,live,input)+'</details>':'')+
         '<div class="btnrow"><button data-tab="compare">Compare another plan</button>'+
@@ -953,7 +963,7 @@
         field('maxJumpsDaily','Maximum sessions each day','number','min="1" max="8"')+
         opt('refill','30-point daily energy refill',[['both','Compare both choices'],['yes','Always include'],['no','Never include']])+
         opt('theme','Appearance',[['dark','High contrast dark'],['light','Bright light']])+
-        opt('viewUnit','Gain display',[['week','Stats per week'],['jump','Stats per Happy jump']])+
+        opt('scheduleMode','Training type',[['training','Regular training (no jumps)'],['happyjump','Happy-jump preparation']])+
         field('returnHours','Hours until return to Torn (0 = hypothetical now)','number','min="0" max="168" step="1"')+
         '</div><p class="tiny">Balance trains whichever stat is currently lowest; it is recalculated on refresh rather than treating this week as a fully scheduled mixed-stat plan.</p></div>'+
         '<div class="card"><h3>Perks and estimates</h3><div class="grid">'+
@@ -984,7 +994,7 @@
     };
     for(const fieldElement of panel.querySelectorAll('[data-field]'))fieldElement.onchange=()=>{
       const key=fieldElement.dataset.field;
-      if(['objective','stat','statGoal','theme','viewUnit'].includes(key))cfg[key]=fieldElement.value;
+      if(['objective','stat','statGoal','theme','scheduleMode'].includes(key))cfg[key]=fieldElement.value;
       else if(key==='autoPerks')cfg[key]=fieldElement.value==='true';
       else if(key==='refill')cfg[key]=fieldElement.value;
       else cfg[key]=clamp(fieldElement.value,0,1e12);
@@ -996,8 +1006,13 @@
       try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
       selected='';completedSteps.clear();render();
     };
-    for(const btn of panel.querySelectorAll('[data-view]'))btn.onclick=()=>{
-      cfg.viewUnit=btn.dataset.view;
+    for(const btn of panel.querySelectorAll('[data-mode]'))btn.onclick=()=>{
+      cfg.scheduleMode=btn.dataset.mode;selected='';showAll=false;
+      try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
+      render();
+    };
+    for(const btn of panel.querySelectorAll('[data-hours]'))btn.onclick=()=>{
+      cfg.scheduleHours=+btn.dataset.hours;showAll=false;
       try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
       render();
     };
