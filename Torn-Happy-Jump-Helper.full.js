@@ -370,7 +370,8 @@
         rows.push({category,description,applied:Number.isFinite(pct),percent:pct});
       }
     }
-    const factor=bonuses.reduce((p,x)=>p*(1+x.pct/100),1);
+    // Standard gym gain sources stack additively in the official training formula.
+    const factor=1+bonuses.reduce((sum,x)=>sum+x.pct/100,0);
     return {rows,bonuses,factor};
   }
   const BOOK_INFO={
@@ -641,12 +642,12 @@
 #hhj-panel .head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--hj-card);border-bottom:1px solid var(--hj-line);flex-shrink:0}
 #hhj-panel .head .brand{font-size:16px;font-weight:850;letter-spacing:.02em}
 #hhj-panel .tag{display:inline-block;font:800 10px/1 system-ui,sans-serif;letter-spacing:.04em;color:#051e1d;background:var(--hj-accent);padding:5px 7px;border-radius:6px;margin-left:5px}
-#hhj-panel .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--hj-card);gap:3px;padding:7px;border-bottom:1px solid var(--hj-line);flex-shrink:0}
-#hhj-panel .tabs button{font-size:12px!important;min-height:43px!important;padding:7px 3px!important;border-radius:9px!important}
+#hhj-panel .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--hj-card);gap:3px;padding:7px;border-bottom:1px solid var(--hj-line);flex-shrink:0}
+#hhj-panel .tabs button{font-size:12px!important;min-height:41px!important;padding:7px 3px!important;border-radius:9px!important;white-space:nowrap!important}
 #hhj-panel .tabs button[aria-selected=true]{background:#127469!important;color:#fff!important;border:1px solid #7cfbe2!important}
 #hhj-panel .body{flex:1;overflow:auto;overscroll-behavior:contain;padding:12px 14px 35px;min-height:0}
 #hhj-panel .card{background:var(--hj-card);border:1px solid var(--hj-line);border-radius:13px;padding:14px;min-width:0;margin:0 0 10px}
-#hhj-panel .card.hero{border-color:var(--hj-accent);border-width:2px}
+#hhj-panel .card.hero{border-color:var(--hj-accent);border-width:2px;background:linear-gradient(145deg,var(--hj-raised),var(--hj-card))}
 #hhj-panel .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 #hhj-panel .tile{border:1px solid var(--hj-line);background:var(--hj-card);border-radius:11px;padding:12px;min-width:0}
 #hhj-panel .tile b,#hhj-panel .tile .num{font-size:20px;font-variant-numeric:tabular-nums}
