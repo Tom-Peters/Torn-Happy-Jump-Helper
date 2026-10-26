@@ -181,3 +181,26 @@ test("launcher mounts after late TornPDA body creation and recovers after naviga
   assert.equal(document.getElementById("hhj-launch"),launcher);
   assert.ok(document.getElementById("hhj-panel"));
 });
+
+test("Torn page global module.exports cannot suppress the HJ launcher",()=>{
+  let handler;
+  const document={
+    body:createNode("body"),documentElement:createNode("html"),
+    createElement:createNode,
+    getElementById(){return null;},
+    addEventListener(){}
+  };
+  const window={setInterval(fn){handler=fn;}};
+  const foreignModule={exports:{otherScript:true}};
+  const code=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
+    .replace("###PDA-APIKEY###","placeholder-key");
+  new Function("document","window","location","localStorage","module",code)(
+    document,window,{hostname:"www.torn.com",pathname:"/index.php"},
+    {getItem(){return null;},setItem(){}},foreignModule);
+  assert.ok(document.body.children.some(x=>x.id==="hhj-launch"),
+    "HJ must appear even when Torn exposes module.exports");
+  assert.ok(document.body.children.some(x=>x.id==="hhj-panel"));
+  assert.equal(foreignModule.exports.otherScript,true);
+  assert.ok(!foreignModule.exports.schedule,"foreign module should not be overwritten");
+  assert.equal(window.__TornHappyJumpLoaded,"0.4.2");
+});
