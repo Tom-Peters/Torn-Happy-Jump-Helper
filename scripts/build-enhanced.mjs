@@ -101,7 +101,7 @@ body=body.replace('if(typeof window!=="undefined"){window.__TornHappyJumpLoaded=
 const result=await minify(body,{compress:{passes:2,defaults:true,unsafe:false},mangle:{toplevel:false},format:{comments:false},toplevel:false});
 if(result.error||!result.code)throw result.error||Error("No built output");
 const output=header+"\n"+result.code+"\n";
-if(/\\bnew\\s+Function\\s*\\(|\\beval\\s*\\(/.test(output))throw Error("No unsafe eval permitted");
+if(/\bnew\s+Function\s*\(|\beval\s*\(/.test(output))throw Error("No unsafe eval permitted");
 if(!output.includes("###PDA-APIKEY###"))throw Error("Missing PDA API token");
 writeFileSync(outputName,output);
 console.log("Enhanced: "+output.length+" bytes; original compact "+compact.length+"; advanced engine "+full.length);
