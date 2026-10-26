@@ -164,6 +164,7 @@
             name:old.name+(modes.length>1?(refill?" · with refill":" · no refill"):"")};
           const timeline=schedule(input,p,start,contexts);
           const valid=timeline.known && !timeline.overBudget &&
+            (!refill || (timeline.counts.points||0)>0) &&
             (kind==="baseline"||timeline.jumps>0);
           all[kind].push({...p,weeklyGain:timeline.gain,
             gain:timeline.gain,increment:0,cost:timeline.cost,
@@ -631,7 +632,7 @@
       (eligible.length>35?'<button id="hhj-more"> '+(showAll?"Show first 35":"Show all "+eligible.length+" actions")+'</button>':'')+
       note;
   }
-  function showBonuses(input,live){
+  function showBonuses(input,live,plans){
     const dataReady=!!data.perks,perks=input?.perkAudit||auditPerks(data.perks,cfg.stat);
     const groups=["faction","job","property","education","enhancer","book","stock","merit"];
     const job=data.job?.job,merits=data.merits?.merits?.upgrades||[],
@@ -639,7 +640,7 @@
       property=data.property?.property;
     const stats=Object.fromEntries(STATS.map(k=>[k,live.bs[k]?.value||0]));
     const rawBooks=data.inventory?.inventory?.items?.filter(i=>i.id>=744&&i.id<=787)||null;
-    const books=bookAdvice(rawBooks,stats,input?.stat>0?input.stat*0+((input&&input.dots)?gainTrain(1000,input.baseHappy,input.stat,input.dots,input.mod,input.gymCost,input.happyLoss)*7:0):0);
+    const books=bookAdvice(rawBooks,stats,plans?.speed?.gain||0);
     let out='<h2>Passive effects & books</h2><p class="muted">Read-only source audit. Only recognised gym-gain perks influence the model; combat-effective merits do not count as gym gains.</p>'+
       '<div class="card hero"><div class="label">Detected training perk multiplier</div><div class="metric">'+
       (dataReady?(perks.factor*100).toFixed(2)+"%":"Not loaded")+'</div>'+
@@ -772,7 +773,7 @@
         '<div class="btnrow"><button data-tab="compare">Compare another plan</button>'+
         '<button data-tab="settings">Adjust assumptions</button></div>';
     }else if(activeTab==='bonuses'){
-      body=refreshMarkup+warnings+showBonuses(input,live);
+      body=refreshMarkup+warnings+showBonuses(input,live,plans);
     }else{
       body='<h2>Settings</h2><p class="muted">Only your local helper settings change here. No Torn actions are performed.</p>'+
         '<div class="card"><h3>Training goals</h3><div class="grid">'+
