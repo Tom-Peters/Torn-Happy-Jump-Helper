@@ -525,7 +525,53 @@
     return checkpoints.map(p=>p.weeks!==undefined?p:
       {...p,weeks:null,eta:null,cost:null});
   }
-  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection};
+
+  function actionOverview(plan,now=Date.now()/1000,hours=24){
+    const t=plan?.timeline;
+    if(!t)return {next:null,today:[],tomorrow:[],gain24:0,gain7:0,byDay:[]};
+    const events=t.events||[],window=hours*3600;
+    const upcoming=events.filter(e=>e.time>=now).sort((x,y)=>x.time-y.time);
+    const today=upcoming.filter(e=>e.time<now+window);
+    const tomorrow=upcoming.filter(e=>e.time>=now+window&&e.time<now+2*window);
+    const gain24=today.filter(x=>x.kind==="train").reduce((n,x)=>n+(x.gain||0),0);
+    const buckets=new Map();
+    for(const event of events){
+      const day=new Date(event.time*1000).toISOString().slice(0,10);
+      const current=buckets.get(day)||{date:day,energy:0,gain:0,cost:0,jumps:0,actions:0};
+      current.actions++;
+      if(event.kind==="train"){current.energy+=event.qty||0;current.gain+=event.gain||0;}
+      if(event.kind==="jump")current.jumps++;
+      buckets.set(day,current);
+    }
+    return {next:upcoming[0]||null,today,tomorrow,gain24,gain7:t.gain||0,
+      byDay:[...buckets.values()].sort((a,b)=>a.date.localeCompare(b.date))};
+  }
+  function shoppingList(plan){
+    const source=plan?.timeline?.priceBreakdown||{};
+    return Object.entries(source).filter(([,v])=>(v?.required||0)>0)
+      .map(([key,v])=>({key,label:key==="points"?"Points":ITEMS[key]?.label||key,
+        required:v.required,owned:v.owned,buy:v.buy,
+        cost:Number.isFinite(v.cost)?v.cost:null,known:Number.isFinite(v.cost)}))
+      .sort((a,b)=>b.buy-a.buy);
+  }
+  function snapshotDelta(history,current){
+    if(!Array.isArray(history)||!history.length||!current)return [];
+    const prior=history[history.length-1];
+    if(!(current.timestamp>prior.timestamp))return [];
+    const days=(current.timestamp-prior.timestamp)/86400;
+    return STATS.map(k=>({
+      stat:k,delta:(+current.stats?.[k]||0)-(+prior.stats?.[k]||0),
+      perDay:days>0?((+current.stats?.[k]||0)-(+prior.stats?.[k]||0))/days:0,
+      days,confirmed:days>0&&days<45
+    }));
+  }
+  function learningIndicator(actualGain,predictedGain){
+    if(!(predictedGain>0)||!Number.isFinite(actualGain))return {ratio:null,message:"Not enough verified training history"};
+    const ratio=actualGain/predictedGain;
+    return {ratio,message:ratio<0.8?"Actual change below the forecast":ratio>1.2?
+      "Actual change above the forecast":"Recent gain is broadly in line with the forecast"};
+  }
+  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection,actionOverview,shoppingList,snapshotDelta,learningIndicator};
   if(typeof window!=="undefined"&&window.__TornHappyJumpStage)
     window.__TornHappyJumpStage.phase="engine-loaded";
   // Only export during a Node test, never on a real Torn page where another
