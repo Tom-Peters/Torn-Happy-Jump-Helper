@@ -14,6 +14,15 @@ version **0.9.0**, injection **END**. Reload Torn and check HJ. If missing, disa
 
 # Torn Happy Jump Helper
 
+## Safest mobile recovery: keep v0.7.1 ON, add a 15 KB Advanced Companion
+
+The user's Android TornPDA confirms: **v0.7.1 shows the HJ button**; **v0.8 Advanced alone does not**. For mobile users who need gym, book, passive-effect and long-term-goal information *without risking the HJ button*, the separate [`Torn-Happy-Jump-Advanced-Companion.user.js`](Torn-Happy-Jump-Advanced-Companion.user.js) runs **alongside** the known-working v0.7.1. It is approximately **15 KB**, uses no runtime eval or external scripts, and attaches an **Advanced** control in the existing HJ header.
+
+**Recommended safe install:** enable v0.7.1; disable/remove the failed v0.8 and optional v0.9 Enhanced *standalone* preview so no duplicate HJ button competes; install the Companion with injection END; reload Torn. Open HJ, select **Advanced**, then manually refresh companion data. The companion is a read-only module and **not** a replacement for the working HJ script. Do not disable v0.7.1 when using it. It restores training-specific perks, conservative verified gym suggestions, book save thresholds, and long-term stat estimates but does not yet change the core v0.7 daily timetable.
+
+The separate [Enhanced v0.9 combined preview](Torn-Happy-Jump-Helper-Enhanced.user.js) contains the fuller original weekly simulator in a ~32 KB self-contained script; it is **not yet mobile-verified** and should only be tested after the user agrees to switch, with v0.7.1 retained as a fallback.
+
+
 ## v0.8.0 Advanced Preview — full functionality restored, stable v0.7.1 preserved
 
 The working compact v0.7.1 userscript is still the stable default at [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js). Because the compact rebuild removed many previously requested features, the complete v0.6 training engine and its original mobile dashboard are now available in a separate, **build-time-minified** single userscript: **[`Torn-Happy-Jump-Helper-Advanced.user.js`](Torn-Happy-Jump-Helper-Advanced.user.js)**.
