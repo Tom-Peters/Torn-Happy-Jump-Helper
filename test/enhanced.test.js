@@ -68,7 +68,8 @@ test("enhanced full weekly scorer handles live v2 data, refill already USED and 
   x.mounted.get("hhj-launch").onclick();
   panel.onclick({target:{closest(){return {dataset:{act:"refresh"}}}}});
   // Trigger each pending fetch and render; API responses are immediately resolved.
-  for(let i=0;i<30;i++)await Promise.resolve();
+  for(let i=0;i<100&&panel.children[1].innerHTML.includes("Refreshing");i++)
+    await new Promise(resolve=>setTimeout(resolve,35));
   const html=panel.children[1].innerHTML;
   assert.ok(x.requests()>8,"Refreshed several Torn API endpoints");
   assert.match(html,/USED/,"Torn energy=true must show refill already used");
