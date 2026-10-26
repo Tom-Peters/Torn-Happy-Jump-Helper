@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.6.0
+// @version      0.6.1
 // @description  Small TornPDA-safe launcher for read-only Happy Jump Helper
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -11,7 +11,7 @@
 // ==/UserScript==
 (function () {
   "use strict";
-  const VERSION="0.6.0";
+  const VERSION="0.6.1";
   const API_KEY="###PDA-APIKEY###";
   const CORE_URL="https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.full.js";
   const BUTTON_ID="hhj-quick-launch", STATUS_ID="hhj-loader-status";
