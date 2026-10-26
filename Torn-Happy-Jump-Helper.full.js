@@ -896,7 +896,7 @@
       endpoints["price_"+name]="/market/"+item.id+"/itemmarket?limit=100";
     // Clear stale responses rather than silently reusing last refresh's
     // market quotes or account data when an endpoint fails.
-    data={};quotes={};
+    data={};quotes={};planMemo.key="";
     render();
     const tasks=Object.entries(endpoints);
     let cursor=0;
@@ -952,6 +952,45 @@
   }
 
 
+  function dataQualityPanel(){
+    const checks=[
+      ["Base battle stats",!!data.stats?.battlestats],
+      ["Energy & Happy",!!data.bars?.bars],
+      ["Active gym",!!data.gym?.gym],
+      ["Gym catalogue",Array.isArray(data.gyms?.gyms)],
+      ["Current cooldowns",!!data.cooldowns?.cooldowns],
+      ["Passive effects",!!data.perks?.perks],
+      ["Point refill",!!data.refills?.refills],
+      ["Travel",!!data.travel?.travel],
+      ["Inventory",!!data.inventory?.inventory?.items],
+      ["Point market",!!quotes.points?.listings]
+    ];
+    const yes=checks.filter(x=>x[1]).length;
+    return '<details class="card"><summary>Data coverage · '+yes+'/'+checks.length+' sources loaded</summary>'+
+      '<p class="tiny">A source being available does not mean every associated bonus is fully modelled. Any missing endpoint is excluded rather than replaced with invented values.</p>'+
+      checks.map(([name,ok])=>'<div class="between"><span>'+escape(name)+'</span>'+
+        '<span class="'+(ok?'good':'tiny')+'">'+(ok?'Available':'Unavailable')+'</span></div>').join('')+
+      (data.inventory?.partial?'<p class="warn">Inventory is incomplete; cost estimates assume missing items are not owned.</p>':'')+
+      '</details>';
+  }
+  function gymOpportunity(input,live){
+    if(!input||!data.gym?.gym||!data.gyms?.gyms)return '';
+    const stats=Object.fromEntries(STATS.map(k=>[k,+live.bs[k]?.value||0]));
+    const choices=gymSuggestions(gymCatalog(data.gyms),data.gym.gym.id,
+      verifiedGyms,input.statName,stats,{
+        energy:Math.max(10,live.maxE),stat:input.stat,
+        happy:input.baseHappy,mod:input.mod,happyLoss:input.happyLoss
+      }).filter(x=>x.status!=="active"&&x.improvement>1);
+    if(!choices.length)return '';
+    const best=choices[0];
+    return '<div class="card"><h3>Potential gym upgrade</h3><p><b>'+
+      escape(best.name)+'</b> could give approximately <b>+'+
+      best.improvement.toFixed(1)+'%</b> more '+escape(input.statName)+
+      ' gain for the same energy session.</p><p>'+
+      (best.status==="buy"?'Visible and unlocked but unpurchased · membership '+cash(best.cost)+'.':
+      'Already purchased; switch manually in Torn.')+
+      '</p><button data-tab="gyms" type="button">Compare verified gyms</button></div>';
+  }
   function nextActionCard(plan){
     if(!plan?.timeline)return '';
     const details=actionOverview(plan,Date.now()/1000);
@@ -1252,7 +1291,7 @@
         tile('Happiness',fmt(live.h.current)+' / '+fmt(live.h.maximum))+
         tile('Gym',live.selectedGym?.name||data.gym?.gym?.name||'Unknown')+
         tile('Points refill',data.refills?.refills?.energy===true?'Ready':data.refills?.refills?.energy===false?'Used':'Unknown')+
-        '</div>'+statPanel+
+        '</div>'+statPanel+gymOpportunity(input,live)+dataQualityPanel()+
         (input&&input.stat>=400000?'<div class="warn"><b>High-stat strategy matters</b>'+
         '<p>At this stat level, you should compare ordinary energy training with Happy stacking. The higher Happy is not automatically worth losing natural energy regeneration.</p></div>':'')+
         (plans?insights(live,input,plans):'')+
