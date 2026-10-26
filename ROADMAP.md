@@ -27,17 +27,29 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
-## v0.3 — Priority accuracy work
+## v0.3 — Timestamped simulator and perk/book evidence (delivered)
+
+- [x] Minute-resolution UTC action timetable for the next seven days, user-confirmed parameters and 6–8h Xanax cooldown assumption
+- [x] Re-rank alternatives by simulated gym energy, stats and actual item spends under a weekly budget, including no-refill alternatives
+- [x] Per-week/per-Happy-jump switch (not applicable for non-jump plans)
+- [x] Fetch actual user perks, merits, education, job, stocks, property and faction upgrades without game actions
+- [x] Apply identifiable positive gym gain effects and selected active book / company / faction bonuses without misclassifying passive effective combat stats
+- [x] Fetch Book category and explain consumed-copy uncertainty
+- [x] Save-for-200m advice for four stat books and approximate 31-day gym book scenario gains
+- [x] Hypothetical schedule warning while abroad; adjustable return-hour offset
+- [x] Dynamic explanation for why a normal Xanax schedule beats Happy jumps at higher base stats
+
+## v0.4 — Priority accuracy work
 
 - [ ] **Calibrate gym gains**: manually entered actual train observations (energy, happy, exact gain), compare predicted vs actual and generate confidence bands; do not store raw player history in repository.
-- [ ] **Discrete event 7-day schedule simulation**, with actual reset boundaries, intermittent online hours, drug cooldown as interval (6–8h Xanax, 200–231 min Ecstasy), booster cooldown rollover, natural energy ticks, daily refill timing and Happy expiry. Separate sustained strategy from one-off jump.
+- [ ] **Calibrate and optimise exact event schedules**: the v0.3 minute-resolution simulator uses 7h Xanax and ~4h Ecstasy placeholders. Add probabilistic cooldown bounds (6–8h Xanax, 200–231 min Ecstasy), adaptive replanning after each manual game action, configurable attendance/sleep windows and more precise energy/happy ticks. Separate steady-state weeks from one-off inventory-consuming jumps.
 - [ ] **Optimise mixtures**, rather than predefined recipes: bounded integer optimiser over booster combinations, drug timing, energy drinks, points and inventory; Pareto frontier of dollars, stat gains, sleep/activity time and OD/addiction exposure.
 - [ ] **Refill availability today** incorporated into a dated schedule (v0.2 now compares refill and no-refill strategies, but assumes seven future daily refills when enabled).
 - [ ] **Inventory pagination** beyond 250 items and API cache age display per category.
 - [ ] **Gym eligibility / unlocked state**: source actual eligibility before recommending swaps; never assume every gym in global listing can be selected.
 - [ ] **Market slippage**: compute affordable weekly purchase quantities, fallback for missing depth and partial buys, option to compare city-shop candy separately (purchases always manual).
 
-## v0.4 — Broader stat growth strategy
+## v0.5 — Broader stat growth strategy
 
 - [ ] Side-by-side normal training, regular Xanax, low-addiction candy jumps, full eDVD jumps, FHC/energy drinks, books, gym changes, point-refill strategies and stat enhancers.
 - [ ] Realistic addiction/rehab cost and time budget, overdose probability ranges and lost-energy scenarios.
@@ -47,7 +59,7 @@
 - [ ] Graduation alert: stop Happy jumping when expected incremental gains no longer beat direct energy training after opportunity cost.
 - [ ] Goal planner: choose target stats/ratios and budget horizon, simulate time and spending to reach them.
 
-## v0.5 — Insights & tracking
+## v0.6 — Insights & tracking
 
 - [ ] Optional opt-in **on-device** manual gain diary, sparklines, projection-vs-observed error, weekly stat velocity and spend efficiency.
 - [ ] Local export/import without keys, tokens or personal details in publicly published assets.
