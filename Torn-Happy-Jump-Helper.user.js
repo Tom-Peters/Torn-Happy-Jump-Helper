@@ -159,6 +159,7 @@
   if(typeof module!=="undefined" && module.exports) { module.exports=Engine; return; }
   if(!location.hostname.endsWith("torn.com") || document.getElementById("hhj-launch"))return;
   let data={}, quotes={}, lastRefresh=0, errors=[],selected="", opened=false,busy=false;
+  const completedSteps=new Set(); // Local tick-boxes only, never Torn gameplay actions.
   const defaults={budget:10000000,stat:"defense",maxJumpsDaily:2,maxE:150,
     candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
     refill:true,gymOverride:0};
@@ -175,7 +176,7 @@
   "#hhj-panel .body{padding:12px 14px;overflow:auto;overscroll-behavior:contain}#hhj-panel .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}"+
   "#hhj-panel .tile{border:1px solid #354962;padding:10px;border-radius:12px;background:#162338;min-width:0}#hhj-panel .label{font-size:11px;color:#aab9d0;text-transform:uppercase;letter-spacing:.06em}"+
   "#hhj-panel h3{font-size:15px;color:#fff;margin:15px 0 8px}#hhj-panel p{margin:7px 0;color:#c6d1e2}#hhj-panel input,#hhj-panel select{width:100%;min-width:0;background:#0c1626;color:#fff;border:1px solid #415572;border-radius:8px;padding:9px;font-size:14px}"+
-  "#hhj-panel label{display:block;color:#c3cfe0;font-size:12px}#hhj-panel button{border:1px solid #52758b;border-radius:9px;background:#203653;color:#fff;padding:9px 11px;cursor:pointer;font-size:13px}"+
+  "#hhj-panel input[type=checkbox]{width:auto;min-width:16px;margin-right:7px;accent-color:#48ddba}#hhj-panel label.step{display:flex;align-items:flex-start;gap:5px;cursor:pointer}#hhj-panel label{display:block;color:#c3cfe0;font-size:12px}#hhj-panel button{border:1px solid #52758b;border-radius:9px;background:#203653;color:#fff;padding:9px 11px;cursor:pointer;font-size:13px}"+
   "#hhj-panel button.primary{background:#13655f;border-color:#2bcab4;font-weight:750}#hhj-panel .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}#hhj-panel .muted{color:#9cadc3;font-size:12px}"+
   "#hhj-panel .warn{border-left:3px solid #f9be67;background:#3d2e23;padding:9px;border-radius:5px;margin:8px 0;font-size:12px}#hhj-panel .ok{color:#64ebc9}"+
   "#hhj-panel table{width:100%;border-collapse:collapse;font-size:12px}#hhj-panel th,#hhj-panel td{padding:8px 5px;text-align:left;border-bottom:1px solid #34445a}"+
@@ -233,7 +234,7 @@
   async function refresh(){
     if(busy||Date.now()-lastRefresh<60000)return;
     if(KEY.includes("PDA-APIKEY")){ errors=["Open this script in TornPDA with an API key configured."];render();return; }
-    busy=true;lastRefresh=Date.now();errors=[];render();
+    busy=true;lastRefresh=Date.now();errors=[];completedSteps.clear();render();
     const endpoints={
       bars:"/user/bars",cooldowns:"/user/cooldowns",stats:"/user/battlestats",
       gym:"/user/gym",gyms:"/torn/gyms",inventory:"/user/inventory?limit=250",
@@ -337,11 +338,15 @@
         else cfg[name]=clamp(el.value,0,1e12);
         if(name==="boosterReduction")cfg[name]=clamp(el.value,0,0.75);
         try{localStorage.setItem("hhj-settings-v1",JSON.stringify(cfg));}catch(_){}
-        selected="";render();
+        selected="";completedSteps.clear();render();
       });
     }
     for(const tr of panel.querySelectorAll("[data-plan]"))tr.addEventListener("click",()=>{
-      selected=tr.dataset.plan;render();
+      selected=tr.dataset.plan;completedSteps.clear();render();
+    });
+    for(const check of panel.querySelectorAll("[data-step]"))check.addEventListener("change",()=>{
+      const key=selected+":"+check.dataset.step;
+      if(check.checked)completedSteps.add(key);else completedSteps.delete(key);
     });
     countdown();
   }
@@ -396,7 +401,8 @@
       '<div class="grid">'+titleMini("Estimated jump happy",fmt(p.happy))+titleMini("Energy used at jump",fmt(p.eachJump))+
       titleMini("Estimated jumps/week",fmt(p.jumps))+titleMini("Natural regen lost/week",fmt(p.lostRegen)+" E")+'</div>'+
       '<p>Required across 7 days: '+escape(requirements.join(" · "))+(p.counts.points?" · "+p.counts.points+" points":"")+'</p>'+
-      '<ol>'+list.map(x=>'<li>'+escape(x)+'</li>').join("")+'</ol>'+
+      '<p class="muted">Tick completed steps for your own tracking. Checks affect this panel only.</p>'+
+      '<ol>'+list.map((x,i)=>'<li><label class="step"><input data-step="'+i+'" type="checkbox" '+(completedSteps.has(p.id+":"+i)?"checked":"")+'><span>'+escape(x)+'</span></label></li>').join("")+'</ol>'+
       '<div class="warn">The weekly estimate is a capacity-based simulation, NOT an exact schedule or guarantee. Plan drugs around actual cooldowns and let the Torn UI confirm each step.</div></div>';
   }
   function titleMini(k,v){return '<div><div class="label">'+escape(k)+'</div><b>'+escape(v)+'</b></div>';}
