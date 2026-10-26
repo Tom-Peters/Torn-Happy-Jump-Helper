@@ -213,3 +213,58 @@ test("compounding long-term milestones have ordered ETAs and cost budgets",()=>{
   const done=E.targetProjection({...i,stat:200000000},250000,9000000,[50000000]);
   assert.equal(done[0].weeks,0);
 });
+
+test("market basket prices multiple tiers, while owned items need no quote",()=>{
+  const quoted={listings:[{price:100,amount:2},{price:300,amount:20}]};
+  assert.deepEqual(E.marketCost(quoted,5),{cost:1100,known:true});
+  assert.deepEqual(E.marketCost(undefined,0),{cost:0,known:true});
+  const i=input({statName:"dexterity",budget:0,inventoryReady:true,
+    owned:{xanax:30,ecstasy:30,points:300,lollipop:100},
+    books:{},maxJumpsDaily:2,refill:false,refillMode:"no",now:1793000000,
+    currentEnergy:150,currentHappy:5000});
+  const res=E.score(i);
+  const xan=res.baseline.find(x=>x.id.includes("xanonly"));
+  assert.ok(xan.known,"Owned Xanax must remain trainable without market quote");
+  assert.equal(xan.cost,0);
+  assert.ok(xan.timeline.counts.xanax>0);
+});
+test("actual happy-jump gain is separate from regular training gains",()=>{
+  const i=input({statName:"dexterity",refill:false,maxJumpsDaily:3,budget:100000000,
+    now:1793000000,currentEnergy:150,currentHappy:5000});
+  const p=E.score(i).options.find(x=>x.jumps>0&&x.known);
+  assert.ok(p);
+  const gains=p.timeline.events.filter(x=>x.kind==="train"&&x.detail.includes("Happy-jump gym training"))
+    .reduce((sum,x)=>sum+x.gain,0);
+  assert.equal(Math.round(p.perJump*p.jumps),Math.round(gains));
+  assert.ok(p.gain>=gains);
+});
+test("action overview and shopping list use current event timings and basket only",()=>{
+  const timeline={start:1000,gain:3210,events:[
+      {time:1100,kind:"xanax",detail:"Prepare",gain:0},
+      {time:1200,kind:"train",qty:150,gain:2000,detail:"Gym"},
+      {time:90000,kind:"train",qty:50,gain:1210,detail:"Gym"}
+    ],
+    priceBreakdown:{xanax:{required:3,owned:1,buy:2,cost:200},points:{required:0,owned:0,buy:0,cost:0}}};
+  const result=E.actionOverview({timeline},1000,24);
+  assert.equal(result.next.kind,"xanax");
+  assert.equal(result.today.length,2);
+  assert.equal(result.gain24,2000);
+  assert.equal(result.byDay.reduce((s,x)=>s+x.gain,0),3210);
+  const shopping=E.shoppingList({timeline});
+  assert.equal(shopping.length,1);
+  assert.equal(shopping[0].buy,2);
+});
+test("stat history compares base values only and ignores empty snapshots",()=>{
+  const past={timestamp:1000000,stats:{strength:1000,speed:2000,defense:3000,dexterity:4000}};
+  const newer={timestamp:1000000+86400*2,stats:{strength:1400,speed:2300,defense:3050,dexterity:4400}};
+  const diff=E.snapshotDelta([past],newer);
+  assert.equal(diff.find(x=>x.stat==="strength").delta,400);
+  assert.equal(diff.find(x=>x.stat==="strength").perDay,200);
+  assert.equal(E.snapshotDelta([],newer).length,0);
+  assert.equal(E.learningIndicator(110,100).ratio,1.1);
+});
+test("gym gain sources are combined additively rather than multiplying each effect",()=>{
+  const output=E.auditPerks({perks:{faction:["Increases dexterity gym gains by 10%"],
+    education:["Increase all gym gains by 5%"]}},"dexterity");
+  assert.ok(Math.abs(output.factor-1.15)<1e-9);
+});
