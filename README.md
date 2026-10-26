@@ -66,6 +66,35 @@ To validate locally, run `npm run check` (syntax, unit and simulated TornPDA int
 
 `v0.2` is a working beta verified by simulated API/browser fixtures. It has **not** been tested against your actual live TornPDA session. Timers use the last manual snapshot; the weekly model is a capacity approximation, not a validated minute-by-minute scheduler.
 
+## Troubleshooting — diagnostic boot phases (v0.4.3)
+
+If the separate HJ TEST button appears but the actual HJ launcher does not, the
+TornPDA userscript framework **is working**. The remaining issue lies in the
+main script's installation, execution, or page mounting.
+
+To distinguish these cases without a developer console:
+
+1. Replace or update the main script to **v0.4.3**, using the repository's raw userscript URL.
+2. Update the existing **HJ Injection Diagnostic** to **v1.1.0** using
+   [Torn-HJ-Injection-Test.user.js](Torn-HJ-Injection-Test.user.js). It will show
+   a read-only dark status panel next to the green **HJ TEST ✓** button.
+3. Reload Torn within TornPDA, then read **Main script phase** and **Main script version**.
+4. Report the values:
+   - **NOT STARTED** — installed main userscript did not begin executing, or could
+     not be parsed. Check the exact installed version, source integrity and script
+     enablement.
+   - **STARTING** or **ENGINE-LOADED** — main code began but stopped before mounting.
+     A red **HJ STARTUP ERROR** button may also appear.
+   - **WAITING-BODY** — startup ran but there is no usable page body yet.
+   - **MOUNTED** — the main launcher was attached; the panel also shows whether
+     its DOM node exists and appears visually hidden.
+5. Diagnostic does **not** access Torn's API or perform actions. Disable it after
+   the problem has been identified.
+
+The boot-phase marker is set by the main script before the planning engine loads.
+The diagnostic is deliberately a separate, very small script that has already
+been confirmed to execute on TornPDA.
+
 ## Troubleshooting — missing HJ launcher (v0.4.2)
 
 **Important:** editing GitHub does **not** guarantee that TornPDA's already-installed copy was updated. In TornPDA Settings → Advanced Browser Settings → Manage Scripts, explicitly **Update** the Happy Jump Helper from its raw URL, or delete only that script and re-import the latest source. Confirm version **0.4.2**, enabled state, and injection time **END**, then reload a `torn.com` page in TornPDA.
