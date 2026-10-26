@@ -27,6 +27,15 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
+## v0.6.2 — Correct refill-used semantics on real account (implemented)
+
+- [x] Reverse misinterpreted Torn v2 `refills.energy` boolean: `true` = used, `false` = unused
+- [x] Fail closed if refill status is missing or unexpected
+- [x] Unify Today, next-action, schedule and insights via one refill-status resolver
+- [x] Local manual `Mark today's refill used` override expires at UTC midnight
+- [x] Exclude pre-refill training and refill actions after the user already consumed today's refill
+- [x] 49 simulated regression tests (including live-screen error reproduction)
+
 ## v0.6.1 — Android Today screen review and refill correctness (implemented)
 
 - [x] 30-point energy refill restores the energy bar *to* its normal cap rather than adding max energy
