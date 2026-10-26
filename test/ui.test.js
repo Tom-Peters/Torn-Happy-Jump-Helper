@@ -326,3 +326,14 @@ test("Plan displays cooldown sensitivity alongside full weekly gain forecast",as
   assert.match(app.panel.innerHTML,/Ecstasy 200m/);
   assert.match(app.panel.innerHTML,/Daily gain breakdown/);
 });
+
+test("Today prioritises a compact planned action and does not claim an action is due early",async()=>{
+  const app=setup();
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  assert.match(app.panel.innerHTML,/NEXT PLANNED ACTION/);
+  assert.match(app.panel.innerHTML,/hhj-action-countdown/);
+  assert.match(app.panel.innerHTML,/MAXIMUM WEEKLY GAIN/);
+  assert.match(app.panel.innerHTML,/configured, not verified cash on hand/);
+  assert.match(app.panel.innerHTML,/swipe horizontally for more/);
+});
