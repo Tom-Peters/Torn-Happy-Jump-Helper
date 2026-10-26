@@ -1,10 +1,14 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.4.1
+// @version      0.4.2
 // @description  Live read-only TornPDA happy-jump planner. No gameplay actions.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
+// @match        https://torn.com/*
+// @run-at       document-end
+// @updateURL    https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js
+// @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js
 // @grant        none
 // ==/UserScript==
 (function () {
@@ -503,7 +507,12 @@
       {...p,weeks:null,eta:null,cost:null});
   }
   const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection};
-  if(typeof module!=="undefined" && module.exports) { module.exports=Engine; return; }
+  // Only export during a Node test, never on a real Torn page where another
+  // library might happen to expose a global named "module".
+  if(typeof module!=="undefined" && module.exports &&
+      (typeof window==="undefined" || typeof document==="undefined")){
+    module.exports=Engine;return;
+  }
   if(!location.hostname.endsWith("torn.com") || document.getElementById("hhj-launch"))return;
   let data={}, quotes={}, lastRefresh=0, errors=[],selected="", opened=false,busy=false;
   let inventoryWarning="",activeTab="today",showAll=false;
@@ -588,14 +597,19 @@
 #hhj-panel a{color:var(--hj-link)!important}
 @media(max-width:410px){#hhj-panel{inset:2px 3px 4px!important;border-radius:11px!important}#hhj-panel .body{padding:10px 11px 30px}#hhj-panel .head{padding:10px 12px}#hhj-panel .tabs{padding:5px}#hhj-panel .tabs button{font-size:11px!important}#hhj-panel .metric{font-size:20px}#hhj-panel .card{padding:11px}}
 `;
-  document.documentElement.appendChild(style);
+  style.id="hhj-style";
   const launcher=document.createElement("button");launcher.id="hhj-launch";launcher.type="button";launcher.textContent="HJ ◉";launcher.setAttribute("aria-label","Open Happy Jump Helper");
+  // Inline presentation survives stylesheet loading failures or Torn CSS.
+  launcher.style.cssText="position:fixed!important;top:43%!important;right:8px!important;bottom:auto!important;z-index:2147483647!important;background:#084b55!important;color:#ffffff!important;border:2px solid #9cf6e9!important;border-radius:24px!important;padding:12px 14px!important;min-height:46px!important;font:800 15px system-ui,sans-serif!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;box-shadow:0 4px 18px #000c!important;";
   const panel=document.createElement("section");panel.id="hhj-panel";panel.style.display="none";panel.setAttribute("aria-label","Happy Jump Helper");panel.setAttribute("role","dialog");
   // TornPDA can inject before <body> exists, and Torn can replace body during
   // navigation. Never let either situation permanently remove the launcher.
   function mountHelper(){
     const root=document.body; // wait until body exists; never attach UI directly under <html>
     if(!root)return false;
+    if(!document.getElementById("hhj-style")){
+      (document.head||document.documentElement||root).appendChild(style);
+    }
     if(!document.getElementById("hhj-launch"))root.appendChild(launcher);
     if(!document.getElementById("hhj-panel"))root.appendChild(panel);
     return true;
@@ -603,6 +617,8 @@
   if(!mountHelper()&&typeof document.addEventListener==="function"){
     document.addEventListener("DOMContentLoaded",mountHelper,{once:true});
   }
+  // This flag can be checked in TornPDA Developer Tools without API access.
+  window.__TornHappyJumpLoaded="0.4.2";
   launcher.addEventListener("click",()=>{
     mountHelper();
     opened=!opened;panel.style.display=opened?"flex":"none";
