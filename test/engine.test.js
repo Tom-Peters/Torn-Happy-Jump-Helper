@@ -316,3 +316,33 @@ test("refill already used or unknown cannot cause premature 40 E training",()=>{
   assert.ok(!p.timeline.events.some(x=>x.detail.includes("before confirmed available daily refill")),
     "Cannot train early for a refill that is not affordably available");
 });
+
+test("Torn refill response true means used, false means available; missing status fails closed",()=>{
+  const day=Date.parse("2026-10-26T21:00:00Z")/1000;
+  assert.deepEqual(E.refillStatus({refills:{energy:true}},day),
+    {status:"used",ready:false,used:true,source:"Torn API",date:"2026-10-26"});
+  assert.deepEqual(E.refillStatus({refills:{energy:false}},day),
+    {status:"ready",ready:true,used:false,source:"Torn API",date:"2026-10-26"});
+  assert.equal(E.refillStatus({},day).ready,false);
+  assert.equal(E.refillStatus({refills:{energy:1}},day).ready,false);
+  assert.equal(E.refillStatus({refills:{energy:false}},day,"2026-10-26").status,"used",
+    "Explicit local used mark takes priority over stale API false");
+  assert.equal(E.refillStatus({refills:{energy:false}},day+86400,"2026-10-26").status,"ready",
+    "Used mark expires at UTC day boundary");
+});
+test("live used refill never triggers same-day pre-refill train or 30-point refill",()=>{
+  const now=Date.parse("2026-10-26T21:00:25Z")/1000;
+  const status=E.refillStatus({refills:{energy:true}},now);
+  const i=input({now,statName:"speed",stat:2000000,refillMode:"both",refillReady:status.ready,
+    currentEnergy:50,currentHappy:5000,maxE:150,drugCooldown:3*3600,boosterCooldown:7*3600,
+    budget:50000000});
+  const plans=E.score(i);
+  const candidates=[...plans.baseline,...plans.options];
+  const dayEnd=(Math.floor(now/86400)+1)*86400;
+  for(const p of candidates) {
+    const today=p.timeline.events.filter(x=>x.time<dayEnd);
+    assert.ok(!today.some(x=>x.kind==="refill"),"No point refill when energy:true from Torn");
+    assert.ok(!today.some(x=>x.kind==="train"&&/before.*refill/i.test(x.detail)),
+      "No premature 50E train to prepare a used refill");
+  }
+});
