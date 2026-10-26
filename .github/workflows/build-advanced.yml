@@ -1,0 +1,39 @@
+name: Build advanced Happy Jump preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/build-advanced.yml
+      - scripts/build-advanced.mjs
+      - Torn-Happy-Jump-Helper.full.js
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  advanced-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install release build tool
+        run: npm install --no-save --ignore-scripts --no-package-lock terser@5
+      - name: Generate CSP-safe pre-minified userscript
+        run: |
+          node scripts/build-advanced.mjs
+          node --check Torn-Happy-Jump-Helper-Advanced.user.js
+          wc -c Torn-Happy-Jump-Helper-Advanced.user.js
+      - name: Existing legacy and compact regression suite
+        run: npm run check
+      - name: Commit preview userscript
+        run: |
+          git config user.name IamEEKY
+          git config user.email 00000000+IamEEKY@users.noreply.github.com
+          git add Torn-Happy-Jump-Helper-Advanced.user.js
+          if ! git diff --cached --quiet; then
+            git commit -m "build: regenerate advanced HJ preview from original v0.6 engine"
+            git push
+          fi
