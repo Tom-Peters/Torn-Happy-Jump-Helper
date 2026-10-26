@@ -87,3 +87,13 @@ test("stacked 4 Xanax jump cannot train more than 1000 energy before refill",()=
   const a=E.strategies(input({refill:false})).options.find(x=>x.xanax===4&&x.count===3);
   assert.ok(a.eachJump<=1000);
 });
+
+test("both refill strategies compete under one weekly budget",()=>{
+  const p=E.score(input({refillMode:"both",budget:10000000}));
+  assert.equal(p.options.length,60);
+  assert.ok(p.baseline.some(x=>x.refill===true));
+  assert.ok(p.baseline.some(x=>x.refill===false));
+  assert.ok(p.speed===null || p.speed.cost<=10000000);
+  assert.ok(p.options.every(x=>x.id.startsWith(x.refill?"refills:":"no-refills:")));
+  assert.ok(p.baseline.some(x=>x.cost===0&&x.refill===false));
+});
