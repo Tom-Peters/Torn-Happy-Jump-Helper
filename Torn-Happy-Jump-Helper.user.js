@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.4.2
+// @version      0.4.3
 // @description  Live read-only TornPDA happy-jump planner. No gameplay actions.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,6 +13,21 @@
 // ==/UserScript==
 (function () {
   "use strict";
+  // Minimal first-instruction status marker: a separate tiny diagnostic can
+  // distinguish "never executed" from "failed during initialization".
+  if(typeof window!=="undefined"){
+    window.__TornHappyJumpStage={version:"0.4.3",phase:"starting"};
+    if(typeof window.setTimeout==="function")window.setTimeout(()=>{
+      if(window.__TornHappyJumpStage?.phase==="mounted")return;
+      const parent=document.body;
+      if(!parent||document.getElementById("hhj-launch")||document.getElementById("hhj-startup-error"))return;
+      const warning=document.createElement("button");
+      warning.id="hhj-startup-error";warning.textContent="HJ STARTUP ERROR";
+      warning.style.cssText="position:fixed!important;top:40%!important;right:6px!important;z-index:2147483647!important;background:#8b1919!important;color:white!important;border:2px solid white!important;border-radius:12px!important;padding:14px!important;font:800 13px system-ui!important;";
+      warning.onclick=()=>{warning.textContent="HJ initialization stopped — check HJ TEST status";};
+      parent.appendChild(warning);
+    },1800);
+  }
   const KEY = "###PDA-APIKEY###";
   const API = "https://api.torn.com/v2";
   const ITEMS = {
@@ -507,6 +522,8 @@
       {...p,weeks:null,eta:null,cost:null});
   }
   const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection};
+  if(typeof window!=="undefined"&&window.__TornHappyJumpStage)
+    window.__TornHappyJumpStage.phase="engine-loaded";
   // Only export during a Node test, never on a real Torn page where another
   // library might happen to expose a global named "module".
   if(typeof module!=="undefined" && module.exports &&
@@ -612,13 +629,16 @@
     }
     if(!document.getElementById("hhj-launch"))root.appendChild(launcher);
     if(!document.getElementById("hhj-panel"))root.appendChild(panel);
+    if(typeof window!=="undefined"&&window.__TornHappyJumpStage)
+      window.__TornHappyJumpStage.phase="mounted";
     return true;
   }
   if(!mountHelper()&&typeof document.addEventListener==="function"){
     document.addEventListener("DOMContentLoaded",mountHelper,{once:true});
   }
   // This flag can be checked in TornPDA Developer Tools without API access.
-  window.__TornHappyJumpLoaded="0.4.2";
+  window.__TornHappyJumpLoaded="0.4.3";
+  if(window.__TornHappyJumpStage)window.__TornHappyJumpStage.phase=mountHelper()?"mounted":"waiting-body";
   launcher.addEventListener("click",()=>{
     mountHelper();
     opened=!opened;panel.style.display=opened?"flex":"none";
