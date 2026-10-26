@@ -1,5 +1,38 @@
 # Torn Happy Jump Helper
 
+## Version 0.6 — Feature overhaul (current)
+
+**Install** the small [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js) only. It stays approximately **5 KB** and launches the [full engine](Torn-Happy-Jump-Helper.full.js) on the first HJ button press; the main simulator does not run until then. In TornPDA, keep injection on **END**. The script is strictly read-only: no training, drugs, refills or purchases are initiated by code.
+
+### Seven-tab mobile workspace
+
+| Tab | Main purpose |
+| --- | --- |
+| Today | **Next manual action** with UTC time, countdown, check-before-click warning, fast Strength/Defense/Speed/Dexterity selection, recommended weekly plan, bar snapshot, any confirmed superior gym, and API-data coverage |
+| Compare | **All strategies together**, or filter **Regular / Happy jumps**, independently of whether the action timetable uses regular training or jump preparation. Compare weekly gains and spending with the same weekly budget |
+| Plan | Default **next 24 hours** or full seven-day UTC schedule; item purchase/owned quantities, daily gain breakdown, fast-vs-slow cooldown forecast, manual checklist, and resource spending |
+| Gyms | Compare current gym with explicitly verified **owned** or **unlocked-and-purchasable** gyms. Never recommend unseen, locked or otherwise unverified gyms. Gym-page capture and manual verification are read-only and expire after 24 hours |
+| Perks | Relevant gym, faction, job, merit, property, stock, education and active book effects; 200m capped-stat-book advice and configurable review dates for 31-day gym books |
+| Progress | Base battle-stat snapshots and observed changes **stored on this device only**, with future single-stat 50m/100m/200m/1b milestone forecasts and an erase-history control |
+| Settings | Weekly spending limit, max jump frequency, target stat, gym overrides, perk/candy effects, refills, theme, timing/cooldown assumptions and travel offset |
+
+### Calculation and reliability changes
+
+- **Corrected market basket calculation:** quantity-weighted price tiers rather than one cheapest listing repeated indefinitely. Supplies you own can still be used in the scenario even when no market quote is available; faction-armory stock is never assumed yours.
+- **Less brittle inventory:** fetches Drug, Booster, Candy and Book categories individually with pagination. If one category fails, any successfully loaded categories stay available; missing categories are treated as zero owned for *costing* without falsely asserting you have no books.
+- **Faster refresh:** up to three requests at a time, read-only GETs to the official Torn v2 API, with independent endpoint failures and a source-coverage panel. Stale previous-market quotes are discarded.
+- **Gym bonus math:** recognised standard percentage modifiers sum before multiplying raw gym gains, avoiding excessive source-by-source compounding. Other perk descriptions are displayed but not assigned speculative multipliers.
+- **Cooldown estimates:** correct Ecstasy range **200–231 minutes** and Xanax **6–8 hours**. A slow/quick conditional projection compares both bounds. Scheduling still uses *assumed* future cooldown rolls, not certainty.
+- **Faster navigation:** a week of ~60 candidate calculations is cached until the relevant data/settings change, instead of recalculating when switching tabs or viewing a different 24h/7d window.
+- **Privacy:** history saves only time + four base stats in local browser storage, never in the public repository. No real API key, account records, cash balance or username is committed.
+
+### Limitations and verification
+
+All calculations are **estimates**. Happy drops can vary, market quotes may shift, books may have already been consumed despite appearing in inventory, special gym conditions can change, drug overdose outcomes are not simulated, and the helper assumes you perform listed actions when scheduled. Future 1b+ goals are what-if scenarios, not guaranteed dates. The current gym is used until you actually change it and refresh; book recommendations never consume books.
+
+Run `npm run check` (syntax + Node engine and simulated TornPDA UI tests). The existing automated tests include a small HJ launcher that must remain visible even if the full engine download fails. **Live v0.6 testing against your device and account is still outstanding.**
+
+
 ## v0.5 — Small TornPDA launcher (missing HJ button workaround)
 
 **Install only** [`Torn-Happy-Jump-Helper.user.js`](Torn-Happy-Jump-Helper.user.js), which is now an approximately **5 KB** standalone startup launcher. All of the read-only planner code remains in [`Torn-Happy-Jump-Helper.full.js`](Torn-Happy-Jump-Helper.full.js), but **do not import the large full file directly as a second TornPDA userscript**.
