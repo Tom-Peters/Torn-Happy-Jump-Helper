@@ -47,7 +47,7 @@ function setup(gymPage=false){
     const endpoint=url.replace("https://api.torn.com/v2","");
     return {status:200,responseText:JSON.stringify(endpoint.startsWith("/user/inventory")?{error:{code:21}}:(fixture[endpoint]||{error:{code:4}}))};
   };
-  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
+  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8")
     .replace("###PDA-APIKEY###","test-placeholder-key");
   new Function("document","location","window","localStorage","PDA_httpGet",source)(
     document,{hostname:"www.torn.com",pathname:gymPage?"/gym.php":"/index.php"},{setInterval(){}},{getItem(){return null;},setItem(){}},PDA_httpGet);
@@ -155,7 +155,7 @@ test("launcher mounts after late TornPDA body creation and recovers after naviga
     addEventListener(name,fn){if(name==="DOMContentLoaded")domReady=fn;},
     getElementById(id){return activeBody?.children.find(x=>x.id===id)||null;}
   };
-  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
+  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8")
     .replace("###PDA-APIKEY###","placeholder-key");
   let clock=Date.now();
   class FakeDate extends Date {static now(){return clock;}}
@@ -192,7 +192,7 @@ test("Torn page global module.exports cannot suppress the HJ launcher",()=>{
   };
   const window={setInterval(fn){handler=fn;}};
   const foreignModule={exports:{otherScript:true}};
-  const code=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
+  const code=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8")
     .replace("###PDA-APIKEY###","placeholder-key");
   new Function("document","window","location","localStorage","module",code)(
     document,window,{hostname:"www.torn.com",pathname:"/index.php"},
@@ -202,6 +202,6 @@ test("Torn page global module.exports cannot suppress the HJ launcher",()=>{
   assert.ok(document.body.children.some(x=>x.id==="hhj-panel"));
   assert.equal(foreignModule.exports.otherScript,true);
   assert.ok(!foreignModule.exports.schedule,"foreign module should not be overwritten");
-  assert.equal(window.__TornHappyJumpLoaded,"0.4.3");
+  assert.equal(window.__TornHappyJumpLoaded,"0.5.0");
   assert.equal(window.__TornHappyJumpStage.phase,"mounted");
 });
