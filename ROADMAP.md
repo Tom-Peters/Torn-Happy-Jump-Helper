@@ -27,6 +27,15 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
+## v0.9.0 — Original advanced calculations in compact Enhanced Preview
+
+- [x] Preserve v0.7.1 stable default and its mobile UI.
+- [x] Build-time extraction of original seven-day score/schedule, perk audit, specialist gym and book advice.
+- [x] Compile one approximately 32 KB userscript without runtime eval or code downloading.
+- [x] Add strict CSP startup and live-shaped Torn API fixture tests in CI.
+- [ ] Confirm v0.9 HJ displays on the user's real TornPDA device.
+- [ ] Restore advanced book timing, detailed perks and conditional schedule settings incrementally if device testing succeeds.
+
 ## v0.8.0 — Restored full-feature Advanced Preview, stable 0.7.1 unaffected
 
 - [x] Use full original v0.6.3 calculation engine as source for all advanced features
