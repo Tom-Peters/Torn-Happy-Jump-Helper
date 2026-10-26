@@ -615,7 +615,7 @@
   // has ALREADY BEEN USED. Treat missing/malformed data as unknown and never
   // propose an immediate refill. Local user-confirmed use takes priority.
   const REFILL_USED_KEY="hhj-daily-point-refill-used-v1";
-  const utcDate=at=>new Date(at*1000).toISOString().slice(0,10);
+  function utcDate(at){return new Date(at*1000).toISOString().slice(0,10);}
   function refillStatus(payload,now=Date.now()/1000,manualDay=null){
     const raw=payload?.refills?.energy;
     const date=utcDate(now);
