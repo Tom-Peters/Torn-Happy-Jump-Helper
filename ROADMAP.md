@@ -27,6 +27,16 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
+## v0.6.1 — Android Today screen review and refill correctness (implemented)
+
+- [x] 30-point energy refill restores the energy bar *to* its normal cap rather than adding max energy
+- [x] Verify actual today's refill availability before proposing training 40 E prior to it
+- [x] UTC scheduled-next-action timer with explicit time passed / refreshing status
+- [x] Horizontally scrollable 7-tab navigation and condensed recommendations
+- [x] Manual recheck interval 15s, keeping Torn API refresh user-initiated
+- [x] Regression tests for first-day refill available/used/unknown and unaffordable points
+- [x] Confirm 44 engine/UI tests passing; leave live action validation pending
+
 ## v0.6 — Read-only Happy Jump Helper full feature overhaul (implemented)
 
 - [x] Preserve 5KB lazy TornPDA launcher with runtime key token and actionable errors
