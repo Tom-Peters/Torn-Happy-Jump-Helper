@@ -1,6 +1,6 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "description": "Read-only on-demand TornPDA happy-jump planner",
   "scripts": {
