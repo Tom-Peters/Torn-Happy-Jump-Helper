@@ -431,7 +431,7 @@
 #hhj-panel .head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--hj-card);border-bottom:1px solid var(--hj-line);flex-shrink:0}
 #hhj-panel .head .brand{font-size:16px;font-weight:850;letter-spacing:.02em}
 #hhj-panel .tag{display:inline-block;font:800 10px/1 system-ui,sans-serif;letter-spacing:.04em;color:#051e1d;background:var(--hj-accent);padding:5px 7px;border-radius:6px;margin-left:5px}
-#hhj-panel .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--hj-card);gap:3px;padding:7px;border-bottom:1px solid var(--hj-line);flex-shrink:0}
+#hhj-panel .tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--hj-card);gap:3px;padding:7px;border-bottom:1px solid var(--hj-line);flex-shrink:0}
 #hhj-panel .tabs button{font-size:12px!important;min-height:43px!important;padding:7px 3px!important;border-radius:9px!important}
 #hhj-panel .tabs button[aria-selected=true]{background:#127469!important;color:#fff!important;border:1px solid #7cfbe2!important}
 #hhj-panel .body{flex:1;overflow:auto;overscroll-behavior:contain;padding:12px 14px 35px;min-height:0}
@@ -518,7 +518,7 @@
        boosterCooldown:data.cooldowns?.cooldowns?.booster||0,
        regenInterval:state.e.interval||120,regenIncrement:state.e.increment||1,
        refillUsed:data.refills?.refills?.energy===false,
-       available:!(data.travel?.travel?.destination&&data.travel.travel.destination!=="Torn"),
+       available:true, // Plans while abroad are conditional until return.
        xanaxHours:cfg.xanaxHours,returnHours:cfg.returnHours,perkAudit};
   }
   async function request(path){
@@ -613,7 +613,8 @@
       '<div class="metric">'+(mode==="jump"?perJump:weekGain)+'</div>'+
       '<p>'+fmt(timeline.jumps)+' jumps/week · '+fmt(timeline.energyTrained)+' E trained/week · '+
       fmt(timeline.lostRegen)+' E regeneration lost</p>'+
-      '<p>Planned spend: '+(timeline.known?cash(timeline.cost):"Unknown or over budget")+'</p></div>';
+      '<p>Planned spend: '+(timeline.known?cash(timeline.cost):"Unknown or over budget")+
+      ' · '+fmt(timeline.counts.xanax||0)+' Xanax · '+fmt((timeline.counts.points||0)/30)+' refills</p></div>';
     const eligible=mode==="jump"?events.filter(x=>x.kind==="jump"||x.kind==="train"||x.kind==="refill"):events;
     const cutoff=showAll?eligible:eligible.slice(0,35);
     const dates=cutoff.map((event,i)=>{
@@ -625,7 +626,7 @@
     const note='<div class="warn"><b>Scheduled timestamps are conditional.</b>'+
       '<p>These times assume every planned click is made exactly when shown, no overdoses and a '+timeline.assumptions.xanaxHours+
       '-hour Xanax cooldown. Torn drug cooldowns vary; refresh after each actual action. Gym training is only possible when in Torn.'+
-      ' The script never performs these actions.</p></div>';
+      ' The script never performs these actions. Abroad schedules with no return time are hypothetical.</p></div>';
     return selector+hero+
       '<h3>UTC action timetable</h3>'+
       (!events.length?'<div class="warn">No executable training events for this configuration. Check permissions, prices and cooldowns.</div>':dates)+
@@ -697,7 +698,9 @@
     const travel=data.travel?.travel;
     const away=travel&&(travel.destination!=="Torn"||(travel.time_left||0)>0);
     const travelNotice=away?'<div class="warn"><b>Travel detected</b><p>Destination: '+
-      escape(travel.destination)+'. If you are travelling or abroad, treat this as a preparation plan and confirm gym access after returning to Torn.</p></div>':"";
+      escape(travel.destination)+'. '+(cfg.returnHours>0?
+      'Gym actions projected '+cfg.returnHours+' hours after snapshot; confirm arrival.':
+      'No known return time: this timetable is hypothetical. Set hours until return in Settings.')+'</p></div>':"";
     const statsExist=STATS.every(k=>Number.isFinite(live.bs[k]?.value));
     const total=STATS.reduce((sum,k)=>sum+(live.bs[k]?.value||0),0);
     const high=statsExist?Math.max(...STATS.map(k=>live.bs[k].value)):1;
@@ -714,6 +717,9 @@
         (cfg.objective==='value'?'BEST VALUE RECOMMENDATION':'FASTEST GROWTH RECOMMENDATION')+'</div>'+
         '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+displayGain(recommended)+'</div>'+
         '<p>'+cost(recommended)+' weekly · '+fmt(recommended.jumps)+' Happy jumps/week</p>'+
+        '<p class="tiny">'+fmt(recommended.timeline?.energyTrained||0)+' E trained · '+
+        fmt(recommended.timeline?.lostRegen||0)+' E regen lost · '+
+        fmt(recommended.timeline?.counts.xanax||0)+' Xanax</p>'+
         '<p class="muted">Target '+escape(input.statName)+' · Budget '+cash(cfg.budget)+'</p>'+
         '<div class="btnrow"><button data-tab="steps" class="primary">View the steps</button>'+
         '<button data-tab="compare">Compare all methods</button></div></div>':noData)+
