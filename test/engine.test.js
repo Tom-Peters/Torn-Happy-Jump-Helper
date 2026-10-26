@@ -268,3 +268,17 @@ test("gym gain sources are combined additively rather than multiplying each effe
     education:["Increase all gym gains by 5%"]}},"dexterity");
   assert.ok(Math.abs(output.factor-1.15)<1e-9);
 });
+
+test("cooldown sensitivity uses valid Ecstasy and Xanax intervals",()=>{
+  const i=input({statName:"dexterity",refill:false,maxJumpsDaily:3,budget:100000000,
+    now:1793000000,currentEnergy:150,currentHappy:5000});
+  const p=E.score(i).options.find(x=>x.jumps>0&&x.known);
+  assert.ok(p);
+  const sensitivity=E.cooldownSensitivity(i,p);
+  assert.ok(sensitivity);
+  assert.equal(sensitivity.quick.assumptions.xanaxHours,6);
+  assert.equal(sensitivity.slow.assumptions.xanaxHours,8);
+  assert.ok(Math.abs(sensitivity.quick.assumptions.ecstasyHours-200/60)<1e-8);
+  assert.ok(Math.abs(sensitivity.slow.assumptions.ecstasyHours-231/60)<1e-8);
+  assert.ok(sensitivity.max>=sensitivity.min);
+});
