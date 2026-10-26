@@ -145,3 +145,36 @@ test("irrelevant merits and financial stock benefits do not appear in Perks scre
   assert.match(app.panel.innerHTML,/Long-term battle-stat milestones/);
   assert.match(app.panel.innerHTML,/When to activate your books/);
 });
+
+test("launcher mounts after late TornPDA body creation and recovers after navigation",()=>{
+  let domReady, heartbeat;
+  let activeBody=null;
+  const root=createNode("html");
+  const document={
+    body:null,documentElement:root,createElement:createNode,
+    addEventListener(name,fn){if(name==="DOMContentLoaded")domReady=fn;},
+    getElementById(id){return activeBody?.children.find(x=>x.id===id)||null;}
+  };
+  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
+    .replace("###PDA-APIKEY###","placeholder-key");
+  new Function("document","location","window","localStorage",source)(
+    document,{hostname:"www.torn.com",pathname:"/index.php"},
+    {setInterval(fn){heartbeat=fn;}},{getItem(){return null;},setItem(){}});
+  assert.equal(document.body,null);
+  assert.equal(typeof domReady,"function");
+  activeBody=createNode("body");
+  document.body=activeBody;
+  domReady();
+  assert.ok(document.getElementById("hhj-launch"));
+  assert.ok(document.getElementById("hhj-panel"));
+  const launcher=document.getElementById("hhj-launch");
+  const mountedChildren=activeBody.children.length;
+  heartbeat();
+  assert.equal(activeBody.children.length,mountedChildren);
+  // Torn replaces the whole <body> node during navigation.
+  activeBody=createNode("body");
+  document.body=activeBody;
+  heartbeat();
+  assert.equal(document.getElementById("hhj-launch"),launcher);
+  assert.ok(document.getElementById("hhj-panel"));
+});
