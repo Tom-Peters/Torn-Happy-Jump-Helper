@@ -147,16 +147,27 @@
     return {baseline:normal,options:available};
   }
   function score(input) {
-    const p=strategies(input), combined=p.baseline.concat(p.options);
-    const affordable=combined.filter(x=>x.known && x.cost <= input.budget);
+    // Compare both refill choices under one weekly budget when requested.
+    const modes=input.refillMode==="both"?[false,true]:[!!input.refill];
+    const reference=baseline({...input,refill:false})[0];
+    const all={baseline:[],options:[],naturalBenchmark:reference};
+    for(const refill of modes){
+      const plans=strategies({...input,refill});
+      for(const [kind,entries] of [["baseline",plans.baseline],["options",plans.options]]){
+        for(const x of entries){
+          all[kind].push({...x,refill,id:(refill?"refills:":"no-refills:")+x.id,
+            name:x.name+(modes.length>1?(refill?" · with refill":" · no refill"):""),
+            increment:x.gain-reference.gain});
+        }
+      }
+    }
+    const combined=[...all.baseline,...all.options];
+    const affordable=combined.filter(x=>x.known&&x.cost<=input.budget);
     const speed=[...affordable].sort((a,b)=>b.gain-a.gain)[0]||null;
-    // Compare benefit per *incremental* spend, not cost per total stats.
-    const normal=p.baseline[0], value=affordable
-      .filter(x=>x.increment>0 && x.cost>normal.cost)
-      .map(x=>({...x,incrementalDollar:x.cost-normal.cost,
-        value:x.increment/(x.cost-normal.cost)}))
+    const value=affordable.filter(x=>x.increment>0&&x.cost>reference.cost)
+      .map(x=>({...x,value:x.increment/(x.cost-reference.cost)}))
       .sort((a,b)=>b.value-a.value)[0]||null;
-    return {...p,speed,value};
+    return {...all,speed,value};
   }
   const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score};
   if(typeof module!=="undefined" && module.exports) { module.exports=Engine; return; }
@@ -167,7 +178,7 @@
   const defaults={budget:10000000,stat:"dexterity",statGoal:"weakest",objective:"growth",
     maxJumpsDaily:6,maxE:150,
     candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
-    refill:true,gymOverride:0,theme:"dark"};
+    refill:"both",gymOverride:0,theme:"dark"};
   let cfg={...defaults};
   try{
     const saved=JSON.parse(localStorage.getItem("hhj-settings-v1")||"null");
@@ -176,6 +187,8 @@
     if(!STATS.includes(cfg.stat))cfg.stat="dexterity";
     if(!["weakest","focus"].includes(cfg.statGoal))cfg.statGoal="weakest";
     if(!["growth","value"].includes(cfg.objective))cfg.objective="growth";
+    if(typeof cfg.refill==="boolean")cfg.refill=cfg.refill?"yes":"no";
+    if(!["yes","no","both"].includes(cfg.refill))cfg.refill="both";
   }catch(_){}
   const style=document.createElement("style");
   style.textContent = `
@@ -268,7 +281,7 @@
       maxE:state.maxE,regenHour:state.e.interval>0
         ? 3600*state.e.increment/state.e.interval
         : (state.maxE>=150?30:20),
-      refill:!!cfg.refill, maxJumpsDaily:cfg.maxJumpsDaily,
+      refill:cfg.refill!=="no",refillMode:cfg.refill,maxJumpsDaily:cfg.maxJumpsDaily,
       budget:cfg.budget,candyPercent:cfg.candyPercent,boosterReduction:cfg.boosterReduction,
       dvdHappy:cfg.dvdHappy,boosterCap:cfg.boosterCap,
       books:Object.fromEntries(Object.entries(quotes).map(([k,v])=>[k,fresh(v)?v:null])),owned:state.owned,inventoryReady:!!data.inventory,happyLoss:cfg.happyLoss};
@@ -407,7 +420,7 @@
         '<button data-goal="value" '+(cfg.objective==='value'?'class="primary"':'')+'>Best value</button></div>';
       if(!plans)body+=refreshMarkup+warnings+noData;
       else{
-        const base=plans.baseline[0];
+        const base=plans.naturalBenchmark;
         const ranked=[...list].sort((a,b)=>{
           const ae=+(a.known&&a.cost<=cfg.budget),be=+(b.known&&b.cost<=cfg.budget);
           if(ae!==be)return be-ae;
@@ -452,7 +465,7 @@
         opt('stat','Selected stat',STATS.map(k=>[k,k[0].toUpperCase()+k.slice(1)]))+
         field('budget','Weekly budget ($)','number','min="0" step="100000"')+
         field('maxJumpsDaily','Maximum sessions each day','number','min="1" max="8"')+
-        opt('refill','30-point daily energy refill',[[true,'Include'],[false,'Exclude']])+
+        opt('refill','30-point daily energy refill',[['both','Compare both choices'],['yes','Always include'],['no','Never include']])+
         opt('theme','Appearance',[['dark','High contrast dark'],['light','Bright light']])+
         '</div><p class="tiny">Balance trains whichever stat is currently lowest; it is recalculated on refresh rather than treating this week as a fully scheduled mixed-stat plan.</p></div>'+
         '<div class="card"><h3>Perks and estimates</h3><div class="grid">'+
@@ -482,7 +495,7 @@
     for(const fieldElement of panel.querySelectorAll('[data-field]'))fieldElement.onchange=()=>{
       const key=fieldElement.dataset.field;
       if(['objective','stat','statGoal','theme'].includes(key))cfg[key]=fieldElement.value;
-      else if(key==='refill')cfg[key]=fieldElement.value==='true';
+      else if(key==='refill')cfg[key]=fieldElement.value;
       else cfg[key]=clamp(fieldElement.value,0,1e12);
       if(key==='maxJumpsDaily')cfg[key]=clamp(cfg[key],1,8);
       if(key==='boosterCap')cfg[key]=clamp(cfg[key],24,48);
@@ -517,7 +530,7 @@
     if (cfg.happyLoss!==0.25)tips.push("A 3-star Fitness Center offers Goal Oriented, halving happy lost from gym training; choose 0.25 only if you receive that bonus.");
     if (cfg.dvdHappy!==5000)tips.push("A 10-star Adult Novelties job may double eDVD happiness to 5,000, but weigh job changes against other benefits.");
     if (cfg.modifierPercent===0)tips.push("Enter verified education, Steadfast faction, company, book and gym-gain bonuses to improve estimates.");
-    if (data.refills?.refills?.energy===false && cfg.refill)tips.push("Today's points energy refill appears unavailable; the weekly projection assumes seven future daily refills, not an immediately available refill.");
+    if (data.refills?.refills?.energy===false && cfg.refill!=="no")tips.push("Today's points energy refill appears unavailable; the weekly projection assumes seven future daily refills, not an immediately available refill.");
     if (plans.options.some(p=>!p.known))tips.push("Some candidate costs are unverified because item quotes are absent, stale or too shallow. Do not treat those as free.");
     const natural=plans.baseline[0], xan=plans.baseline[1];
     if(xan.known && xan.gain>natural.gain)tips.push("Regular Xanax use is an alternative: modelled at "+fmt(xan.gain-natural.gain)+" more stats/week than natural training, before overdose and addiction costs.");
@@ -549,7 +562,7 @@
       "Manually use ONE Ecstasy last (it doubles happy). Overdose risk is real: abandon and re-plan if it fails.",
       "Immediately open the gym yourself and train "+input.gymCost+" E at a time in "+input.statName+
         ". Expected happy after Ecstasy ~"+fmt(p.happy)+". Spend energy before the next quarter-hour reset.",
-      cfg.refill?"Only AFTER spending enough energy to allow it, manually perform the one daily 30-point refill, then train again before the reset.":"No point refill was budgeted.",
+      p.refill?"Only AFTER spending enough energy to allow it, manually perform the one daily 30-point refill, then train again before the reset.":"No point refill was budgeted.",
       "Re-check cooldowns and actual gains. Refresh this panel manually to re-optimise the next cycle."
     ];
     return '<h3>Selected plan: '+escape(p.name)+'</h3><div class="tile">'+
