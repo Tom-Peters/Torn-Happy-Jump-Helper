@@ -169,7 +169,202 @@
       .sort((a,b)=>b.value-a.value)[0]||null;
     return {...all,speed,value};
   }
-  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score};
+
+  // Pure minute-by-minute projection. Every timestamp is exact for the chosen
+  // assumptions, not a guarantee of random drug cooldowns or human attendance.
+  function schedule(input, plan, from, opts={}) {
+    const start=Math.ceil(from/60)*60, end=start+7*86400, cdX=clamp(opts.xanaxHours||7,6,8)*3600,
+      cdE=clamp(opts.ecstasyHours||4,3,5)*3600, normalCap=Math.max(1,input.maxE),
+      limit=1000, regenInterval=Math.max(30,opts.regenInterval||120),
+      energyInc=Math.max(1,opts.regenIncrement||1), available=opts.available!==false;
+    const activity=[], counts={}, charged={}, initialEnergy=clamp(opts.energy??normalCap,0,limit);
+    let e=initialEnergy, h=Math.max(0,opts.happy??input.baseHappy),
+      stat=input.stat, totalGain=0, spentE=0,lostRegen=0, nextDrug=start+Math.max(0,opts.drugCooldown||0),
+      boosterSeconds=Math.max(0,opts.boosterCooldown||0), regenBank=0,
+      prep=0,jumps=0,cashEstimate=0, cashKnown=true, trainCount=0,
+      lastDay=-1,refilledToday=false;
+    const refills=!!plan.refill, isXan=plan.id?.includes("xanonly"),
+      isNormal=plan.id?.includes("normal")&&!isXan,
+      isJump=!isNormal&&!isXan;
+    const requiredXan=isJump?(plan.xanax||0):0;
+    const boosterHours=isJump?(plan.perBoosterHours||0):0;
+    const add=(time,kind,detail,qty=0,gain=0)=>activity.push({time,kind,detail,qty,gain});
+    function unit(kind){const p=quotePrice(input.books[kind]);return Number.isFinite(p)?p:NaN;}
+    function canPay(items){
+      let due=0;
+      for(const [kind,quantity] of Object.entries(items)){
+        if(!quantity)continue;
+        const price=unit(kind);
+        if(!Number.isFinite(price))return false;
+        const qtyPurchased=Math.max(0,(counts[kind]||0)+quantity-(input.inventoryReady?(input.owned[kind]||0):0));
+        const prevQty=Math.max(0,(counts[kind]||0)-(input.inventoryReady?(input.owned[kind]||0):0));
+        due+=(qtyPurchased-prevQty)*price;
+      }
+      return cashEstimate+due<=input.budget;
+    }
+    function consume(time,kind,quantity){
+      const price=unit(kind);
+      if(!Number.isFinite(price)){cashKnown=false;return false;}
+      const prev=Math.max(0,(counts[kind]||0)-(input.inventoryReady?(input.owned[kind]||0):0));
+      counts[kind]=(counts[kind]||0)+quantity;
+      const newBuy=Math.max(0,counts[kind]-(input.inventoryReady?(input.owned[kind]||0):0));
+      cashEstimate+=(newBuy-prev)*price;
+      return true;
+    }
+    function train(t,label){
+      if(e<input.gymCost || !available)return;
+      const used=Math.floor(e/input.gymCost)*input.gymCost;
+      const gain=gainTrain(used,h,stat,input.dots,input.mod,input.gymCost,input.happyLoss);
+      if(!(used>0))return;
+      stat+=gain;totalGain+=gain;spentE+=used;e-=used;trainCount++;
+      h=Math.max(0,h-used*input.happyLoss);
+      add(t,"train",label+" • "+used+" E • +"+Math.round(gain).toLocaleString()+" "+input.statName,used,gain);
+    }
+    function useRefill(t){
+      if(!refills||refilledToday||!available||e>limit-normalCap)return;
+      if(!canPay({points:30}))return;
+      consume(t,"points",30);e=Math.min(limit,e+normalCap);refilledToday=true;
+      add(t,"refill","Manual 30-point energy refill • +"+normalCap+" E",normalCap);
+      train(t,"Train after daily refill");
+    }
+    if(boosterHours>input.boosterCap)return {events:[],gain:0,cost:NaN,known:false,jumps:0,error:"Booster duration exceeds cap"};
+    let nextXan=start;
+    for(let t=start;t<end;t+=60){
+      const day=Math.floor(t/86400);
+      if(day!==lastDay){lastDay=day;refilledToday=day===Math.floor(start/86400)&&opts.refillUsed===true;}
+      if(t%900===0)h=Math.min(h,input.baseHappy);
+      if(t>start){
+        boosterSeconds=Math.max(0,boosterSeconds-60);
+        regenBank+=60;
+        while(regenBank>=regenInterval){
+          regenBank-=regenInterval;
+          if(e<normalCap)e=Math.min(normalCap,e+energyInc);
+          else lostRegen+=energyInc;
+        }
+      }
+      if(!available)continue;
+      if(!isJump){
+        if(e>=normalCap)train(t,"Natural-energy gym training");
+        if(isXan&&t>=nextDrug&&canPay({xanax:1})){
+          consume(t,"xanax",1);e=Math.min(limit,e+250);nextDrug=t+cdX;
+          add(t,"xanax","Manually take Xanax • +250 E; assumed next drug availability "+new Date(nextDrug*1000).toISOString(),250);
+          train(t,"Train Xanax energy promptly");
+        }
+        if(t%86400>=12*3600&&!refilledToday){if(e>=input.gymCost)train(t,"Train before daily refill");useRefill(t);}
+      }else{
+        // Keep a complete repeatable sequence: stack Xanax, wait for drug
+        // cooldown to finish, then boost Happy and train at +1 min after :15.
+        if(prep<requiredXan&&t>=nextDrug&&t>=nextXan&&
+          e<=limit-250&&canPay({xanax:1})){
+          consume(t,"xanax",1);e=Math.min(limit,e+250);prep++;
+          nextDrug=t+cdX;nextXan=nextDrug;
+          add(t,"xanax","Manually stack Xanax "+prep+"/"+requiredXan+" • +250 E",250);
+        }
+        if(prep>=requiredXan&&t>=nextDrug&&t%900===60&&
+          boosterSeconds+boosterHours*3600<=input.boosterCap*3600){
+          const required={ecstasy:1};
+          if(plan.count)required[plan.type]=plan.count;
+          if(plan.dvds)required.dvd=plan.dvds;
+          if(canPay(required)){
+            for(const [k,v] of Object.entries(required))consume(t,k,v);
+            const boosterHappy=(plan.count||0)*ITEMS[plan.type].happy*(1+clamp(input.candyPercent,0,800)/100)
+              +(plan.dvds||0)*input.dvdHappy;
+            boosterSeconds+=boosterHours*3600;
+            h=Math.min(99999,2*(h+boosterHappy));jumps++;
+            add(t,"jump","Manual boosters → Ecstasy → gym. Predicted Happy "+Math.round(h).toLocaleString());
+            train(t,"Happy-jump gym training");
+            useRefill(t);
+            nextDrug=t+cdE;prep=0;nextXan=nextDrug;
+          }
+        }
+      }
+    }
+    // Include any remaining E at the period boundary. This is a forecast
+    // closing balance, not an unearned stat gain.
+    let cost=0,known=true;
+    for(const [kind,q] of Object.entries(counts)){
+      const need=Math.max(0,q-(input.inventoryReady?(input.owned[kind]||0):0));
+      const quote=marketCost(input.books[kind],need);
+      if(!quote.known){known=false;break;}
+      cost+=quote.cost;
+    }
+    return {start,end,events:activity,counts,gain:totalGain,perJump:jumps?totalGain/jumps:null,
+      finalStat:stat,jumps,cost:known?cost:NaN,known:known&&cashKnown&&cost<=input.budget,
+      overBudget:known&&cost>input.budget,energyTrained:spentE,energyLeft:e,lostRegen,
+      trainCount,assumptions:{xanaxHours:cdX/3600,ecstasyHours:cdE/3600,regenInterval,available},
+      error:available?"": "Gym access unavailable during travel. Resume on return."};
+  }
+  // API v2 user/perks provides descriptive strings grouped by source. Do NOT
+  // confuse combat-effective passive stats with gym-training multipliers.
+  function auditPerks(source, target) {
+    const categories=["faction","job","property","education","enhancer","book","stock","merit"];
+    const groups=source?.perks||{},rows=[],bonuses=[];
+    for(const category of categories){
+      for(const description of Array.isArray(groups[category])?groups[category]:[]){
+        if(typeof description!=="string")continue;
+        let pct=NaN;
+        const m=description.match(/(?:\+|increase(?:s|d)?(?:\s+\w+){0,4}\s+(?:by\s+)?)\s*(\d+(?:\.\d+)?)\s*%/i);
+        const relevant=/(gym\s*(?:training\s*)?gains?|gains?\s*(?:in|from)\s*(?:the\s*)?gym)/i.test(description);
+        const scoped=/(strength|speed|defen[cs]e|dexterity)/i.exec(description);
+        if(m&&relevant&&(!scoped||scoped[1].toLowerCase().replace("defence","defense")===target)){
+          pct=clamp(Number(m[1]),0,200);
+          if(pct>0)bonuses.push({category,description,pct});
+        }
+        rows.push({category,description,applied:Number.isFinite(pct),percent:pct});
+      }
+    }
+    const factor=bonuses.reduce((p,x)=>p*(1+x.pct/100),1);
+    return {rows,bonuses,factor};
+  }
+  const BOOK_INFO={
+    744:{name:"Brawn Over Brains",stat:"strength",kind:"stat"},
+    745:{name:"Time Is In The Mind",stat:"speed",kind:"stat"},
+    746:{name:"Keeping Your Face Handsome",stat:"defense",kind:"stat"},
+    747:{name:"A Job For Your Hands",stat:"dexterity",kind:"stat"},
+    757:{name:"Get Hard Or Go Home",kind:"gym",pct:20},
+    758:{name:"Gym Grunting - Shouting To Success",kind:"gym",stat:"strength",pct:30},
+    759:{name:"Self Defense In The Workplace",kind:"gym",stat:"defense",pct:30},
+    760:{name:"Speed 3 - The Rejected Script",kind:"gym",stat:"speed",pct:30},
+    761:{name:"Limbo Lovers 101",kind:"gym",stat:"dexterity",pct:30},
+    770:{name:"Ignorance Is Bliss",kind:"happy"},
+    773:{name:"Hot Turkey",kind:"addiction"},
+    774:{name:"Higher Daddy, Higher!",kind:"regen",pct:20},
+    779:{name:"Yes Please Diabetes",kind:"candy"}
+  };
+  function bookAdvice(stock, stats={}, weeklyGain=0) {
+    if(!Array.isArray(stock))return [];
+    return stock.filter(x=>BOOK_INFO[x.id]&&x.amount>0&&!x.faction_owned).map(x=>{
+      const b=BOOK_INFO[x.id];
+      let recommendation="Save until you can dedicate the whole 31-day period to this effect.";
+      let forecast=null,threshold=null,extra=0;
+      if(b.kind==="stat"){
+        const s=stats[b.stat]||0;threshold=200000000;
+        extra=Math.min(s*0.05,10000000);
+        recommendation=s<threshold?
+          "SAVE. Best percentage-book value is at 200,000,000 "+b.stat+
+          " (5% then reaches the +10,000,000 cap). Current theoretical bonus "+Math.round(extra).toLocaleString()+
+          "; at that target it is +10,000,000.":
+          "Potentially ready for maximum +10,000,000 bonus: use when a 31-day book slot is free.";
+        if(s<threshold&&weeklyGain>0)forecast=Math.ceil((threshold-s)/weeklyGain)+" weeks at this week's estimated single-stat growth";
+      }else if(b.kind==="gym"){
+        recommendation="SAVE unless you can train heavily every day for all 31 days. "+
+          "Gym bonuses usually become more valuable as stats grow. "+
+          (b.stat?"Only applies to "+b.stat+".":"Applies to every stat.");
+      }else if(b.kind==="happy"){
+        recommendation="SAVE for an intentionally prepared high-Happy training month, not an ordinary single jump.";
+      }else if(b.kind==="regen"){
+        recommendation="Best paired with a 31-day period of consistent gym training and minimal energy waste.";
+      }else if(b.kind==="candy"){
+        recommendation="Consider saving for World Diabetes Day (13–15 Nov), aligned with faction candy perks; verify the event rules.";
+      }else if(b.kind==="addiction"){
+        recommendation="Save until a planned month of drug-intensive training when addiction avoidance is valuable.";
+      }
+      return {id:x.id,name:b.name,kind:b.kind,stat:b.stat,threshold,forecast,extra,recommendation,
+        // Inventory API does not distinguish consumed trophy copies from unread books.
+        ownership:"Found in inventory; unread/usable status NOT verifiable from this API."};
+    });
+  }
+  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO};
   if(typeof module!=="undefined" && module.exports) { module.exports=Engine; return; }
   if(!location.hostname.endsWith("torn.com") || document.getElementById("hhj-launch"))return;
   let data={}, quotes={}, lastRefresh=0, errors=[],selected="", opened=false,busy=false;
