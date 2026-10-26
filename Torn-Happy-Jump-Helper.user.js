@@ -353,81 +353,153 @@
   function render(){
     if(!opened)return;
     const live=readyState(), input=buildInput(), plans=input?score(input):null;
-    const allPlans=plans?[...plans.baseline,...plans.options]:[];
-    const chosen=allPlans.find(p=>p.id===selected) || plans?.speed || null;
-    if(chosen && !allPlans.some(p=>p.id===selected))selected=chosen.id;
-    const title=(txt,val)=>'<div class="tile"><div class="label">'+txt+'</div><b>'+val+'</b></div>';
-    const info='<div class="grid">'+
-      title("Energy",fmt(live.e.current)+" / "+fmt(live.e.maximum))+
-      title("Happy",fmt(live.h.current)+" / "+fmt(live.h.maximum))+
-      title("Gym",escape(live.selectedGym?.name||data.gym?.gym?.name||"not loaded"))+
-      title("Target stat",fmt(live.bs[cfg.stat]?.value))+title("Point refill",data.refills?.refills?.energy===true?"Available":data.refills?.refills?.energy===false?"Used / unavailable":"Unknown")+title("Inventory",data.inventory?"API cached (up to 1h)":"Not loaded")+'</div>';
-    const inputs='<h3>Optimisation settings</h3><div class="grid">'+
-      opt("stat","Train stat",STATS.map(s=>[s,s[0].toUpperCase()+s.slice(1)]))+
-      field("budget","Weekly budget ($)","number",'min="0" step="100000"')+
-      field("maxJumpsDaily","Maximum jumps you can attend per day","number",'min="1" max="8"')+
-      opt("refill","Use daily 30-point refill",[[true,"Yes, 1 per day"],[false,"No"]])+
-      field("modifierPercent","Total personal training bonus % (manual)","number",'min="-50" max="300" step="1"')+
-      field("candyPercent","Candy happy bonus % (manual)","number",'min="0" max="800"')+
-      opt("dvdHappy","Happy per eDVD",[[2500,"2,500 standard"],[5000,"5,000: eligible Adult Novelties"]])+
-      opt("boosterReduction","Candy booster cooldown reduction",[[0,"0%"],[0.1,"10%"],[0.25,"25%"],[0.5,"50% (eligible book)"]])+opt("happyLoss","Happy loss per training E",[[0.5,"0.5 normal"],[0.25,"0.25: Fitness Center Goal Oriented"]])+
-      field("gymOverride","Gym dots override (0 = official API)","number",'min="0" max="20" step="0.1"')+
-      field("boosterCap","Booster cap hours (readiness only)","number",'min="24" max="48"')+
-      '</div><p class="tiny">Modifiers require manual confirmation. The simulation excludes OD risk, addiction/rehab penalties, event effects, exact timing and market slippage. Changing settings never performs a game action.</p>';
-    let rec='<div class="warn">Load your data using Refresh Torn data. Battle stats require a Limited API key. Cost rankings require valid market listings.</div>';
-    if(plans){
-      const best=x=>x?'<b>'+escape(x.name)+'</b> · '+fmt(x.gain)+' predicted stats/week · '+(x.known?cash(x.cost):"no price quote")+
-        (x.increment>0 && x.cost>plans.baseline[0].cost?' · '+cash((x.cost-plans.baseline[0].cost)/x.increment)+'/extra stat':'')+
-        ' · '+fmt(x.jumps)+' jumps/week':"No affordable option with verified prices";
-      rec='<h3>Best strategies under your budget</h3><div class="tile"><div class="label">Maximum weekly stat gain</div>'+best(plans.speed)+'</div>'+
-        '<div class="tile" style="margin-top:7px"><div class="label">Best extra stats per extra dollar</div>'+best(plans.value)+'</div>'+
-        '<p class="muted">Baseline: '+fmt(plans.baseline[0].gain)+' stat/week on '+fmt(plans.baseline[0].energy)+' energy. All gains are model estimates.</p>';
-      const order=[...plans.baseline,...plans.options].sort((a,b)=>b.gain-a.gain);
-      rec+='<h3>Strategy comparison</h3><div class="scroll"><table><thead><tr><th>Strategy</th><th>Jump/wk</th><th>Stats/wk</th><th>Gain vs base</th><th>Weekly spend</th><th>$/extra stat</th></tr></thead><tbody>'+
-        order.map(x=>'<tr class="choice '+(selected===x.id?"chosen":"")+'" data-plan="'+escape(x.id)+'"><td>'+escape(x.name)+'</td><td>'+fmt(x.jumps)+'</td><td>'+fmt(x.gain)+'</td><td>'+fmt(x.increment)+'</td><td>'+ (x.known?cash(x.cost):"missing quote")+'</td><td>'+(
-          x.known && x.increment>0 && x.cost>plans.baseline[0].cost
-          ?cash((x.cost-plans.baseline[0].cost)/x.increment):"—"
-        )+'</td></tr>').join("")+
-        '</tbody></table></div><p class="tiny">Tap a strategy to inspect its required items and manual sequence. Prices are market orderbook estimates less known personal inventory; not guaranteed transaction prices.</p>';
-      rec+=insights(live,input,plans);
-      if(chosen)rec+=chosen.jumps?steps(chosen,live,input):
-        '<h3>Selected plan: '+escape(chosen.name)+'</h3><div class="tile"><p>'+
-        escape(chosen.desc)+'</p><p>Estimated '+fmt(chosen.gain)+
-        ' stat gains/week, with '+(chosen.known?cash(chosen.cost):'unverified cost')+
-        '. This is a normal training strategy; no Happy jump is needed.</p></div>';
-      const stale=Object.entries(quotes).filter(([k,v])=>!fresh(v)).map(([k])=>k);
-      if(stale.length)rec+='<div class="warn">Prices not recently verified for: '+escape(stale.join(", "))+'. Refresh before purchasing.</div>';
+    const list=plans?[...plans.baseline,...plans.options]:[];
+    const recommended=plans?(cfg.objective==="value"?(plans.value||plans.speed):plans.speed):null;
+    const chosen=list.find(x=>x.id===selected)||recommended||null;
+    if(chosen&&!list.some(x=>x.id===selected))selected=chosen.id;
+    panel.dataset.theme=cfg.theme==="light"?"light":"dark";
+    const tile=(label,val)=>'<div class="tile"><div class="label">'+escape(label)+'</div><div class="metric">'+escape(val)+'</div></div>';
+    const cost=x=>x.known?cash(x.cost):"Price unavailable";
+    const noData='<div class="warn"><b>No verified plan yet.</b><p>Tap Refresh Torn data. A Limited API key is needed for battle stats. If your current gym was not identified, you can enter its dots in Settings.</p></div>';
+    const refresh='<div class="row" style="margin-bottom:12px"><button class="primary" id="hhj-refresh" type="button" '+
+      (busy||Date.now()-lastRefresh<60000?"disabled":"")+'>'+(busy?"Refreshing…":"↻ Refresh Torn data")+
+      '</button><span class="tiny">'+(lastRefresh?"Updated "+new Date(lastRefresh).toLocaleTimeString():"Not loaded")+'</span></div>';
+    const warnings=(inventoryWarning?'<div class="warn"><b>Inventory optional</b><p>'+escape(inventoryWarning)+'</p></div>':'')+
+      (errors.length?'<details class="card"><summary>'+errors.length+' other API issue(s)</summary>'+
+      '<p>'+errors.map(escape).join('<br>')+'</p></details>':'');
+    const statsExist=STATS.every(k=>Number.isFinite(live.bs[k]?.value));
+    const total=STATS.reduce((sum,k)=>sum+(live.bs[k]?.value||0),0);
+    const high=statsExist?Math.max(...STATS.map(k=>live.bs[k].value)):1;
+    const statPanel=statsExist?'<div class="card"><h3>Battle stats</h3>'+
+      STATS.map(k=>'<div class="between"><b>'+escape(k[0].toUpperCase()+k.slice(1))+
+      (input?.statName===k?' <span class="good">• Target</span>':'')+'</b><span>'+fmt(live.bs[k].value)+'</span></div>'+
+      '<div class="bars"><span style="width:'+Math.max(1,Math.round(100*live.bs[k].value/high))+'%"></span></div>').join("")+
+      '<div class="between"><b>Base total</b><b>'+fmt(total)+'</b></div></div>':
+      '<div class="card">Battle stats will appear here after a successful API refresh. No personal stats are stored in the GitHub repository.</div>';
+    let body='';
+    if(activeTab==='today'){
+      body=refresh+warnings+'<h2>Your next training decision</h2><div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
+        (recommended?'<div class="card hero"><div class="label">'+
+        (cfg.objective==='value'?'BEST VALUE RECOMMENDATION':'FASTEST GROWTH RECOMMENDATION')+'</div>'+
+        '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+fmt(recommended.gain)+' <span style="font-size:13px">stats/week</span></div>'+
+        '<p>'+cost(recommended)+' weekly · '+fmt(recommended.jumps)+' Happy jumps/week</p>'+
+        '<p class="muted">Target '+escape(input.statName)+' · Budget '+cash(cfg.budget)+'</p>'+
+        '<div class="btnrow"><button data-tab="steps" class="primary">View the steps</button>'+
+        '<button data-tab="compare">Compare all methods</button></div></div>':noData)+
+        '<h3>Current account</h3><div class="grid">'+
+        tile('Energy',fmt(live.e.current)+' / '+fmt(live.e.maximum))+
+        tile('Happiness',fmt(live.h.current)+' / '+fmt(live.h.maximum))+
+        tile('Gym',live.selectedGym?.name||data.gym?.gym?.name||'Unknown')+
+        tile('Points refill',data.refills?.refills?.energy===true?'Ready':data.refills?.refills?.energy===false?'Used':'Unknown')+
+        '</div>'+statPanel+
+        (input&&input.stat>=400000?'<div class="warn"><b>High-stat strategy matters</b>'+
+        '<p>At this stat level, you should compare ordinary energy training with Happy stacking. The higher Happy is not automatically worth losing natural energy regeneration.</p></div>':'')+
+        (plans?insights(live,input,plans):'')+
+        '<p class="tiny">Actual API values only update on manual refresh. Timers between refreshes are local estimates.</p>';
+    }else if(activeTab==='compare'){
+      body='<h2>Compare training methods</h2><p class="muted">Target: '+escape(input?.statName||cfg.stat)+
+        ' · Budget '+cash(cfg.budget)+'</p><div class="btnrow">'+
+        '<button data-goal="growth" '+(cfg.objective==='growth'?'class="primary"':'')+'>Maximum stats</button>'+
+        '<button data-goal="value" '+(cfg.objective==='value'?'class="primary"':'')+'>Best value</button></div>';
+      if(!plans)body+=refresh+warnings+noData;
+      else{
+        const base=plans.baseline[0];
+        const ranked=[...list].sort((a,b)=>{
+          const ae=+(a.known&&a.cost<=cfg.budget),be=+(b.known&&b.cost<=cfg.budget);
+          if(ae!==be)return be-ae;
+          if(cfg.objective==='value'){
+            const av=a.increment>0&&a.cost>base.cost?a.increment/(a.cost-base.cost):-1;
+            const bv=b.increment>0&&b.cost>base.cost?b.increment/(b.cost-base.cost):-1;
+            if(av!==bv)return bv-av;
+          }
+          return b.gain-a.gain;
+        });
+        body+='<p class="tiny">'+ranked.filter(p=>p.known&&p.cost<=cfg.budget).length+
+          ' methods inside your weekly budget.</p>'+
+          (showAll?ranked:ranked.slice(0,8)).map(p=>{
+            const note=!p.known?'Price missing':p.cost>cfg.budget?'Over budget':'Within budget';
+            const gainDelta=(p.increment>=0?'+':'')+fmt(p.increment);
+            const cp=p.known&&p.increment>0&&p.cost>base.cost?
+              ' · '+cash((p.cost-base.cost)/p.increment)+'/additional stat':'';
+            return '<button class="plan'+(selected===p.id?' chosen':'')+
+              '" type="button" data-plan="'+escape(p.id)+'"><div class="between"><span class="heading">'+
+              escape(p.name)+'</span><span class="tiny">'+note+'</span></div>'+
+              '<div class="metric">'+fmt(p.gain)+' <span style="font-size:12px">stats / week</span></div>'+
+              '<div class="figures"><span>'+cost(p)+'</span><span>'+fmt(p.jumps)+' jumps / week</span>'+
+              '<span>'+gainDelta+' vs natural'+cp+'</span></div></button>';
+          }).join('')+
+          '<button id="hhj-more" type="button">'+(showAll?'Show fewer methods':'Show all '+list.length+' methods')+'</button>'+
+          '<div class="warn"><b>Simulation, not a guaranteed forecast</b><p>Excludes overdoses, exact cooldown variability, addiction and rehab, market slippage and your future online schedule.</p></div>';
+      }
+    }else if(activeTab==='steps'){
+      body='<h2>Manual training checklist</h2><div id="hhj-timer" class="status">Calculating cooldowns…</div>'+
+        (chosen?.jumps?steps(chosen,live,input):
+          chosen?'<div class="card hero"><h3>'+escape(chosen.name)+'</h3><p>'+escape(chosen.desc)+'</p>'+
+          '<p>Predicted '+fmt(chosen.gain)+' stats/week · '+cost(chosen)+
+          '</p><p>This method is normal training. No Happy-jump actions are required.</p></div>':noData)+
+        '<div class="btnrow"><button data-tab="compare">Choose another method</button>'+
+        '<button data-tab="settings">Adjust assumptions</button></div>';
+    }else{
+      body='<h2>Settings</h2><p class="muted">Only your local helper settings change here. No Torn actions are performed.</p>'+
+        '<div class="card"><h3>Training goals</h3><div class="grid">'+
+        opt('objective','Optimise for',[['growth','Maximum stats'],['value','Best value for money']])+
+        opt('statGoal','Stat targeting',[['weakest','Balance lowest stat'],['focus','Selected stat only']])+
+        opt('stat','Selected stat',STATS.map(k=>[k,k[0].toUpperCase()+k.slice(1)]))+
+        field('budget','Weekly budget ($)','number','min="0" step="100000"')+
+        field('maxJumpsDaily','Maximum sessions each day','number','min="1" max="8"')+
+        opt('refill','30-point daily energy refill',[[true,'Include'],[false,'Exclude']])+
+        opt('theme','Appearance',[['dark','High contrast dark'],['light','Bright light']])+
+        '</div><p class="tiny">Balance trains whichever stat is currently lowest; it is recalculated on refresh rather than treating this week as a fully scheduled mixed-stat plan.</p></div>'+
+        '<div class="card"><h3>Perks and estimates</h3><div class="grid">'+
+        field('modifierPercent','Total verified gym bonus (%)','number','min="-50" max="300"')+
+        field('candyPercent','Candy happiness bonus (%)','number','min="0" max="800"')+
+        opt('dvdHappy','Happy per eDVD',[[2500,'2,500'],[5000,'5,000 eligible perk']])+
+        opt('boosterReduction','Candy cooldown reduction',[[0,'0%'],[0.1,'10%'],[0.25,'25%'],[0.5,'50%']])+
+        opt('happyLoss','Happy lost / E',[[0.5,'0.5 normal'],[0.25,'0.25 eligible FC']])+
+        field('gymOverride','Gym dots override (0 = API)','number','min="0" max="20" step="0.1"')+
+        field('boosterCap','Booster cap (hours)','number','min="24" max="48"')+
+        '</div><p class="tiny">Only enter bonuses that currently apply. Data and prices are model estimates.</p></div>'+
+        refresh+warnings+'<details class="card"><summary>Privacy / diagnostic notes</summary>'+
+        '<p>Your API key is only used for GET requests to Torn. It is not saved, sent to GitHub or placed in the URL. Settings stay local to TornPDA.</p></details>';
     }
-    const status='<h3>Jump status</h3><div id="hhj-timer" class="tile">Calculating countdown…</div>'+
-      '<p class="muted">Snapshot: '+(lastRefresh?new Date(lastRefresh).toLocaleTimeString():"not fetched")+
-      (busy?" · refreshing manually requested data…":"")+
-      ' · Torn API inventory can be cached for an hour.</p>';
-    const warning=errors.length?'<div class="warn">'+errors.map(escape).join("<br>")+'</div>':"";
-    panel.innerHTML='<div class="head"><b>⚡ HAPPY JUMP HELPER <span class="good">READ ONLY</span></b><button id="hhj-close" type="button">✕</button></div>'+
-      '<div class="body"><div class="row"><button class="primary" id="hhj-refresh" type="button" '+(busy||Date.now()-lastRefresh<60000?"disabled":"")+'>'+
-      (busy?"Refreshing…":"↻ Refresh Torn data")+'</button><span class="muted">TornPDA · v0.1 · IamEEKY</span></div>'+
-      warning+'<h3>Live snapshot</h3>'+info+status+inputs+rec+
-      '<p class="tiny">All purchases, drugs, boosters, refills and gym trains must be manually performed inside Torn. This tool makes no gameplay requests.</p></div>';
-    panel.querySelector("#hhj-close").onclick=()=>{opened=false;panel.style.display="none";};
-    panel.querySelector("#hhj-refresh").onclick=refresh;
-    for(const el of panel.querySelectorAll("[data-field]")){
-      el.addEventListener("change",()=>{
-        const name=el.dataset.field;
-        if(name==="stat")cfg[name]=el.value;
-        else if(name==="refill")cfg[name]=el.value==="true";
-        else cfg[name]=clamp(el.value,0,1e12);
-        if(name==="boosterReduction")cfg[name]=clamp(el.value,0,0.75);
-        try{localStorage.setItem("hhj-settings-v1",JSON.stringify(cfg));}catch(_){}
-        selected="";completedSteps.clear();render();
-      });
-    }
-    for(const tr of panel.querySelectorAll("[data-plan]"))tr.addEventListener("click",()=>{
-      selected=tr.dataset.plan;completedSteps.clear();render();
-    });
-    for(const check of panel.querySelectorAll("[data-step]"))check.addEventListener("change",()=>{
-      const key=selected+":"+check.dataset.step;
-      if(check.checked)completedSteps.add(key);else completedSteps.delete(key);
-    });
+    panel.innerHTML='<header class="head"><span class="brand">⚡ HAPPY JUMP HELPER <span class="tag">READ ONLY</span></span>'+
+      '<button type="button" id="hhj-close" aria-label="Close panel">✕</button></header>'+
+      '<nav class="tabs" aria-label="Pages">'+
+      [['today','Overview'],['compare','Compare'],['steps','Steps'],['settings','Settings']].map(([k,n])=>
+      '<button type="button" data-tab="'+k+'" aria-selected="'+(activeTab===k?'true':'false')+'">'+n+'</button>').join('')+
+      '</nav><div class="body">'+body+
+      '<p class="tiny">IamEEKY · v0.2 · All gameplay steps are manual</p></div>';
+    panel.querySelector('#hhj-close').onclick=()=>{opened=false;panel.style.display='none';};
+    for(const btn of panel.querySelectorAll('#hhj-refresh'))btn.onclick=refresh;
+    for(const btn of panel.querySelectorAll('[data-tab]'))btn.onclick=()=>{
+      activeTab=btn.dataset.tab;render();panel.querySelector('.body')?.scrollTo(0,0);
+    };
+    for(const fieldElement of panel.querySelectorAll('[data-field]'))fieldElement.onchange=()=>{
+      const key=fieldElement.dataset.field;
+      if(['objective','stat','statGoal','theme'].includes(key))cfg[key]=fieldElement.value;
+      else if(key==='refill')cfg[key]=fieldElement.value==='true';
+      else cfg[key]=clamp(fieldElement.value,0,1e12);
+      if(key==='maxJumpsDaily')cfg[key]=clamp(cfg[key],1,8);
+      if(key==='boosterCap')cfg[key]=clamp(cfg[key],24,48);
+      if(key==='boosterReduction')cfg[key]=clamp(cfg[key],0,0.75);
+      try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
+      selected='';completedSteps.clear();render();
+    };
+    for(const btn of panel.querySelectorAll('[data-goal]'))btn.onclick=()=>{
+      cfg.objective=btn.dataset.goal;selected='';
+      try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
+      render();
+    };
+    for(const btn of panel.querySelectorAll('[data-plan]'))btn.onclick=()=>{
+      selected=btn.dataset.plan;completedSteps.clear();activeTab='steps';render();
+      panel.querySelector('.body')?.scrollTo(0,0);
+    };
+    const more=panel.querySelector('#hhj-more');
+    if(more)more.onclick=()=>{showAll=!showAll;render();};
+    for(const box of panel.querySelectorAll('[data-step]'))box.onchange=()=>{
+      const key=selected+':'+box.dataset.step;
+      if(box.checked)completedSteps.add(key);else completedSteps.delete(key);
+    };
     countdown();
   }
   function insights(live,input,plans){
