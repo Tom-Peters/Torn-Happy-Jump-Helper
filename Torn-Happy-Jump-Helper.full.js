@@ -1073,10 +1073,19 @@
       '<div class="btnrow"><button type="button" data-tab="bonuses">See book timing</button>'+
       '<button type="button" data-clear-history>Clear local history</button></div>';
   }
-  function showSchedule(plan,hours=24){
+  function showSchedule(plan,hours=24,input=null){
     const timeline=plan?.timeline,events=timeline?.events||[];
     if(!timeline)return '<div class="warn">Refresh Torn data to build a dated timetable.</div>';
     const duration=+hours===168?168:24;
+    const sensitivity=input?cooldownSensitivity(input,plan):null;
+    const sensitivityText=sensitivity&&sensitivity.min!==null?
+      '<details class="card"><summary>Cooldown sensitivity · optimistic to slow rolls</summary>'+
+      '<div class="between"><span>Fast cooldowns: Xanax 6h / Ecstasy 200m</span><b>+'+
+      fmt(sensitivity.quick.gain)+'</b></div>'+
+      '<div class="between"><span>Slow cooldowns: Xanax 8h / Ecstasy 231m</span><b>+'+
+      fmt(sensitivity.slow.gain)+'</b></div>'+
+      '<p>Modelled range '+fmt(sensitivity.min)+'–'+fmt(sensitivity.max)+
+      ' stats/week before overdoses or missed actions. Each scenario respects its own budget.</p></details>':'';
     const filtered=events.filter(e=>e.time>=timeline.start&&e.time<timeline.start+duration*3600);
     const subset=showAll?filtered:filtered.slice(0,45);
     const dates=subset.map(e=>'<div class="card"><div class="between"><span class="label">'+
@@ -1093,7 +1102,7 @@
       '>Full 7 days</button></div>'+
       '<h3>Manual actions · '+duration+' hours (UTC)</h3>'+
       (dates||'<div class="card">No scheduled actions in this window. Try the full seven days.</div>')+
-      planShoppingPanel(plan)+dayBreakdown(plan)+
+      planShoppingPanel(plan)+dayBreakdown(plan)+sensitivityText+
       (filtered.length>45?'<button id="hhj-more">'+(showAll?'Show first 45':'Show all '+filtered.length+' actions')+'</button>':'')+
       '<div class="warn">Future times assume a '+timeline.assumptions.xanaxHours+
       '-hour Xanax cooldown, no overdoses, unchanged prices and manual actions exactly as listed. Refresh after real actions to replan.</div>';
@@ -1356,7 +1365,7 @@
     }else if(activeTab==='steps'){
       body='<h2>Your training timetable</h2>'+modeButtons+travelNotice+
         '<div id="hhj-timer" class="status">Calculating cooldowns…</div>'+
-        (chosen?showSchedule(chosen,cfg.scheduleHours):noData)+
+        (chosen?showSchedule(chosen,cfg.scheduleHours,input):noData)+
         (chosen?.jumps?'<details class="card"><summary>Manual preparation checklist</summary>'+
           steps(chosen,live,input)+'</details>':'')+
         '<div class="btnrow"><button data-tab="compare">Compare another plan</button>'+
