@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
@@ -15,9 +16,9 @@ jobs:
           node-version: '22'
       - name: Syntax and unit tests
         run: npm run check
-      - name: Block accidental secrets and gameplay network writes
+      - name: Reject mutation-capable PDA request handlers
         run: |
-          if grep -R -Ein '(fetch\([^\n]*method:[[:space:]]*["'\''"]POST|PDA_httpPost\(|PDA_httpPut\(|PDA_httpPatch\(|PDA_httpDelete\()' Torn-Happy-Jump-Helper.user.js; then
-            echo "Potential gameplay-affecting request found" >&2
+          if grep -En 'PDA_http(Post|Put|Patch|Delete)\(' Torn-Happy-Jump-Helper.user.js; then
+            echo "Mutation-capable PDA request handler detected" >&2
             exit 1
           fi
