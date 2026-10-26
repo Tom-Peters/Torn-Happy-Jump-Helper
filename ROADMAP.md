@@ -27,7 +27,17 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
-## v0.7.0 — Restore HJ button with reduced self-contained TornPDA build (CURRENT)
+## v0.8.0 — Restored full-feature Advanced Preview, stable 0.7.1 unaffected
+
+- [x] Use full original v0.6.3 calculation engine as source for all advanced features
+- [x] Build-time Terser minification in GitHub Actions; no CSP-forbidden runtime eval, loaders, or @require
+- [x] Publish separate ~78 KB Advanced Preview script, preserving the proven compact installer unchanged
+- [x] Run legacy engine/UI unit tests plus a CSP-restricted VM startup test for the distributed Advanced Preview
+- [ ] Confirm Advanced Preview HJ button appears and its API refresh works on the user's TornPDA device
+- [ ] If it works, merge proven full features back into the main default without sacrificing the known-good fallback
+- [ ] Reduce advanced payload further if TornPDA rejects the ~78 KB preview
+
+## v0.7.0 — Restore HJ button with reduced self-contained TornPDA build (stable fallback)
 
 - [x] Replace failed 111 KB v0.6.3 install with compact ~22 KB script
 - [x] Direct code injection, no runtime eval, dynamic script loader or CSP bypass
