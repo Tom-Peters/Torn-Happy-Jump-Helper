@@ -27,6 +27,28 @@
 - [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
 - [x] 15 engine/UI tests passing in local simulation
 
+## v0.6 — Read-only Happy Jump Helper full feature overhaul (implemented)
+
+- [x] Preserve 5KB lazy TornPDA launcher with runtime key token and actionable errors
+- [x] Next manual training action with countdown and direct 24-hour timetable access
+- [x] Seven-tab mobile app, quick stat focus and independent All / Regular / Happy method comparison
+- [x] Weighted consumable market quotes, category-paged inventory, partial source provenance and conservative owned-item costs
+- [x] Faster request batching with API failures isolated and source-coverage details
+- [x] UTC 24-hour / seven-day actions with per-day gains, shopping checklist, and two cooldown-bound scenarios
+- [x] Read-only gym improvement prompt for owned or confirmed unlocked-but-unpurchased gyms
+- [x] Training-relevant perks and books with 200m cap timing and optional book review thresholds
+- [x] Locally saved base stat history and goal projections without key or account uploads
+- [x] Memoised simulation and no-Torn-write source assertions
+- [x] Engine, pricing, inventory, UI and lazy-load regression tests
+
+### Known v0.6 limitations
+
+- [ ] Live mobile acceptance test of full engine loading, actual Torn API data and visible Gym capture
+- [ ] Calibrate expected gains against real completed gym actions and unusual perks or events
+- [ ] Train multiple stats within one precisely optimised week instead of recomputing the lowest stat only after refresh
+- [ ] Optional attendance/sleep-hour constraints and adaptation after missed actions
+- [ ] More advanced probabilistic overdose and addiction/rehab cost scenarios with explicit uncertainty
+
 ## v0.4 — Shipped: gym-verified training planner and future targets
 
 - [x] Replace Per week / Per jump display selector with **Training schedule** vs **Happy-jump schedule**
