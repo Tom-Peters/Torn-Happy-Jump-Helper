@@ -1,0 +1,23 @@
+name: Happy Jump Helper checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and unit tests
+        run: npm run check
+      - name: Block accidental secrets and gameplay network writes
+        run: |
+          if grep -R -Ein '(fetch\([^\n]*method:[[:space:]]*["'\''"]POST|PDA_httpPost\(|PDA_httpPut\(|PDA_httpPatch\(|PDA_httpDelete\()' Torn-Happy-Jump-Helper.user.js; then
+            echo "Potential gameplay-affecting request found" >&2
+            exit 1
+          fi
