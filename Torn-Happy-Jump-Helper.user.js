@@ -321,10 +321,11 @@
       for(const description of Array.isArray(groups[category])?groups[category]:[]){
         if(typeof description!=="string")continue;
         let pct=NaN;
-        const m=description.match(/(?:\+|increase(?:s|d)?(?:\s+\w+){0,4}\s+(?:by\s+)?)\s*(\d+(?:\.\d+)?)\s*%/i);
+        const m=description.match(/(\d+(?:\.\d+)?)\s*%/);
+        const positive=!/decreas|reduc|penalty|less|lower|negative/i.test(description);
         const relevant=/(gym\s*(?:training\s*)?gains?|gains?\s*(?:in|from)\s*(?:the\s*)?gym)/i.test(description);
         const scoped=/(strength|speed|defen[cs]e|dexterity)/i.exec(description);
-        if(m&&relevant&&(!scoped||scoped[1].toLowerCase().replace("defence","defense")===target)){
+        if(m&&positive&&relevant&&(!scoped||scoped[1].toLowerCase().replace("defence","defense")===target)){
           pct=clamp(Number(m[1]),0,200);
           if(pct>0)bonuses.push({category,description,pct});
         }
@@ -353,7 +354,7 @@
     784:{name:"Ugly Energy",kind:"maxEnergy"},
     785:{name:"Memories And Mammaries",kind:"bookRepeat"}
   };
-  function bookAdvice(stock, stats={}, weeklyGain=0) {
+  function bookAdvice(stock, stats={}, weeklyGain=0, trainingStat=null) {
     if(!Array.isArray(stock))return [];
     return stock.filter(x=>x.amount>0&&!x.faction_owned).map(x=>{
       const b=BOOK_INFO[x.id]||{name:String(x.name||"Book #"+x.id).replace(/^Book\s*:\s*/i,""),kind:"other"};
@@ -369,9 +370,14 @@
           "Potentially ready for maximum +10,000,000 bonus: use when a 31-day book slot is free.";
         if(s<threshold&&weeklyGain>0)forecast=Math.ceil((threshold-s)/weeklyGain)+" weeks at this week's estimated single-stat growth";
       }else if(b.kind==="gym"){
-        recommendation="SAVE unless you can train heavily every day for all 31 days. "+
-          "Gym bonuses usually become more valuable as stats grow. "+
-          (b.stat?"Only applies to "+b.stat+".":"Applies to every stat.");
+        const relevant=!b.stat||trainingStat===b.stat;
+        const uplift=relevant?Math.round(weeklyGain*31/7*(b.pct||0)/100):null;
+        extra=uplift||0;
+        recommendation="SAVE unless you can train heavily every day for the whole 31-day period. "+
+          (relevant&&Number.isFinite(uplift)?
+            "If used now, an approximate additional "+uplift.toLocaleString()+" gym stats over 31 days at your current weekly pace. ":""+
+            "The active target differs, so the predicted additional stats cannot be inferred from this schedule. ")+
+          (b.stat?"Only increases "+b.stat+" gym gains.":"Increases all gym gains.");
       }else if(b.kind==="happy"){
         recommendation="SAVE for an intentionally prepared high-Happy training month, not an ordinary single jump.";
       }else if(b.kind==="regen"){
@@ -641,7 +647,7 @@
       property=data.property?.property;
     const stats=Object.fromEntries(STATS.map(k=>[k,live.bs[k]?.value||0]));
     const rawBooks=data.inventory?.inventory?.items?.filter(i=>i.id>=744&&i.id<=787)||null;
-    const books=bookAdvice(rawBooks,stats,plans?.speed?.gain||0);
+    const books=bookAdvice(rawBooks,stats,plans?.speed?.gain||0,input?.statName||null);
     let out='<h2>Passive effects & books</h2><p class="muted">Read-only source audit. Only recognised gym-gain perks influence the model; combat-effective merits do not count as gym gains.</p>'+
       '<div class="card hero"><div class="label">Detected training perk multiplier</div><div class="metric">'+
       (dataReady?(perks.factor*100).toFixed(2)+"%":"Not loaded")+'</div>'+
