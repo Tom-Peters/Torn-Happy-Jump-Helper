@@ -2,6 +2,16 @@
 
 **Author: IamEEKY** · The script is strictly read-only. Nothing here authorises automated Torn actions.
 
+## v0.9 — Companion recovery (recommended stable-button trial)
+
+- [x] Keep the known-working 23 KB compact v0.7.1 HJ launcher enabled
+- [x] Add a separate ~17 KB `Torn-Happy-Jump-Advanced-Companion.user.js` injecting only an Advanced header button
+- [x] Restore strictly verified gym comparisons, training-relevant perk descriptions, relevant book advice and goal timelines
+- [x] Companion makes no background Torn API requests; CSP-safe, read-only, no eval or downloaded code
+- [x] CSP-restricted simulated startup and API-read tests in CI
+- [ ] Confirm the two-script setup on the user's Android TornPDA
+- [ ] Restore full multi-jump scheduling, booster constraints and quantity-priced shopping in smaller optional modules
+
 ## v0.1 — Delivered
 
 - [x] TornPDA userscript with floating mobile dashboard
