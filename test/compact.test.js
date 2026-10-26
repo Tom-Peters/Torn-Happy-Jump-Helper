@@ -1,0 +1,93 @@
+"use strict";
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+
+const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
+function setup(apiRefillUsed=true){
+  const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
+  const elements=[];
+  function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
+    append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},
+    addEventListener(k,fn){this["on"+k]=fn;},setAttribute(){},
+    get id(){return this._id;},set id(x){this._id=x;}};}
+  const body=node("body"),head=node("head");
+  const document={body,head,createElement:node,addEventListener(){},
+    getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null;}};
+  const w={setInterval(){},__TornHappyJumpLoaded:null};
+  const date=class extends Date {static now(){return Date.parse("2026-10-26T21:23:00Z")}};
+  const map=new Map();
+  const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
+    setItem(k,v){map.set(k,String(v));}};
+  const fixture={
+    "/user/bars":{bars:{energy:{current:65,maximum:150,interval:120,increment:1},
+      happy:{current:3475,maximum:3475}}},
+    "/user/cooldowns":{cooldowns:{drug:13680,booster:28000}},
+    "/user/battlestats":{battlestats:{
+      speed:{value:2000000},strength:{value:1350000},defense:{value:1180000},dexterity:{value:1000000}}},
+    "/user/gym":{gym:{id:9,name:"Example Gym"}},
+    "/torn/gyms":{gyms:[{id:9,name:"Example Gym",energy_cost:10,
+      modifiers:{speed:75,strength:70,defense:70,dexterity:70}}]},
+    "/user/refills":{refills:{energy:apiRefillUsed}},
+    "/user/perks":{perks:{faction:["Increases speed gym gains by 10%"],
+      merit:["+30% effective speed"]}},
+    "/market/pointsmarket":{pointsmarket:[{cost:25000,quantity:5000}]}
+  };
+  let requests=[];
+  async function PDA_httpGet(url,headers){
+    requests.push(url);
+    assert.ok(url.startsWith("https://api.torn.com/v2/"));
+    assert.equal(headers.Authorization,"ApiKey safe-fixture-key");
+    const p=url.slice("https://api.torn.com/v2".length);
+    let value=fixture[p];
+    if(p.startsWith("/market/")&&p.includes("/itemmarket"))value={itemmarket:{listings:[{price:750000,amount:500}]}};
+    if(p.startsWith("/user/inventory"))value={inventory:{items:[]}};
+    return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
+  }
+  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate};})();");
+  new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
+    document,{hostname:"www.torn.com",pathname:"/index.php"},w,localStorage,PDA_httpGet,date);
+  return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
+    core:w.__HJTEST,refresh:()=>w.__HJTEST.refresh()};
+}
+test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
+  const src=fs.readFileSync(S,"utf8");
+  assert.ok(src.length<30000,"Keep the direct install small to avoid the prior missing-button regression");
+  assert.match(src,/@run-at\s+document-end/);
+  assert.match(src,/@version\s+0\.7\.0/);
+  assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
+  assert.ok(src.includes("###PDA-APIKEY###"));
+  assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
+});
+test("HJ is visible immediately, before any API request or complex computation",()=>{
+  const a=setup();
+  assert.ok(a.btn);
+  assert.ok(a.btn.style.cssText.includes("z-index:2147483647"));
+  assert.ok(a.document.getElementById("hhj-compact-panel"));
+  assert.equal(a.requests.length,0);
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.7.0");
+  assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
+  a.btn.onclick();
+  assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh Torn data/);
+});
+test("true Torn refill flag excludes another same-day refill and train-to-refill sequence",async()=>{
+  const a=setup(true);
+  a.btn.onclick();
+  await a.refresh();
+  const plans=a.core.plans(),limit=Date.parse("2026-10-27T00:00:00Z")/1000;
+  assert.equal(a.core.refillStatus(true,Date.parse("2026-10-26T21:23:00Z")/1000),"used");
+  for(const plan of plans){
+    const current=plan.events.filter(e=>e.t<limit);
+    assert.ok(!current.some(e=>e.kind==="REFILL"),"No refill on used day");
+    assert.ok(!current.some(e=>e.detail.includes("Train before available daily point refill")));
+  }
+  assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/USED/);
+});
+test("false refill flag is available, but manual used mark wins for UTC date",async()=>{
+  const a=setup(false);
+  assert.equal(a.core.refillStatus(false,Date.parse("2026-10-26T21:23:00Z")/1000),"ready");
+  a.storage.setItem("hhj-compact-v1:used-day",JSON.stringify("2026-10-26"));
+  assert.equal(a.core.refillStatus(false,Date.parse("2026-10-26T21:23:00Z")/1000),"used");
+  assert.equal(a.core.refillStatus(false,Date.parse("2026-10-27T00:01:00Z")/1000),"ready");
+});
