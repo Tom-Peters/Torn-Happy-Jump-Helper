@@ -839,46 +839,84 @@
     return out;
   }
   function showBonuses(input,live,plans){
-    const dataReady=!!data.perks,perks=input?.perkAudit||auditPerks(data.perks,cfg.stat);
-    const groups=["faction","job","property","education","enhancer","book","stock","merit"];
-    const job=data.job?.job,merits=data.merits?.merits?.upgrades||[],
-      holdings=data.stocks?.stocks||[], education=data.education?.education,
-      property=data.property?.property;
+    const perkAudit=input?.perkAudit||auditPerks(data.perks,cfg.stat);
+    const categories=["faction","job","property","education","enhancer","book","stock","merit"];
+    const stat=input?.statName||cfg.stat, current=input?.stat||0;
     const stats=Object.fromEntries(STATS.map(k=>[k,live.bs[k]?.value||0]));
-    const rawBooks=data.inventory?.inventory?.items?.filter(i=>i.id>=744&&i.id<=787)||null;
-    const books=bookAdvice(rawBooks,stats,plans?.speed?.gain||0,input?.statName||null);
-    let out='<h2>Passive effects & books</h2><p class="muted">Read-only source audit. Only recognised gym-gain perks influence the model; combat-effective merits do not count as gym gains.</p>'+
-      '<div class="card hero"><div class="label">Detected training perk multiplier</div><div class="metric">'+
-      (dataReady?(perks.factor*100).toFixed(2)+"%":"Not loaded")+'</div>'+
-      '<p>'+ (cfg.autoPerks?"Auto-recognised gym gain perks are included.":"Automatic bonuses disabled in Settings.")+
-      ' Manual bonus: '+fmt(cfg.modifierPercent)+'% (check it does not duplicate API effects).</p>'+
-      '<p class="tiny">Other active benefits may affect happy, energy, refill size, cooldowns or effective combat stats. These are shown but not automatically turned into unsupported training multipliers.</p></div>';
-    if(!dataReady)out+='<div class="warn">Perk details are not available from this refresh. Any benefits still missing are not included in the gain multiplier.</div>';
-    for(const k of groups){
-      const rows=perks.rows.filter(x=>x.category===k);
-      out+='<details class="card" '+(k==="faction"||k==="job"?"open":"")+'><summary>'+k[0].toUpperCase()+k.slice(1)+
-        ' — '+rows.length+' active descriptions</summary>'+
-        (rows.length?'<ul>'+rows.map(x=>'<li>'+escape(x.description)+(x.applied?' <span class="good">[Modelled as gym gain]</span>':' <span class="tiny">[Informational / not quantified]</span>')+'</li>').join("")+'</ul>':
-          '<p class="tiny">No confirmed perks returned for this source.</p>')+'</details>';
+    const stock=data.inventory?.inventory?.items||null;
+    const books=bookAdvice(stock?stock.filter(i=>i.id>=744&&i.id<=787):null,
+      stats,plans?.speed?.gain||0,stat);
+    const relevant=trainingPerkRows(perkAudit.rows);
+    const selected=plans?[...plans.baseline,...plans.options].filter(x=>
+      x.known&&x.cost<=cfg.budget).sort((x,y)=>y.gain-x.gain)[0]:null;
+    const milestones=input&&selected?targetProjection(input,selected.gain,selected.cost,
+      [5e7,1e8,2e8,1e9,+cfg.bookGymMilestone]):[];
+    const pointFor=target=>milestones.find(x=>x.target===target);
+    const dateString=p=>p?.eta?new Date(p.eta+"T12:00:00Z").toLocaleDateString("en-GB",
+      {month:"long",year:"numeric",timeZone:"UTC"}):"Not reached in 100-year model";
+    let out='<h2>Training-related perks</h2>'+
+      '<p class="muted">Only perks affecting gym gains, energy, happiness, boosters, drugs or cooldowns are shown. Passive combat-stat bonuses, ordinary bank returns and unrelated merits are excluded.</p>'+
+      '<div class="card hero"><div class="label">Confirmed gym-gain modifier</div>'+
+      '<div class="metric">'+(data.perks?(perkAudit.factor*100).toFixed(2)+"%":"API unavailable")+'</div>'+
+      '<p>'+escape(stat)+' · '+(cfg.autoPerks?"Recognised gym multipliers enabled.":"Automatic gym modifiers disabled.")+
+      ' Manual adjustment '+fmt(cfg.modifierPercent)+'%.</p>'+
+      '<p class="tiny">Happy and maximum energy already reflected in Torn bars are not added again. Unrecognised perks are not silently converted into numbers.</p></div>';
+    if(!data.perks)out+='<div class="warn">Live perk descriptions unavailable. Estimated gains may omit bonuses.</div>';
+    let shown=0;
+    for(const category of categories){
+      const rows=relevant.filter(x=>x.category===category);
+      if(!rows.length)continue;
+      shown+=rows.length;
+      out+='<details class="card" '+(category==="faction"||category==="job"?"open":"")+
+        '><summary>'+category[0].toUpperCase()+category.slice(1)+' · '+rows.length+'</summary>'+
+        '<ul>'+rows.map(x=>'<li>'+escape(x.description)+
+          (x.applied?' <span class="good">[Applied to gym gains]</span>':
+            ' <span class="tiny">[Related, not yet quantified]</span>')+'</li>').join("")+
+        '</ul></details>';
     }
-    out+='<div class="card"><h3>Account context</h3>'+
-      '<p>Company: '+escape(job?.name||job?.type||"Unknown")+
-      (Number.isFinite(job?.rating)?" · "+job.rating+" stars":"")+'</p>'+
-      '<p>Property: '+escape(property?.name||property?.property?.name||"Current happy already reflected in bars")+'</p>'+
-      '<p>Merit upgrades: '+(data.merits?merits.length+" recorded":"API unavailable")+'</p>'+
-      '<p>Completed education courses: '+(education?education.complete.length:"API unavailable")+'</p>'+
-      '<p>Held stock types: '+(data.stocks?holdings.length:"API unavailable")+'</p>'+
-      '<p>Faction upgrade API: '+(data.faction?"Available; refer to faction perks above":"Unavailable or faction access not granted")+'</p>'+
-      '<p class="tiny">Company, property, faction and stock descriptions are sourced from Torn. Stock dividends and job points are not assumed to have been claimed or redeemed.</p></div>';
-    out+='<h2>Your books</h2>'+
-      (rawBooks===null?'<div class="warn"><b>Book inventory unavailable.</b><p>Inventory can fail independently (including error 21). No ownership or unused status has been assumed.</p></div>':
-      !books.length?'<div class="card">No books appeared in the returned book inventory. This does not prove you own none if a category response was incomplete.</div>':
-      books.map(b=>'<div class="card"><h3>'+escape(b.name)+'</h3>'+
-        '<p>'+escape(b.recommendation)+'</p>'+
-        (b.threshold?'<p class="good">Maximum value at '+fmt(b.threshold)+' '+escape(b.stat)+'.</p>':'')+
-        (b.forecast?'<p class="muted">Illustrative timing: '+escape(b.forecast)+'.</p>':'')+
-        '<p class="tiny">'+escape(b.ownership)+'</p></div>').join(""))+
-      '<div class="warn">Books are unique and usually provide one 31-day use. Used books remain as display copies in inventory: check the item in Torn before treating this as a usable asset. No book is automatically used.</div>';
+    if(data.perks&&!shown)out+='<div class="card">No explicitly training-related perk descriptions were returned.</div>';
+    out+='<h2>Long-term battle-stat milestones</h2>'+
+      '<p class="muted">For '+escape(stat)+', projected using '+escape(selected?.name||"no verified training plan")+
+      ', the current gym and current weekly budget. This assumes you continue training this stat, so balance-mode changes, future gym unlocks, books, market movement and events will change the dates.</p>';
+    if(milestones.length){
+      out+=milestones.filter(p=>[5e7,1e8,1e9].includes(p.target))
+        .map(p=>'<div class="card"><div class="between"><b>'+fmt(p.target)+' '+escape(stat)+'</b>'+
+          '<span class="label">'+(p.weeks===0?"Already reached":p.eta||"Beyond projection")+'</span></div>'+
+          '<p>'+ (p.weeks===null?"Not projected at this pace":
+            fmt(p.weeks)+" weeks · estimated spend "+cash(p.cost))+'</p></div>').join("");
+    }else out+='<div class="warn">Refresh data and verify prices to calculate projected milestone dates.</div>';
+    out+='<h2>When to activate your books</h2>';
+    if(stock===null)out+='<div class="warn">Book inventory unavailable, so no owned books are assumed.</div>';
+    else if(!books.length)out+='<div class="card">No books were returned by the Book-category inventory.</div>';
+    else out+=books.map(book=>{
+      const isFocused=book.stat===stat;
+      let when="No calculated activation window for this book";
+      if(book.kind==="stat"){
+        const target=pointFor(2e8);
+        when=isFocused?(current>=2e8?
+          "Now eligible for its full theoretical +10m value, once confirmed unread":
+          "Save until "+fmt(2e8)+" "+stat+" · projected "+dateString(target)):
+          "Save. Focus "+book.stat+" in Settings to calculate a date at 200m for this book.";
+      }else if(book.kind==="gym"){
+        const target=Math.max(1e6,+cfg.bookGymMilestone||5e7),point=pointFor(target);
+        when=!book.stat||isFocused?
+          (current>=target?"Consider your next high-output 31-day training block":
+          "Suggested review milestone: "+fmt(target)+" "+stat+" · "+
+          dateString(point)):"Wait until you are actively training "+book.stat;
+      }else if(book.kind==="candy"){
+        when="Review before a confirmed candy-boost event or planned jump period";
+      }else if(book.kind==="regen"||book.kind==="energyDrink"||book.kind==="maxEnergy"){
+        when="Plan a 31-day block with consistent daily energy use and minimal capped regeneration";
+      }else if(book.kind==="happy"){
+        when="Reserve for a purpose-built Happy training month, after comparing weekly gains";
+      }else when="Review the benefit and spare book-slot opportunity before consuming";
+      return '<div class="card"><h3>'+escape(book.name)+'</h3>'+
+        '<p><b>'+escape(when)+'</b></p>'+
+        '<p>'+escape(book.recommendation)+'</p>'+
+        (book.extra>0?'<p class="muted">Illustrative current benefit: +'+fmt(book.extra)+' '+escape(book.stat||stat)+' stats</p>':'')+
+        '<p class="tiny">Inventory may show a used display copy: still-usable status is unverified.</p></div>';
+    }).join("");
+    out+='<div class="warn">Book dates are a strategy heuristic, not an objectively optimal moment. A percentage stat book reaches its 10m cap at 200m in that stat; gym-gain books have no universal best stat threshold. Books are never used by this helper.</div>';
     return out;
   }
   function render(){
@@ -1008,6 +1046,7 @@
         opt('refill','30-point daily energy refill',[['both','Compare both choices'],['yes','Always include'],['no','Never include']])+
         opt('theme','Appearance',[['dark','High contrast dark'],['light','Bright light']])+
         opt('scheduleMode','Training type',[['training','Regular training (no jumps)'],['happyjump','Happy-jump preparation']])+
+        field('bookGymMilestone','Gym-book review milestone (stat)','number','min="1000000" max="1000000000" step="1000000"')+
         field('returnHours','Hours until return to Torn (0 = hypothetical now)','number','min="0" max="168" step="1"')+
         '</div><p class="tiny">Balance trains whichever stat is currently lowest; it is recalculated on refresh rather than treating this week as a fully scheduled mixed-stat plan.</p></div>'+
         '<div class="card"><h3>Perks and estimates</h3><div class="grid">'+
@@ -1052,6 +1091,7 @@
       if(key==='boosterReduction')cfg[key]=clamp(cfg[key],0,0.75);
       if(key==='xanaxHours')cfg[key]=clamp(cfg[key],6,8);
       if(key==='returnHours')cfg[key]=clamp(cfg[key],0,168);
+      if(key==='bookGymMilestone')cfg[key]=clamp(cfg[key],1000000,1000000000);
       try{localStorage.setItem('hhj-settings-v1',JSON.stringify(cfg));}catch(_){}
       selected='';completedSteps.clear();render();
     };
