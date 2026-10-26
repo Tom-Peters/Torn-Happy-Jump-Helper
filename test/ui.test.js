@@ -58,7 +58,7 @@ test("TornPDA script opens with readable four-tab panel",()=>{
   app.launcher.onclick();
   assert.match(app.panel.innerHTML,/Today/);
   assert.match(app.panel.innerHTML,/Compare/);
-  assert.match(app.panel.innerHTML,/Steps/);
+  assert.match(app.panel.innerHTML,/Plan/);
   assert.match(app.panel.innerHTML,/Settings/);
   assert.match(app.panel.innerHTML,/Perks/);
   assert.match(app.panel.innerHTML,/Refresh Torn data/);
