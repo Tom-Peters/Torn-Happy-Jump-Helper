@@ -16,7 +16,6 @@
   const CORE_URL="https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.full.js";
   const BUTTON_ID="hhj-quick-launch", STATUS_ID="hhj-loader-status";
   if(!/^(www\.)?torn\.com$/i.test(location.hostname))return;
-  if(window.top!==window.self)return;
   if(document.getElementById(BUTTON_ID))return;
   window.__HHJLoader={version:VERSION,status:"launcher-started",url:CORE_URL};
   let loading=false;
@@ -87,7 +86,7 @@
           (window.__TornHappyJumpStage?.phase||"unknown"));
       window.__HHJLoader.status="ready";
       status.style.display="none";
-      button.style.display="none";
+      button.remove();
       document.getElementById("hhj-launch").click();
     }catch(error){
       setStatus("Unable to start helper",String(error?.message||error));
