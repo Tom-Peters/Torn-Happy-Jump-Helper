@@ -205,3 +205,65 @@ test("Torn page global module.exports cannot suppress the HJ launcher",()=>{
   assert.equal(window.__TornHappyJumpLoaded,"0.5.0");
   assert.equal(window.__TornHappyJumpStage.phase,"mounted");
 });
+
+test("tiny TornPDA launcher appears before it downloads the heavyweight engine",async()=>{
+  const root=createNode("html"),body=createNode("body");
+  const origAppend=body.appendChild.bind(body);
+  body.appendChild=x=>{origAppend(x);x.remove=()=>{body.children=body.children.filter(y=>y!==x)};};
+  body.append=(...xs)=>xs.forEach(x=>body.appendChild(x));
+  const document={body,documentElement:root,createElement(tag){
+    const x=createNode(tag);
+    x.replaceChildren=(...xs)=>{x.children=xs;};
+    return x;
+  },getElementById(id){return body.children.find(x=>x.id===id)||null;},addEventListener(){}};
+  const window={setInterval(){},__HHJLoader:null};
+  const location={hostname:"www.torn.com"};
+  const core=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8");
+  const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
+  assert.ok(installed.length<7000,"installable launcher must remain lightweight");
+  let downloaded="",clicked=0;
+  const PDA_httpGet=async url=>{
+    downloaded=url;
+    return {status:200,responseText:core};
+  };
+  function FakeFunction(source){
+    assert.match(source,/sourceURL=Torn-Happy-Jump-Helper.full.js/);
+    return ()=>{
+      const real=document.createElement("button");
+      real.id="hhj-launch";
+      real.click=()=>{clicked++;};
+      body.appendChild(real);
+      window.__TornHappyJumpLoaded="0.5.0";
+    };
+  }
+  new Function("document","window","location","PDA_httpGet","Function",installed)(
+    document,window,location,PDA_httpGet,FakeFunction);
+  const launch=document.getElementById("hhj-quick-launch");
+  assert.ok(launch,"launcher must mount without API, engine or settings");
+  assert.equal(downloaded,"");
+  assert.equal(typeof launch.onclick,"function");
+  await launch.onclick();
+  assert.match(downloaded,/raw.githubusercontent.com\/Tom-Peters\/Torn-Happy-Jump-Helper/);
+  assert.equal(clicked,1);
+  assert.equal(window.__HHJLoader.status,"ready");
+  assert.equal(document.getElementById("hhj-quick-launch"),null);
+});
+test("launcher remains visible and shows error when heavyweight engine fails to download",async()=>{
+  const body=createNode("body"),document={
+    body,documentElement:createNode("html"),createElement(tag){
+      const x=createNode(tag);
+      x.replaceChildren=()=>{x.children=[];};
+      return x;
+    },getElementById(id){return body.children.find(x=>x.id===id)||null;},addEventListener(){}
+  };
+  const window={setInterval(){}},location={hostname:"www.torn.com"};
+  const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
+  new Function("document","window","location","PDA_httpGet",installed)(
+    document,window,location,async()=>({status:503,responseText:"Unavailable"}));
+  assert.ok(document.getElementById("hhj-quick-launch"));
+  await document.getElementById("hhj-quick-launch").onclick();
+  assert.ok(document.getElementById("hhj-quick-launch"),
+    "launcher should remain clickable after load error");
+  const panel=document.getElementById("hhj-loader-status");
+  assert.ok(panel.children.some(x=>String(x.textContent).includes("HTTP 503")));
+});
