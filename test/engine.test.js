@@ -61,15 +61,16 @@ test("candy-only cooldown reduction doesn't discount eDVD cooldown",()=>{
   assert.equal(a.find(x=>x.dvds===2&&x.xanax===0).perBoosterHours,12);
   assert.equal(a.find(x=>x.count===12&&x.dvds===0&&x.xanax===0).perBoosterHours,4.5);
 });
-test("market failure never ranks unknown weekly spending as affordable",()=>{
+test("unknown market prices block paid plans but natural training remains valid",()=>{
   const scored=E.score(input({books:{}}));
   assert.ok(scored.options.every(x=>!x.known));
-  assert.equal(scored.speed,null);
+  assert.equal(scored.speed?.id,"no-refills:normal");
   assert.equal(scored.value,null);
 });
-test("low budget can't rank unaffordable jumps",()=>{
-  const scored=E.score(input({budget:0}));
-  assert.equal(scored.speed,null);
+test("zero budget still permits free natural-energy training",()=>{
+  const scored=E.score(input({budget:0,refillMode:"both"}));
+  assert.equal(scored.speed?.id,"no-refills:normal");
+  assert.ok(scored.options.every(x=>!x.known));
 });
 test("available personal inventory reduces estimated cash needed, not requirements",()=>{
   const a=E.strategies(input({inventoryReady:true,owned:{lollipop:200,ecstasy:2,xanax:0}}));
