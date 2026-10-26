@@ -726,9 +726,10 @@
     const endpoints={
       bars:"/user/bars",cooldowns:"/user/cooldowns",stats:"/user/battlestats",
       gym:"/user/gym",gyms:"/torn/gyms",inventory:"/user/inventory?cat=Drug&limit=250",
-      perks:"/user/perks",merits:"/user/merits",education:"/user/education",
-      job:"/user/job",property:"/user/property",stocks:"/user/stocks",
-      faction:"/faction/upgrades",
+      // user/perks already returns the currently active job, faction,
+      // property, education, merit, stock and book descriptions grouped by source.
+      // Avoid unrelated, permission-heavy calls for no training benefit.
+      perks:"/user/perks",
       refills:"/user/refills",travel:"/user/travel",points:"/market/pointsmarket"
     };
     for(const [name,item] of Object.entries(ITEMS))endpoints["price_"+name]="/market/"+item.id+"/itemmarket?limit=100";
