@@ -150,8 +150,39 @@ function perks(){
   box("Other training-related descriptions",rows.length?rows.map(x=>
   '<p><b>'+esc(x.source)+'</b> · '+esc(x.description)+'</p>').join(""):"No training-related perks returned.");
 }
+function weeklyPace(){
+ const panel=document.getElementById("hhj-compact-panel");
+ const cards=panel?.querySelectorAll?.(".card")||[];
+ for(const card of cards){
+  if(card.querySelector?.("h3")?.textContent?.trim()!=="Projected seven-day training")continue;
+  const text=card.textContent||"";
+  const m=text.match(/\+([\d,]+)\s+(strength|speed|defense|dexterity)/i);
+  if(m&&m[2].toLowerCase()===cfg.stat){
+   const rate=+m[1].replace(/,/g,"");
+   if(rate>0&&Number.isFinite(rate))return {rate,source:"Current regular HJ projection"};
+  }
+ }
+ return {rate:Math.max(0,+cfg.weeklyGain||0),source:"Manual weekly pace in Settings"};
+}
+function milestone(aim){
+ const start=stats()[cfg.stat],weekly=weeklyPace().rate;
+ if(start>=aim)return 0;
+ if(!(start>0&&weekly>0))return null;
+ const g=gym(),e=data.bars?.bars?.energy?.maximum||150,h=data.bars?.bars?.happy?.maximum||5000;
+ const dots=(g?.modifiers?.[cfg.stat]||0)/10,gymE=g?.energy_cost||10;
+ const base=dots?gained(e,h,start,dots,gymE,mod().factor):0;
+ const delta=Math.max(100000,start*0.05);
+ const high=dots?gained(e,h,start+delta,dots,gymE,mod().factor):0;
+ const slope=base>0?Math.max(0,weekly*(high-base)/(delta*base)):0;
+ let v=start;
+ for(let n=1;n<=5200;n++){
+  v+=Math.max(0,weekly+slope*(v-start));
+  if(v>=aim)return n;
+ }
+ return null;
+}
 function books(){
- const rows=data.books;
+ const rows=data.books,weekly=weeklyPace().rate;
  if(!Array.isArray(rows))return box("Book inventory unavailable","Not loaded. No owned books are assumed.");
  const visible=rows.filter(x=>x.amount>0&&!x.faction_owned);
  return box("Book advice",visible.length?visible.map(b=>{
@@ -160,21 +191,21 @@ function books(){
   if(kind==="stat")advice="SAVE until 200,000,000 "+stat+
    " for its full +10,000,000 cap. If used now the theoretical bonus is +"+fmt(Math.min(10000000,current*0.05))+
    ". Current time-to-target estimate using configured weekly gains: "+
-   (cfg.weeklyGain>0?fmt(Math.ceil(Math.max(0,200000000-current)/cfg.weeklyGain))+" weeks":"not available")+".";
+   (weekly>0?(stat===cfg.stat?(milestone(200000000)===null?"beyond model":fmt(milestone(200000000))+" weeks"):fmt(Math.ceil(Math.max(0,200000000-current)/weekly))+" weeks"):"not available")+".";
   else if(kind?.startsWith("gym"))advice="SAVE for a high-output 31-day "+(stat==="all"?"gym":stat)+
    " training month. At your configured weekly training pace, the illustrative 31-day extra is +"+
-   (cfg.weeklyGain>0?fmt(cfg.weeklyGain*31/7*(kind==="gym20"?0.2:0.3)):"unknown")+".";
+   (weekly>0?fmt(weekly*31/7*(kind==="gym20"?0.2:0.3)):"unknown")+".";
   return '<p><b>'+esc(b.name||"Book #"+b.id)+'</b><br>'+esc(advice)+
    '<br><span class="hhja-small">Inventory copies may already have been read. Usability cannot be confirmed.</span></p>';
  }).join(""):"No books reported. A missing category is not assumed to be empty.");
 }
 function goals(){
- const current=stats()[cfg.stat],weekly=Math.max(0,+cfg.weeklyGain||0);
+ const current=stats()[cfg.stat],pace=weeklyPace(),weekly=pace.rate;
  const goals=[50000000,100000000,200000000,1000000000];
  return box("Future "+cfg.stat+" targets",
   '<p class="hhja-small">A scenario at your manually configured weekly gain rate. This does not assume future gyms, books, events or inflation.</p>'+
   goals.map(x=>'<div class="hhja-row"><b>'+fmt(x)+'</b><span>'+
-   (current>=x?"Reached":weekly>0?fmt(Math.ceil((x-current)/weekly))+" weeks":"Set weekly pace in Settings")+
+   (current>=x?"Reached":weekly>0?(milestone(x)===null?"Beyond model":fmt(milestone(x))+" weeks"):"Set weekly pace in Settings")+
    '</span></div>').join(""));
 }
 function settings(){
@@ -182,7 +213,7 @@ function settings(){
   '<label>Focus stat <select id="hhja-stat">'+ST.map(s=>
    '<option value="'+s+'"'+(cfg.stat===s?' selected':'')+'>'+s+'</option>').join("")+'</select></label>'+
   '<p><label>Manual additional gym bonus % <input id="hhja-bonus" type="number" value="'+cfg.bonus+'" min="0" max="200"></label></p>'+
-  '<p><label>Expected weekly gain for future dates <input id="hhja-week" type="number" value="'+cfg.weeklyGain+'" min="0"></label></p>'+
+  '<p><label>Fallback weekly gain for future dates <input id="hhja-week" type="number" value="'+cfg.weeklyGain+'" min="0"></label></p>'+
   '<button type="button" data-act="save">Save companion settings</button>'+
   '<p class="hhja-small">The original HJ simulator remains the source for your action timetable. No credentials, inventory or stat values are uploaded by the companion.</p>');
 }
