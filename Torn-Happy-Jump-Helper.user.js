@@ -148,7 +148,7 @@
   }
   function score(input) {
     const modes=input.refillMode==="both"?[false,true]:[!!input.refill];
-    const start=Math.ceil((input.now||Date.now()/1000)/60)*60;
+    const start=Math.ceil(((input.now||Date.now()/1000)+(input.returnHours||0)*3600)/60)*60;
     const natural=baseline({...input,refill:false})[0];
     const all={baseline:[],options:[],naturalBenchmark:natural};
     const contexts={energy:input.currentEnergy,happy:input.currentHappy,
@@ -346,12 +346,16 @@
     770:{name:"Ignorance Is Bliss",kind:"happy"},
     773:{name:"Hot Turkey",kind:"addiction"},
     774:{name:"Higher Daddy, Higher!",kind:"regen",pct:20},
-    779:{name:"Yes Please Diabetes",kind:"candy"}
+    783:{name:"Yes Please Diabetes",kind:"candy"},
+    779:{name:"Self Control Is For Losers",kind:"cooldown"},
+    782:{name:"Fuelling Your Way To Failure",kind:"energyDrink"},
+    784:{name:"Ugly Energy",kind:"maxEnergy"},
+    785:{name:"Memories And Mammaries",kind:"bookRepeat"}
   };
   function bookAdvice(stock, stats={}, weeklyGain=0) {
     if(!Array.isArray(stock))return [];
-    return stock.filter(x=>BOOK_INFO[x.id]&&x.amount>0&&!x.faction_owned).map(x=>{
-      const b=BOOK_INFO[x.id];
+    return stock.filter(x=>x.amount>0&&!x.faction_owned).map(x=>{
+      const b=BOOK_INFO[x.id]||{name:String(x.name||"Book #"+x.id).replace(/^Book\s*:\s*/i,""),kind:"other"};
       let recommendation="Save until you can dedicate the whole 31-day period to this effect.";
       let forecast=null,threshold=null,extra=0;
       if(b.kind==="stat"){
@@ -375,6 +379,14 @@
         recommendation="Consider saving for World Diabetes Day (13–15 Nov), aligned with faction candy perks; verify the event rules.";
       }else if(b.kind==="addiction"){
         recommendation="Save until a planned month of drug-intensive training when addiction avoidance is valuable.";
+      }else if(b.kind==="cooldown"){
+        recommendation="Save for a planned month of booster-heavy training; halve consumable cooldowns while active.";
+      }else if(b.kind==="maxEnergy"){
+        recommendation="Save for a 31-day training block with daily refills: maximum energy rises to 250.";
+      }else if(b.kind==="bookRepeat"){
+        recommendation="Save until you know which unique 31-day book is most valuable to repeat.";
+      }else if(b.kind==="other"){
+        recommendation="No confirmed direct gym-gain benefit; evaluate against other uses and book-slot opportunity cost.";
       }
       return {id:x.id,name:b.name,kind:b.kind,stat:b.stat,threshold,forecast,extra,recommendation,
         // Inventory API does not distinguish consumed trophy copies from unread books.
@@ -390,7 +402,7 @@
   const defaults={budget:10000000,stat:"dexterity",statGoal:"weakest",objective:"growth",
     maxJumpsDaily:6,maxE:150,
     candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
-    autoPerks:true,xanaxHours:7,viewUnit:"week",
+    autoPerks:true,xanaxHours:7,viewUnit:"week",returnHours:0,
     refill:"both",gymOverride:0,theme:"dark"};
   let cfg={...defaults};
   try{
@@ -506,7 +518,7 @@
        regenInterval:state.e.interval||120,regenIncrement:state.e.increment||1,
        refillUsed:data.refills?.refills?.energy===false,
        available:!(data.travel?.travel?.destination&&data.travel.travel.destination!=="Torn"),
-       xanaxHours:cfg.xanaxHours,perkAudit};
+       xanaxHours:cfg.xanaxHours,returnHours:cfg.returnHours,perkAudit};
   }
   async function request(path){
     // Exclusively the official read-only HTTPS v2 API. Do not log the key or URL.
