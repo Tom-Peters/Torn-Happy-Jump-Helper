@@ -56,10 +56,11 @@ function setup(){
 test("TornPDA script opens with readable four-tab panel",()=>{
   const app=setup();
   app.launcher.onclick();
-  assert.match(app.panel.innerHTML,/Overview/);
+  assert.match(app.panel.innerHTML,/Today/);
   assert.match(app.panel.innerHTML,/Compare/);
   assert.match(app.panel.innerHTML,/Steps/);
   assert.match(app.panel.innerHTML,/Settings/);
+  assert.match(app.panel.innerHTML,/Perks/);
   assert.match(app.panel.innerHTML,/Refresh Torn data/);
   assert.equal(app.panel.dataset.theme,"dark");
   assert.equal(typeof app.refresh.onclick,"function");
@@ -80,5 +81,6 @@ test("API error 21 degrades inventory while stats, market, travel and tabs still
   app.tabs.find(x=>x.dataset.tab==="settings").onclick();
   assert.match(app.panel.innerHTML,/High contrast dark/);
   assert.match(app.panel.innerHTML,/Compare both choices/);
+  assert.match(app.panel.innerHTML,/Stats per Happy jump/);
   assert.ok(app.requests.every(x=>x.url.startsWith("https://api.torn.com/v2/")));
 });
