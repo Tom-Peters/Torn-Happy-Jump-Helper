@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.1.0
+// @version      0.2.0
 // @description  Live read-only TornPDA happy-jump planner. No gameplay actions.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -162,8 +162,10 @@
   if(typeof module!=="undefined" && module.exports) { module.exports=Engine; return; }
   if(!location.hostname.endsWith("torn.com") || document.getElementById("hhj-launch"))return;
   let data={}, quotes={}, lastRefresh=0, errors=[],selected="", opened=false,busy=false;
+  let inventoryWarning="",activeTab="today",showAll=false;
   const completedSteps=new Set(); // Local tick-boxes only, never Torn gameplay actions.
-  const defaults={budget:10000000,stat:"defense",maxJumpsDaily:2,maxE:150,
+  const defaults={budget:10000000,stat:"dexterity",statGoal:"weakest",objective:"growth",
+    maxJumpsDaily:6,maxE:150,
     candyPercent:0,boosterReduction:0,dvdHappy:2500,boosterCap:24,modifierPercent:0,happyLoss:0.5,
     refill:true,gymOverride:0};
   let cfg={...defaults};
@@ -171,6 +173,9 @@
     const saved=JSON.parse(localStorage.getItem("hhj-settings-v1")||"null");
     if(saved && typeof saved==="object")
       for(const key of Object.keys(defaults))if(Object.prototype.hasOwnProperty.call(saved,key))cfg[key]=saved[key];
+    if(!STATS.includes(cfg.stat))cfg.stat="dexterity";
+    if(!["weakest","focus"].includes(cfg.statGoal))cfg.statGoal="weakest";
+    if(!["growth","value"].includes(cfg.objective))cfg.objective="growth";
   }catch(_){}
   const style=document.createElement("style");
   style.textContent="#hhj-launch{position:fixed;bottom:85px;right:14px;z-index:2147483646;border:1px solid #4de5cf;background:linear-gradient(140deg,#0b2537,#10234b);color:white;border-radius:18px;padding:13px;font-weight:900;box-shadow:0 6px 22px #0008;cursor:pointer}"+
@@ -196,7 +201,7 @@
     const selectedGym=list.find(x=>x.id===rawGym.id);
     const maxE=e.maximum || cfg.maxE;
     const bs=data.stats?.battlestats||{};
-    const stock=data.inventory?.inventory?.items||[];
+    const stock=Array.isArray(data.inventory?.inventory?.items)?data.inventory.inventory.items:[];
     const owned={};
     for(const [name,item] of Object.entries(ITEMS))
       owned[name]=stock.filter(i=>i.id===item.id && !i.faction_owned).reduce((a,i)=>a+i.amount,0);
@@ -204,14 +209,18 @@
   }
   function buildInput(){
     const state=readyState();
-    const key=STATS.includes(cfg.stat)?cfg.stat:"defense";
+    const valueStats=STATS.map(s=>({name:s,value:state.bs[s]?.value}));
+    const liveStats=valueStats.filter(x=>Number.isFinite(x.value));
+    const least=liveStats.length===STATS.length
+      ?liveStats.sort((a,b)=>a.value-b.value)[0].name:null;
+    const key=cfg.statGoal==="weakest"&&least?least:(STATS.includes(cfg.stat)?cfg.stat:"dexterity");
     const gymCost=state.selectedGym?.energy_cost||10;
     // API gym modifiers are 10x the visible dots.
     const apiDots=state.selectedGym?.modifiers?.[key];
     const dots=cfg.gymOverride>0?clamp(cfg.gymOverride,0.1,20):(Number.isFinite(apiDots)?apiDots/10:0);
     const bval=state.bs[key]?.value;
     if(!Number.isFinite(bval)||!dots||!Number.isFinite(state.h.maximum))return null;
-    return {stat:bval,baseHappy:state.h.maximum,dots,gymCost,
+    return {stat:bval,statName:key,baseHappy:state.h.maximum,dots,gymCost,
       mod:1+clamp(cfg.modifierPercent,-50,300)/100,
       maxE:state.maxE,regenHour:state.e.interval>0
         ? 3600*state.e.increment/state.e.interval
@@ -237,10 +246,10 @@
   async function refresh(){
     if(busy||Date.now()-lastRefresh<60000)return;
     if(KEY.includes("PDA-APIKEY")){ errors=["Open this script in TornPDA with an API key configured."];render();return; }
-    busy=true;lastRefresh=Date.now();errors=[];completedSteps.clear();render();
+    busy=true;lastRefresh=Date.now();errors=[];inventoryWarning="";completedSteps.clear();render();
     const endpoints={
       bars:"/user/bars",cooldowns:"/user/cooldowns",stats:"/user/battlestats",
-      gym:"/user/gym",gyms:"/torn/gyms",inventory:"/user/inventory?limit=250",
+      gym:"/user/gym",gyms:"/torn/gyms",inventory:"/user/inventory?cat=Drug&limit=250",
       refills:"/user/refills",points:"/market/pointsmarket"
     };
     for(const [name,item] of Object.entries(ITEMS))endpoints["price_"+name]="/market/"+item.id+"/itemmarket?limit=100";
@@ -256,8 +265,31 @@
           const offers=result.pointsmarket||[];
           quotes.points={listings:offers.map(x=>({price:x.cost,amount:x.quantity})),
             timestamp:Math.floor(Date.now()/1000)};
+        }else if(label==="inventory"){
+          const combined=[...(result.inventory?.items||[])];
+          let partial=false;
+          for(const category of ["Candy","Booster"]){
+            try{
+              const followup=await request("/user/inventory?cat="+category+"&limit=250");
+              combined.push(...(followup.inventory?.items||[]));
+              if((followup._metadata?.total||0)>250)partial=true;
+            }catch(error){partial=true;inventoryWarning="Inventory partly unavailable ("+error.message+"). Purchase costs assume zero owned items.";}
+          }
+          if((result._metadata?.total||0)>250)partial=true;
+          if(partial){
+            data.inventory=null;
+            inventoryWarning=inventoryWarning||"Inventory exceeds one page. Conservative full-purchase prices used.";
+          }else data.inventory={inventory:{items:combined}};
         }else data[label]=result;
-      }catch(err){errors.push(label+": "+err.message);}
+      }catch(err){
+        if(label==="inventory"){
+          data.inventory=null;
+          const code=err.message.match(/(?:error|code)\s*(\d+)/i)?.[1];
+          inventoryWarning=code==="21"
+            ?"Inventory lookup unavailable: Torn API error 21 (incorrect category). Your travel location may coincide but is not a confirmed cause. Prices assume you need to buy all items."
+            :"Inventory unavailable ("+err.message+"). Cost estimates assume buying all required items.";
+        }else errors.push(label+": "+err.message);
+      }
     }
     busy=false;render();
   }
@@ -393,7 +425,7 @@
       "Wait until just AFTER a Torn quarter-hour reset (UTC :00/:15/:30/:45), leaving ample time for manual taps.",
       "Manually use "+booster+". Allow for "+fmt(p.perBoosterHours*60)+" minutes of booster cooldown generated by this combination.",
       "Manually use ONE Ecstasy last (it doubles happy). Overdose risk is real: abandon and re-plan if it fails.",
-      "Immediately open the gym yourself and train "+input.gymCost+" E at a time in "+cfg.stat+
+      "Immediately open the gym yourself and train "+input.gymCost+" E at a time in "+input.statName+
         ". Expected happy after Ecstasy ~"+fmt(p.happy)+". Spend energy before the next quarter-hour reset.",
       cfg.refill?"Only AFTER spending enough energy to allow it, manually perform the one daily 30-point refill, then train again before the reset.":"No point refill was budgeted.",
       "Re-check cooldowns and actual gains. Refresh this panel manually to re-optimise the next cycle."
