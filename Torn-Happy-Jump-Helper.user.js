@@ -114,7 +114,10 @@
       const lostRegen=Math.min(168*input.regenHour,prepHours*jumps*input.regenHour);
       const weekRefill=input.refill?7*input.maxE:0;
       const energy=Math.max(0,168*input.regenHour-lostRegen)+s.xanax*250*jumps+weekRefill;
-      const jumpedE=Math.min(energy,jumps*(input.maxE+s.xanax*250)+weekRefill);
+      // Standard energy stacking caps at 1,000 E; a fourth Xanax may waste any
+      // energy already held near the cap. This is an optimistic capacity model.
+      const stackedEnergy=Math.min(1000,input.maxE+s.xanax*250);
+      const jumpedE=Math.min(energy,jumps*stackedEnergy+weekRefill);
       const eachJump=jumpedE/jumps;
       let runningStat=input.stat, jumpGain=0;
       for(let n=0;n<jumps;n++){
