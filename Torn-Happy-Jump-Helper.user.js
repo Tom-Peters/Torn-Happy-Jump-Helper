@@ -616,6 +616,12 @@
         snippet:context.slice(0,220)});
     }
     gymEvidence=[...found.values()];
+    // Re-capture invalidates any previously confirmed gym no longer visible.
+    const confirmed=new Set(gymEvidence.map(x=>String(x.id)));
+    for(const id of Object.keys(verifiedGyms))if(!confirmed.has(id))delete verifiedGyms[id];
+    gymVerifiedAt=Date.now();
+    try{localStorage.setItem("hhj-verified-gyms-v1",
+      JSON.stringify({at:gymVerifiedAt,statuses:verifiedGyms}));}catch(_){}
     // Always keep current active gym known, regardless of page presentation.
     const current=data.gym?.gym?.id;
     if(current!=null&&!found.has(+current)){
@@ -824,6 +830,13 @@
       '<h3>Confirm gyms visible in Torn</h3>'+
       '<div class="card"><p>Open <b>Torn → Gym</b> and, while you are looking at its gym list, tap Capture below. The helper reads the already visible page only after this tap. It does not open or press anything in Torn.</p>'+
       '<button id="hhj-capture-gyms" class="primary" type="button">Capture visible gyms</button>'+
+      '<details><summary>Can see a gym but the capture missed it?</summary>'+
+      '<p class="tiny">On Torn’s Gym page only: select the gym you can physically see unlocked, then confirm its purchase state. This is local evidence, not a Torn action.</p>'+
+      '<label>Gym visible on the page<select id="hhj-manual-gym">'+
+      '<option value="">Select a gym you see</option>'+catalog.map(g=>'<option value="'+g.id+'">'+escape(g.name)+'</option>').join("")+
+      '</select></label><label>Verified status<select id="hhj-manual-status">'+
+      '<option value="owned">Already purchased</option><option value="buy">Unlocked, buy membership</option>'+
+      '</select></label><button id="hhj-manual-confirm" type="button">Confirm visible gym</button></details>'+
       (gymNotice?'<p class="muted">'+escape(gymNotice)+'</p>':'')+'</div>';
     if(gymEvidence.length){
       out+='<div class="card"><h3>Visible gym verification</h3>'+
@@ -1074,6 +1087,19 @@
     for(const btn of panel.querySelectorAll('#hhj-refresh'))btn.onclick=refresh;
     const capture=panel.querySelector('#hhj-capture-gyms');
     if(capture)capture.onclick=()=>{captureVisibleGyms();render();};
+    const manual=panel.querySelector('#hhj-manual-confirm');
+    if(manual)manual.onclick=()=>{
+      if(!/\/gym\.php$/i.test(location.pathname||"")){
+        gymNotice="Manual gym verification requires Torn’s Gym page to be open. No gym was added.";
+        render();return;
+      }
+      const id=+panel.querySelector('#hhj-manual-gym')?.value;
+      const status=panel.querySelector('#hhj-manual-status')?.value;
+      const gym=gymCatalog(data.gyms).find(g=>g.id===id);
+      if(!gym||!["owned","buy"].includes(status))return;
+      if(!gymEvidence.some(x=>x.id===id))gymEvidence.push({id,name:gym.name,status:"seen",snippet:"Manually confirmed visible on gym page"});
+      saveGymVerification(id,status);render();
+    };
     for(const select of panel.querySelectorAll('[data-gym-check]'))select.onchange=()=>{
       saveGymVerification(select.dataset.gymCheck,select.value);render();
     };
