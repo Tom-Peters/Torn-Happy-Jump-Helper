@@ -2,11 +2,11 @@
 const test=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),
 path=require("node:path"),vm=require("node:vm");
 const SOURCE=path.join(__dirname,"..","Torn-Happy-Jump-Advanced-Companion.user.js");
-function setup(){
+function setup(noCompact=false){
  let requests=[];
  const map=new Map(),storage=new Map(),timers=[];
  const createElement=tag=>({
-   tag,id:"",style:{},dataset:{},children:[],textContent:"",innerHTML:"",
+   tag,id:"",style:{setProperty(name,value){this[name]=value;}},dataset:{},children:[],textContent:"",innerHTML:"",
    appendChild(x){this.children.push(x);if(x.id)map.set(x.id,x);return x;},
    append(...xs){xs.forEach(x=>this.appendChild(x));},
    insertBefore(x,other){const i=this.children.indexOf(other);this.children.splice(i<0?0:i,0,x);if(x.id)map.set(x.id,x);return x;},
@@ -27,7 +27,7 @@ function setup(){
  nav.className="tabs";
  nav.appendChild(createElement("button"));
  content.appendChild(nav);
- compact.append(header,content);body.appendChild(compact);
+ compact.append(header,content);if(!noCompact)body.appendChild(compact);
  const document={body,head,createElement,getElementById(id){return map.get(id)||null;},addEventListener(){}};
  const localStorage={getItem(k){return storage.get(k)??null;},
    setItem(k,v){storage.set(k,String(v));},removeItem(k){storage.delete(k)}};
@@ -77,13 +77,16 @@ test("Companion is compact, CSP safe, and never changes stable HJ userscript",()
 test("Advanced entry appears in stable panel without HTTP at boot",()=>{
  const p=setup();
  assert.equal(p.requests.length,0);
+ assert.ok(p.document.getElementById("hhj-advanced-companion-shortcut"),
+   "A left-hand ADV shortcut must appear even if tabs are absent");
  assert.ok(p.document.getElementById("hhj-advanced-companion-open"));
- assert.equal(p.browser.window.__HHJAdvancedCompanion,"0.9.1");
+ assert.equal(p.browser.window.__HHJAdvancedCompanion,"0.9.2");
  assert.ok(p.document.getElementById("hhj-compact-panel"));
  const btn=p.document.getElementById("hhj-advanced-companion-open");
  assert.equal(p.nav.children[0],btn,"Advanced must be FIRST tab, not clipped after the close button");
  assert.ok(!p.header.children.includes(btn),"Do not append Advanced to the full-width header");
  btn.onclick();
+ assert.equal(p.document.getElementById("hhj-advanced-companion-shortcut").style.display,"none");
  assert.equal(p.document.getElementById("hhj-advanced-companion").style.display,"block");
  assert.match(p.document.getElementById("hhj-advanced-companion").children[1].innerHTML,/Gyms/);
  assert.equal(p.requests.length,0);
@@ -118,4 +121,16 @@ test("Advanced entry restores after stable v0.7 redraws the scrolling tab row",(
  for(const fn of p.timers)fn();
  assert.equal(p.nav.children.filter(x=>x.id==="hhj-advanced-companion-open").length,1,
    "Repeated restore intervals must never create duplicate Advanced buttons");
+});
+
+test("Independent ADV shortcut remains accessible before original HJ panel mounts",()=>{
+ const p=setup(true);
+ const btn=p.document.getElementById("hhj-advanced-companion-shortcut");
+ assert.ok(btn,"Companion should show ADV on the left even when stable HJ has not mounted");
+ assert.equal(p.document.getElementById("hhj-advanced-companion-open"),null,
+   "The in-HJ tab cannot be injected before HJ exists");
+ assert.equal(p.requests.length,0,"No automatic Torn API calls");
+ btn.onclick();
+ assert.equal(p.document.getElementById("hhj-advanced-companion").style.display,"block");
+ assert.equal(btn.style.display,"none");
 });
