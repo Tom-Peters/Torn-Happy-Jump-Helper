@@ -596,7 +596,7 @@
     return {ratio,message:ratio<0.8?"Actual change below the forecast":ratio>1.2?
       "Actual change above the forecast":"Recent gain is broadly in line with the forecast"};
   }
-  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection,actionOverview,shoppingList,snapshotDelta,learningIndicator,cooldownSensitivity};
+  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection,actionOverview,shoppingList,snapshotDelta,learningIndicator,cooldownSensitivity,refillStatus};
   if(typeof window!=="undefined"&&window.__TornHappyJumpStage)
     window.__TornHappyJumpStage.phase="engine-loaded";
   // Only export during a Node test, never on a real Torn page where another
@@ -610,6 +610,40 @@
   let inventoryWarning="",activeTab="today",showAll=false;
   let dataRevision=0,planMemo={key:"",result:null};
   const HISTORY_KEY="hhj-local-history-v1";
+
+  // Torn v2 /user/refills "energy" means whether the daily points refill
+  // has ALREADY BEEN USED. Treat missing/malformed data as unknown and never
+  // propose an immediate refill. Local user-confirmed use takes priority.
+  const REFILL_USED_KEY="hhj-daily-point-refill-used-v1";
+  const utcDate=at=>new Date(at*1000).toISOString().slice(0,10);
+  function refillStatus(payload,now=Date.now()/1000,manualDay=null){
+    const raw=payload?.refills?.energy;
+    const date=utcDate(now);
+    if(manualDay===date)return {status:"used",ready:false,used:true,source:"Confirmed manually",date};
+    if(raw===true)return {status:"used",ready:false,used:true,source:"Torn API",date};
+    if(raw===false)return {status:"ready",ready:true,used:false,source:"Torn API",date};
+    return {status:"unknown",ready:false,used:false,source:"Unavailable",date};
+  }
+  let manualRefillUsedDay=null;
+  try{
+    const day=localStorage.getItem(REFILL_USED_KEY);
+    if(day===utcDate(Date.now()/1000))manualRefillUsedDay=day;
+    else localStorage.removeItem(REFILL_USED_KEY);
+  }catch(_){}
+  function currentRefill(){
+    return refillStatus(data.refills,Date.now()/1000,manualRefillUsedDay);
+  }
+  function markRefillUsed(){
+    manualRefillUsedDay=utcDate(Date.now()/1000);
+    try{localStorage.setItem(REFILL_USED_KEY,manualRefillUsedDay);}catch(_){}
+    dataRevision++;planMemo.key="";selected="";render();
+  }
+  function clearRefillMark(){
+    manualRefillUsedDay=null;
+    try{localStorage.removeItem(REFILL_USED_KEY);}catch(_){}
+    dataRevision++;planMemo.key="";selected="";render();
+  }
+
   let localHistory=[];
   try{
     const history=JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]");
@@ -860,7 +894,7 @@
        boosterCooldown:data.cooldowns?.cooldowns?.booster||0,
        regenInterval:state.e.interval||120,regenIncrement:state.e.increment||1,
        regenFirstSeconds:state.e.tick_time||state.e.interval||120,
-       refillReady:data.refills?.refills?.energy===true,refillUsed:data.refills?.refills?.energy!==true,
+       refillReady:currentRefill().ready,refillUsed:!currentRefill().ready,
        available:true, // Plans while abroad are conditional until return.
        xanaxHours:cfg.xanaxHours,returnHours:cfg.returnHours,perkAudit};
   }
@@ -1031,8 +1065,9 @@
       action.kind==="refill"?"30-point energy refill":action.kind==="jump"?"Happy-jump preparation":action.kind;
     const beforeRefill=action.kind==="train"&&/before.*refill/i.test(action.detail);
     const then=details.today.find(x=>x.kind==="refill"&&x.time>=action.time&&x.time-action.time<=120);
-    const refill=data.refills?.refills?.energy===true?"Verified ready":
-      data.refills?.refills?.energy===false?"Already used today":"Not confirmed";
+    const refillInfo=currentRefill();
+    const refill=refillInfo.status==="used"?"Used today ("+refillInfo.source+")":
+      refillInfo.status==="ready"?"Available ("+refillInfo.source+")":"Unverified · no refill scheduled";
     const due=remaining>0?"In "+secs(remaining):remaining>-60?"Scheduled now":"Time passed · refresh to replan";
     return '<div class="card hero"><div class="between"><span class="label">NEXT PLANNED ACTION</span>'+
       '<span class="tiny">'+new Date(action.time*1000).toISOString().slice(11,16)+' UTC</span></div>'+
@@ -1334,7 +1369,17 @@
         tile('Energy',fmt(live.e.current)+' / '+fmt(live.e.maximum))+
         tile('Happiness',fmt(live.h.current)+' / '+fmt(live.h.maximum))+
         tile('Gym',live.selectedGym?.name||data.gym?.gym?.name||'Unknown')+
-        tile('Points refill',data.refills?.refills?.energy===true?'Ready':data.refills?.refills?.energy===false?'Used':'Unknown')+
+        tile('Points refill',currentRefill().status==='used'?'Used today':currentRefill().status==='ready'?'Available':'Unknown')+
+        '</div>'+
+        '<div class="card"><div class="between"><b>Today\'s 30-point refill</b><b>'+
+          (currentRefill().status==='used'?'Already used':
+          currentRefill().status==='ready'?'Not yet used':'Unknown')+
+        '</b></div><p class="tiny">Status from '+escape(currentRefill().source)+
+        '. “Used” means there is no second 30-point refill today. Next daily reset: 00:00 UTC.</p>'+
+        (currentRefill().status!=='used'?
+          '<button type="button" data-refill-used>Mark today\'s refill used</button>':
+          manualRefillUsedDay===utcDate(Date.now()/1000)?
+          '<button type="button" data-refill-clear>Clear local override</button>':'')+
         '</div>'+statPanel+gymOpportunity(input,live)+dataQualityPanel()+
         (input&&input.stat>=400000?'<div class="warn"><b>High-stat strategy matters</b>'+
         '<p>At this stat level, you should compare ordinary energy training with Happy stacking. The higher Happy is not automatically worth losing natural energy regeneration.</p></div>':'')+
@@ -1433,6 +1478,8 @@
     panel.querySelector('#hhj-close').onclick=()=>{opened=false;panel.style.display='none';};
     for(const btn of panel.querySelectorAll('#hhj-refresh'))btn.onclick=refresh;
     for(const btn of panel.querySelectorAll('[data-recheck]'))btn.onclick=refresh;
+    for(const btn of panel.querySelectorAll('[data-refill-used]'))btn.onclick=markRefillUsed;
+    for(const btn of panel.querySelectorAll('[data-refill-clear]'))btn.onclick=clearRefillMark;
     const resetHistory=panel.querySelector('[data-clear-history]');
     if(resetHistory)resetHistory.onclick=()=>{
       localHistory=[];try{localStorage.removeItem(HISTORY_KEY);}catch(_){}
@@ -1537,7 +1584,7 @@
     if(cfg.happyLoss!==0.25)tips.push("If you receive the Fitness Center Goal Oriented job bonus, select 0.25 Happy loss per E in Settings; otherwise the default remains 0.5.");
     if(cfg.dvdHappy!==5000)tips.push("An eligible Adult Novelties perk increases eDVD Happy; compare its job opportunity cost first.");
     if(data.perks && !input.perkAudit?.bonuses.length)tips.push("API perks were retrieved, but no gym multiplier was positively identified. Open Perks for an itemised audit and configure any missing bonuses manually.");
-    if(data.refills?.refills?.energy===false && cfg.refill!=="no")tips.push("The points refill has already been used today. The timetable excludes today's additional refill, but may schedule future daily refills.");
+    if(currentRefill().status==='used' && cfg.refill!=="no")tips.push("The daily point refill is already used today. No additional point refill should appear before the next UTC daily reset.");
     if(plans.options.some(p=>!p.known))tips.push("Some plans are excluded because they exceed your cash limit, lack verified item quotes, or cannot complete a Happy jump.");
     const natural=plans.naturalBenchmark;
     const bestXan=plans.baseline.filter(p=>p.id.includes("xanonly")&&p.known).sort((a,b)=>b.gain-a.gain)[0];
