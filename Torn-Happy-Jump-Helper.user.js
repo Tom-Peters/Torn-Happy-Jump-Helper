@@ -100,7 +100,8 @@
     const perks=clamp(input.candyPercent,0,800)/100;
     for (const s of candidates) {
       const dvdHappy=clamp(input.dvdHappy,2500,5000);
-      const perBoosterHours=s.count*0.5*(1-clamp(input.boosterReduction,0,0.75))+s.dvds*6;
+      const perBoosterHours=(s.count*0.5*(1-clamp(input.boosterReduction,0,0.75))+s.dvds*6)*
+        (1-clamp(input.consumableReduction||0,0,0.75));
       // A single jump must fit under the actual booster cooldown ceiling.
       // Consumable cooldown reductions do not reduce eDVD cooldowns.
       if (perBoosterHours>input.boosterCap) continue;
@@ -109,7 +110,7 @@
       const maxWeeklyByBooster=perBoosterHours>0?Math.floor(168/perBoosterHours):56;
       const jumps=Math.min(cap,maxWeeklyByBooster,Math.floor(168/lockHours));
       if(jumps<1)continue;
-      const boosterHappy=s.count*ITEMS[s.type].happy*(1+perks) + s.dvds*dvdHappy;
+      const boosterHappy=s.count*ITEMS[s.type].happy*(1+perks)*(input.candyBookMultiplier||1) + s.dvds*dvdHappy;
       const jumpHappy=Math.min(99999,2*(input.baseHappy+boosterHappy));
       const lostRegen=Math.min(168*input.regenHour,prepHours*jumps*input.regenHour);
       const weekRefill=input.refill?7*input.maxE:0;
@@ -249,7 +250,12 @@
     for(let t=start;t<end;t+=60){
       const day=Math.floor(t/86400);
       if(day!==lastDay){lastDay=day;jumpsToday=0;refilledToday=day===Math.floor(start/86400)&&opts.refillUsed===true;}
-      if(t%900===0)h=Math.min(h,input.baseHappy);
+      if(t%900===0){
+        // Torn gives 5 Happy every 15 minutes when below its base maximum.
+        // Above-maximum Happy resets unless Ignorance Is Bliss is active.
+        if(h>input.baseHappy&&!input.ignoreHappyReset)h=input.baseHappy;
+        else if(h<input.baseHappy)h=Math.min(input.baseHappy,h+5);
+      }
       if(t>start){
         boosterSeconds=Math.max(0,boosterSeconds-60);
         regenBank+=60;
@@ -263,7 +269,7 @@
       if(!isJump){
         if(e>=normalCap)train(t,"Natural-energy gym training");
         if(isXan&&t>=nextDrug&&canPay({xanax:1})){
-          consume(t,"xanax",1);e=Math.min(limit,e+250);nextDrug=t+cdX;
+          consume(t,"xanax",1);e=Math.min(limit,e+250);h=Math.min(99999,h+75);nextDrug=t+cdX;
           add(t,"xanax","Manually take Xanax • +250 E; assumed next drug availability "+new Date(nextDrug*1000).toISOString(),250);
           train(t,"Train Xanax energy promptly");
         }
@@ -273,7 +279,7 @@
         // cooldown to finish, then boost Happy and train at +1 min after :15.
         if(prep<requiredXan&&t>=nextDrug&&t>=nextXan&&
           e<limit&&canPay({xanax:1})){
-          consume(t,"xanax",1);e=Math.min(limit,e+250);prep++;
+          consume(t,"xanax",1);e=Math.min(limit,e+250);h=Math.min(99999,h+75);prep++;
           nextDrug=t+cdX;nextXan=nextDrug;
           add(t,"xanax","Manually stack Xanax "+prep+"/"+requiredXan+" • +250 E",250);
         }
@@ -285,7 +291,7 @@
           if(plan.dvds)required.dvd=plan.dvds;
           if(canPay(required)){
             for(const [k,v] of Object.entries(required))consume(t,k,v);
-            const boosterHappy=(plan.count||0)*ITEMS[plan.type].happy*(1+clamp(input.candyPercent,0,800)/100)
+            const boosterHappy=(plan.count||0)*ITEMS[plan.type].happy*(1+clamp(input.candyPercent,0,800)/100)*(input.candyBookMultiplier||1)
               +(plan.dvds||0)*input.dvdHappy;
             boosterSeconds+=boosterHours*3600;
             h=Math.min(99999,2*(h+boosterHappy));jumps++;jumpsToday++;
@@ -508,6 +514,12 @@
     const dots=cfg.gymOverride>0?clamp(cfg.gymOverride,0.1,20):(Number.isFinite(apiDots)?apiDots/10:0);
     const bval=state.bs[key]?.value;
     const perkAudit=auditPerks(data.perks,key);
+    const perksAll=perkAudit.rows.map(x=>x.description).join(" | ");
+    const activeGoalOriented=/goal oriented|reduce(?:s|d)?\s+(?:happy|happiness)\s+loss.*50\s*%/i.test(perksAll);
+    const activeDvd=/erotic.{0,8}dvd.{0,50}(?:double|100\s*%)/i.test(perksAll);
+    const activeCooldown=/self control is for losers|all consumable cooldowns.*50\s*%/i.test(perksAll);
+    const activeCandyBook=/yes please diabetes/i.test(perksAll);
+    const activeBliss=/ignorance is bliss/i.test(perksAll);
     if(!Number.isFinite(bval)||!dots||!Number.isFinite(state.h.maximum))return null;
     return {stat:bval,statName:key,baseHappy:state.h.maximum,dots,gymCost,
       mod:(1+clamp(cfg.modifierPercent,-50,300)/100)*(cfg.autoPerks?perkAudit.factor:1),
@@ -516,9 +528,11 @@
         : (state.maxE>=150?30:20),
       refill:cfg.refill!=="no",refillMode:cfg.refill,maxJumpsDaily:cfg.maxJumpsDaily,
       budget:cfg.budget,candyPercent:cfg.candyPercent,boosterReduction:cfg.boosterReduction,
-      dvdHappy:cfg.dvdHappy,boosterCap:cfg.boosterCap,
+       consumableReduction:activeCooldown?0.5:0,ignoreHappyReset:activeBliss,
+       candyBookMultiplier:activeCandyBook?2:1,
+      dvdHappy:activeDvd?Math.max(5000,cfg.dvdHappy):cfg.dvdHappy,boosterCap:cfg.boosterCap,
       books:Object.fromEntries(Object.entries(quotes).map(([k,v])=>[k,fresh(v)?v:null])),
-       owned:state.owned,inventoryReady:!!data.inventory,happyLoss:cfg.happyLoss,
+       owned:state.owned,inventoryReady:!!data.inventory,happyLoss:activeGoalOriented?0.25:cfg.happyLoss,
        now:Math.floor(Date.now()/1000),currentEnergy:state.e.current,
        currentHappy:state.h.current,drugCooldown:data.cooldowns?.cooldowns?.drug||0,
        boosterCooldown:data.cooldowns?.cooldowns?.booster||0,
