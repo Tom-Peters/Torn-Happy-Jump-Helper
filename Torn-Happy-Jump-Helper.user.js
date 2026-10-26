@@ -361,7 +361,7 @@
     const tile=(label,val)=>'<div class="tile"><div class="label">'+escape(label)+'</div><div class="metric">'+escape(val)+'</div></div>';
     const cost=x=>x.known?cash(x.cost):"Price unavailable";
     const noData='<div class="warn"><b>No verified plan yet.</b><p>Tap Refresh Torn data. A Limited API key is needed for battle stats. If your current gym was not identified, you can enter its dots in Settings.</p></div>';
-    const refresh='<div class="row" style="margin-bottom:12px"><button class="primary" id="hhj-refresh" type="button" '+
+    const refreshMarkup='<div class="row" style="margin-bottom:12px"><button class="primary" id="hhj-refresh" type="button" '+
       (busy||Date.now()-lastRefresh<60000?"disabled":"")+'>'+(busy?"Refreshing…":"↻ Refresh Torn data")+
       '</button><span class="tiny">'+(lastRefresh?"Updated "+new Date(lastRefresh).toLocaleTimeString():"Not loaded")+'</span></div>';
     const warnings=(inventoryWarning?'<div class="warn"><b>Inventory optional</b><p>'+escape(inventoryWarning)+'</p></div>':'')+
@@ -378,7 +378,7 @@
       '<div class="card">Battle stats will appear here after a successful API refresh. No personal stats are stored in the GitHub repository.</div>';
     let body='';
     if(activeTab==='today'){
-      body=refresh+warnings+'<h2>Your next training decision</h2><div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
+      body=refreshMarkup+warnings+'<h2>Your next training decision</h2><div class="status" id="hhj-timer">Calculating cooldowns…</div>'+
         (recommended?'<div class="card hero"><div class="label">'+
         (cfg.objective==='value'?'BEST VALUE RECOMMENDATION':'FASTEST GROWTH RECOMMENDATION')+'</div>'+
         '<h2>'+escape(recommended.name)+'</h2><div class="metric">'+fmt(recommended.gain)+' <span style="font-size:13px">stats/week</span></div>'+
@@ -401,7 +401,7 @@
         ' · Budget '+cash(cfg.budget)+'</p><div class="btnrow">'+
         '<button data-goal="growth" '+(cfg.objective==='growth'?'class="primary"':'')+'>Maximum stats</button>'+
         '<button data-goal="value" '+(cfg.objective==='value'?'class="primary"':'')+'>Best value</button></div>';
-      if(!plans)body+=refresh+warnings+noData;
+      if(!plans)body+=refreshMarkup+warnings+noData;
       else{
         const base=plans.baseline[0];
         const ranked=[...list].sort((a,b)=>{
