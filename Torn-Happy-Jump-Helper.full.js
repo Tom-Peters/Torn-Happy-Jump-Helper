@@ -175,7 +175,7 @@
       drugCooldown:input.drugCooldown,boosterCooldown:input.boosterCooldown,
       refillUsed:input.refillUsed,regenInterval:input.regenInterval,
       regenIncrement:input.regenIncrement,available:input.available,
-      xanaxHours:input.xanaxHours};
+      xanaxHours:input.xanaxHours,ecstasyHours:input.ecstasyHours||3.6};
     for(const refill of modes){
       const plans=strategies({...input,refill});
       for(const [kind,entries] of [["baseline",plans.baseline],["options",plans.options]]){
@@ -211,7 +211,7 @@
   // assumptions, not a guarantee of random drug cooldowns or human attendance.
   function schedule(input, plan, from, opts={}) {
     const start=Math.ceil(from/60)*60, end=start+7*86400, cdX=clamp(opts.xanaxHours||7,6,8)*3600,
-      cdE=clamp(opts.ecstasyHours||4,3,5)*3600, normalCap=Math.max(1,input.maxE),
+      cdE=clamp(opts.ecstasyHours||3.6,200/60,231/60)*3600, normalCap=Math.max(1,input.maxE),
       limit=1000, regenInterval=Math.max(30,opts.regenInterval||120),
       energyInc=Math.max(1,opts.regenIncrement||1), available=opts.available!==false;
     const activity=[], counts={}, initialEnergy=clamp(opts.energy??normalCap,0,limit);
@@ -527,6 +527,22 @@
       {...p,weeks:null,eta:null,cost:null});
   }
 
+  function cooldownSensitivity(input,plan){
+    if(!input||!plan?.timeline)return null;
+    const start=plan.timeline.start;
+    const shared={energy:input.currentEnergy,happy:input.currentHappy,
+      drugCooldown:input.drugCooldown,boosterCooldown:input.boosterCooldown,
+      refillUsed:input.refillUsed,regenInterval:input.regenInterval,
+      regenIncrement:input.regenIncrement,regenFirstSeconds:input.regenFirstSeconds,
+      available:input.available};
+    const quick=schedule(input,plan,start,{...shared,xanaxHours:6,ecstasyHours:200/60});
+    const slow=schedule(input,plan,start,{...shared,xanaxHours:8,ecstasyHours:231/60});
+    const mid=plan.timeline;
+    const cases=[quick,slow,mid].filter(x=>x.known&&!x.overBudget);
+    if(!cases.length)return {min:null,max:null,quick,slow,mid};
+    return {min:Math.min(...cases.map(x=>x.gain)),max:Math.max(...cases.map(x=>x.gain)),
+      quick,slow,mid};
+  }
   function actionOverview(plan,now=Date.now()/1000,hours=24){
     const t=plan?.timeline;
     if(!t)return {next:null,today:[],tomorrow:[],gain24:0,gain7:0,byDay:[]};
@@ -572,7 +588,7 @@
     return {ratio,message:ratio<0.8?"Actual change below the forecast":ratio>1.2?
       "Actual change above the forecast":"Recent gain is broadly in line with the forecast"};
   }
-  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection,actionOverview,shoppingList,snapshotDelta,learningIndicator};
+  const Engine={ITEMS,marketCost,quotePrice,gainTrain,gainRegular,baseline,strategies,score,schedule,auditPerks,bookAdvice,BOOK_INFO,gymCatalog,gymEligibility,gymSuggestions,trainingPerkRows,targetProjection,actionOverview,shoppingList,snapshotDelta,learningIndicator,cooldownSensitivity};
   if(typeof window!=="undefined"&&window.__TornHappyJumpStage)
     window.__TornHappyJumpStage.phase="engine-loaded";
   // Only export during a Node test, never on a real Torn page where another
