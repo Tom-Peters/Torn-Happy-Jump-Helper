@@ -55,7 +55,7 @@
 - [x] Minute-resolution UTC action timetable for the next seven days, user-confirmed parameters and 6–8h Xanax cooldown assumption
 - [x] Re-rank alternatives by simulated gym energy, stats and actual item spends under a weekly budget, including no-refill alternatives
 - [x] Per-week/per-Happy-jump switch (not applicable for non-jump plans)
-- [x] Fetch actual user perks, merits, education, job, stocks, property and faction upgrades without game actions
+- [x] Fetch `user/perks` for consolidated active faction, job, property, education, stock, merit and book effect descriptions without game actions
 - [x] Apply identifiable positive gym gain effects and selected active book / company / faction bonuses without misclassifying passive effective combat stats
 - [x] Fetch Book category and explain consumed-copy uncertainty
 - [x] Save-for-200m advice for four stat books and approximate 31-day gym book scenario gains
