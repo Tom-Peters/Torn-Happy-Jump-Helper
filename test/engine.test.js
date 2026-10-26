@@ -158,3 +158,58 @@ test("stock benefit or passive fighting merit never silently adds gym multiplier
   assert.ok(!p.rows.find(x=>x.category==="merit").applied);
   assert.ok(!p.rows.find(x=>x.category==="stock").applied);
 });
+
+test("gym catalogue uses public metadata only, never proof of user access",()=>{
+  const g=E.gymCatalog({gyms:[
+    {id:1,name:"My gym",cost:100,energy_cost:10,modifiers:{dexterity:60}},
+    {id:2,name:"Better gym",cost:1000,energy_cost:10,modifiers:{dexterity:75}},
+    {id:3,name:"Locked gym",cost:2000,energy_cost:10,modifiers:{dexterity:90}},
+    {id:4,name:"High gym",cost:2000,energy_cost:50,modifiers:{dexterity:80}}
+  ]});
+  const context={energy:150,happy:5025,stat:1000000,mod:1,happyLoss:0.5};
+  const res=E.gymSuggestions(g,1,{"2":"buy","3":"locked"},"dexterity",
+    {strength:1300000,speed:2000000,defense:1200000,dexterity:1000000},context);
+  assert.equal(res.length,2);
+  assert.ok(res.some(x=>x.name==="My gym"&&x.status==="active"));
+  assert.ok(res.some(x=>x.name==="Better gym"&&x.status==="buy"&&x.improvement>0));
+  assert.ok(!res.some(x=>x.name==="Locked gym"));
+  assert.ok(!res.some(x=>x.name==="High gym"));
+});
+test("unverified specialist gyms and ineligible specialist ratios are excluded",()=>{
+  const g=E.gymCatalog({gyms:[
+    {id:1,name:"Cha Cha's",energy_cost:10,modifiers:{dexterity:70}},
+    {id:2,name:"Balboas Gym",energy_cost:25,modifiers:{dexterity:75}},
+    {id:3,name:"Elites",energy_cost:50,modifiers:{dexterity:80}}
+  ]});
+  const weakDex={strength:1300000,speed:2000000,defense:1200000,dexterity:1000000};
+  const opts=E.gymSuggestions(g,1,{"2":"buy","3":"buy"},"dexterity",weakDex,
+    {energy:150,happy:5000,stat:1000000,mod:1});
+  assert.equal(opts.length,1);
+  const strongDex={strength:900000,speed:900000,defense:900000,dexterity:2500000};
+  assert.ok(E.gymEligibility(g[1],strongDex));
+  assert.ok(E.gymEligibility(g[2],strongDex));
+});
+test("training-relevant perk filter removes combat-only and finance entries",()=>{
+  const rows=[
+    {category:"merit",description:"+25% effective combat speed"},
+    {category:"stock",description:"+10% bank interest"},
+    {category:"job",description:"+10% gym training gains"},
+    {category:"faction",description:"Reduce booster cooldown by 20%"},
+    {category:"property",description:"+2% Gym Gains (Swimming Pool)"},
+    {category:"stock",description:"Free education courses"}
+  ];
+  const visible=E.trainingPerkRows(rows);
+  assert.equal(visible.length,3);
+  assert.ok(visible.some(x=>x.description.includes("booster")));
+});
+test("compounding long-term milestones have ordered ETAs and cost budgets",()=>{
+  const i=input({stat:1007916,statName:"dexterity",dots:7,now:1793000000});
+  const milestones=E.targetProjection(i,250000,9000000,[50000000,100000000,200000000,1000000000]);
+  assert.equal(milestones.length,4);
+  assert.ok(milestones.every(x=>x.weeks===null||Number.isInteger(x.weeks)));
+  const reached=milestones.filter(x=>x.weeks!==null);
+  for(let n=1;n<reached.length;n++)assert.ok(reached[n].weeks>=reached[n-1].weeks);
+  assert.ok(reached.every(x=>x.cost===x.weeks*9000000));
+  const done=E.targetProjection({...i,stat:200000000},250000,9000000,[50000000]);
+  assert.equal(done[0].weeks,0);
+});
