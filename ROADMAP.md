@@ -15,17 +15,29 @@
 - [x] Model warnings, missing-price detection, rate limiter, local preferences
 - [x] Unit tests for price depth, boost limits, stats, and missing data
 
-## v0.2 — Priority accuracy work
+## v0.2 — Delivered usability, API resilience and goal controls
+
+- [x] High-contrast dark mode + optional bright mode
+- [x] Overview, Compare, Steps, Settings tabs, large tap targets and readable plan cards
+- [x] Automatically target the weakest battle stat or focus an individual stat
+- [x] Choose maximum stat growth or best incremental return on spending
+- [x] Optimise across both point-refill and no-refill training methods under one budget
+- [x] Category-specific inventory fetch; graceful fallback for Torn API error 21 or incomplete pages
+- [x] Travel destination read from Torn API with visible abroad/flying warning
+- [x] Simulated TornPDA UI test for navigation, API error 21, travel and no gameplay writes
+- [x] 15 engine/UI tests passing in local simulation
+
+## v0.3 — Priority accuracy work
 
 - [ ] **Calibrate gym gains**: manually entered actual train observations (energy, happy, exact gain), compare predicted vs actual and generate confidence bands; do not store raw player history in repository.
 - [ ] **Discrete event 7-day schedule simulation**, with actual reset boundaries, intermittent online hours, drug cooldown as interval (6–8h Xanax, 200–231 min Ecstasy), booster cooldown rollover, natural energy ticks, daily refill timing and Happy expiry. Separate sustained strategy from one-off jump.
 - [ ] **Optimise mixtures**, rather than predefined recipes: bounded integer optimiser over booster combinations, drug timing, energy drinks, points and inventory; Pareto frontier of dollars, stat gains, sleep/activity time and OD/addiction exposure.
-- [ ] **Refill availability today** incorporated into a dated schedule (the current weekly model assumes an average of seven available future refills).
+- [ ] **Refill availability today** incorporated into a dated schedule (v0.2 now compares refill and no-refill strategies, but assumes seven future daily refills when enabled).
 - [ ] **Inventory pagination** beyond 250 items and API cache age display per category.
 - [ ] **Gym eligibility / unlocked state**: source actual eligibility before recommending swaps; never assume every gym in global listing can be selected.
 - [ ] **Market slippage**: compute affordable weekly purchase quantities, fallback for missing depth and partial buys, option to compare city-shop candy separately (purchases always manual).
 
-## v0.3 — Broader stat growth strategy
+## v0.4 — Broader stat growth strategy
 
 - [ ] Side-by-side normal training, regular Xanax, low-addiction candy jumps, full eDVD jumps, FHC/energy drinks, books, gym changes, point-refill strategies and stat enhancers.
 - [ ] Realistic addiction/rehab cost and time budget, overdose probability ranges and lost-energy scenarios.
@@ -35,7 +47,7 @@
 - [ ] Graduation alert: stop Happy jumping when expected incremental gains no longer beat direct energy training after opportunity cost.
 - [ ] Goal planner: choose target stats/ratios and budget horizon, simulate time and spending to reach them.
 
-## v0.4 — Insights & tracking
+## v0.5 — Insights & tracking
 
 - [ ] Optional opt-in **on-device** manual gain diary, sparklines, projection-vs-observed error, weekly stat velocity and spend efficiency.
 - [ ] Local export/import without keys, tokens or personal details in publicly published assets.
