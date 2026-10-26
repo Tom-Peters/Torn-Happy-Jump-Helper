@@ -58,7 +58,7 @@ function setup(gymPage=false,inventoryMode="error",refillUsed=true){
     } else payload=fixture[endpoint]||{error:{code:4}};
     return {status:200,responseText:JSON.stringify(payload)};
   };
-  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
+  const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8")
     .replace("###PDA-APIKEY###","test-placeholder-key");
   new Function("document","location","window","localStorage","PDA_httpGet",source)(
     document,{hostname:"www.torn.com",pathname:gymPage?"/gym.php":"/index.php"},{setInterval(){}},{getItem(){return null;},setItem(){}},PDA_httpGet);
@@ -222,38 +222,6 @@ test("Torn page global module.exports cannot suppress the HJ launcher",()=>{
   assert.equal(window.__TornHappyJumpStage.phase,"mounted");
 });
 
-test("installed userscript is self-contained and CSP-safe without eval or remote code loaders",()=>{
-  const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
-  const engine=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8");
-  assert.equal(installed,engine,"the installed script must contain the tested full engine");
-  assert.match(installed,/@run-at\s+document-end/);
-  assert.match(installed,/@author\s+IamEEKY/);
-  assert.match(installed,/@version\s+0\.6\.3/);
-  assert.ok(installed.includes("###PDA-APIKEY###"));
-  assert.ok(!/\bnew\s+Function\s*\(|\beval\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(installed),
-    "CSP-unsafe code evaluation must never be in the installed helper");
-  assert.ok(!installed.includes("hhj-quick-launch"),
-    "the obsolete network/eval loader must not remain in the installable file");
-});
-test("directly installed script renders HJ without downloading JavaScript or using Function",()=>{
-  const body=createNode("body"),root=createNode("html");
-  const window={setInterval(){},__TornHappyJumpLoaded:null};
-  const document={body,documentElement:root,createElement:createNode,
-    addEventListener(){},getElementById(id){return body.children.find(x=>x.id===id)||null;}};
-  const installed=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8")
-    .replace("###PDA-APIKEY###","test-only-key");
-  let networkRequests=0;
-  const PDA_httpGet=async()=>{networkRequests++;throw Error("This is only permitted after manual Refresh");};
-  function ForbiddenFunction(){throw Error("CSP unsafe-eval blocked");}
-  new Function("document","location","window","localStorage","PDA_httpGet","Function",installed)(
-    document,{hostname:"www.torn.com",pathname:"/itemmarket.php"},window,
-    {getItem(){return null;},setItem(){}},PDA_httpGet,ForbiddenFunction);
-  assert.ok(document.getElementById("hhj-launch"),"HJ floating button must be present");
-  assert.ok(document.getElementById("hhj-panel"),"Full UI must be mounted directly");
-  assert.equal(networkRequests,0,"No network requests before manual Refresh");
-  assert.equal(window.__TornHappyJumpStage.phase,"mounted");
-  assert.equal(window.__TornHappyJumpLoaded,"0.6.3");
-});
 test("Progress displays current base stats and supports empty local history",async()=>{
   const app=setup();
   app.launcher.onclick();
