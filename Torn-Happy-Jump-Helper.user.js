@@ -600,6 +600,80 @@
     const refreshButton=panel.querySelector("#hhj-refresh");
     if(refreshButton&&!busy)refreshButton.disabled=Date.now()-lastRefresh<60000;
   }
+
+  function showSchedule(plan,mode="week"){
+    const timeline=plan?.timeline,events=timeline?.events||[];
+    if(!timeline)return '<div class="warn">Refresh live data to build a dated schedule.</div>';
+    const jumpEvents=events.filter(x=>x.kind==="jump");
+    const weekGain=fmt(timeline.gain),perJump=jumpEvents.length?fmt(timeline.gain/jumpEvents.length):"Not a jump";
+    const selector='<div class="btnrow"><button type="button" data-view="week" '+(mode==="week"?'class="primary"':'')+
+      '>Per week</button><button type="button" data-view="jump" '+(mode==="jump"?'class="primary"':'')+'>Per jump</button></div>';
+    const hero='<div class="card hero"><h3>Estimated '+(mode==="jump"?"gain per Happy jump":"seven-day gain")+'</h3>'+
+      '<div class="metric">'+(mode==="jump"?perJump:weekGain)+'</div>'+
+      '<p>'+fmt(timeline.jumps)+' jumps/week · '+fmt(timeline.energyTrained)+' E trained/week · '+
+      fmt(timeline.lostRegen)+' E regeneration lost</p>'+
+      '<p>Planned spend: '+(timeline.known?cash(timeline.cost):"Unknown or over budget")+'</p></div>';
+    const eligible=mode==="jump"?events.filter(x=>x.kind==="jump"||x.kind==="train"||x.kind==="refill"):events;
+    const cutoff=showAll?eligible:eligible.slice(0,35);
+    const dates=cutoff.map((event,i)=>{
+      const time=new Date(event.time*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";
+      return '<div class="card"><div class="between"><span class="label">'+time+'</span>'+
+        '<span class="tiny">'+escape(event.kind.toUpperCase())+'</span></div>'+
+        '<p>'+escape(event.detail)+'</p></div>';
+    }).join("");
+    const note='<div class="warn"><b>Scheduled timestamps are conditional.</b>'+
+      '<p>These times assume every planned click is made exactly when shown, no overdoses and a '+timeline.assumptions.xanaxHours+
+      '-hour Xanax cooldown. Torn drug cooldowns vary; refresh after each actual action. Gym training is only possible when in Torn.'+
+      ' The script never performs these actions.</p></div>';
+    return selector+hero+
+      '<h3>UTC action timetable</h3>'+
+      (!events.length?'<div class="warn">No executable training events for this configuration. Check permissions, prices and cooldowns.</div>':dates)+
+      (eligible.length>35?'<button id="hhj-more"> '+(showAll?"Show first 35":"Show all "+eligible.length+" actions")+'</button>':'')+
+      note;
+  }
+  function showBonuses(input,live){
+    const dataReady=!!data.perks,perks=input?.perkAudit||auditPerks(data.perks,cfg.stat);
+    const groups=["faction","job","property","education","enhancer","book","stock","merit"];
+    const job=data.job?.job,merits=data.merits?.merits?.upgrades||[],
+      holdings=data.stocks?.stocks||[], education=data.education?.education,
+      property=data.property?.property;
+    const stats=Object.fromEntries(STATS.map(k=>[k,live.bs[k]?.value||0]));
+    const rawBooks=data.inventory?.inventory?.items?.filter(i=>i.id>=744&&i.id<=787)||null;
+    const books=bookAdvice(rawBooks,stats,input?.stat>0?input.stat*0+((input&&input.dots)?gainTrain(1000,input.baseHappy,input.stat,input.dots,input.mod,input.gymCost,input.happyLoss)*7:0):0);
+    let out='<h2>Passive effects & books</h2><p class="muted">Read-only source audit. Only recognised gym-gain perks influence the model; combat-effective merits do not count as gym gains.</p>'+
+      '<div class="card hero"><div class="label">Detected training perk multiplier</div><div class="metric">'+
+      (dataReady?(perks.factor*100).toFixed(2)+"%":"Not loaded")+'</div>'+
+      '<p>'+ (cfg.autoPerks?"Auto-recognised gym gain perks are included.":"Automatic bonuses disabled in Settings.")+
+      ' Manual bonus: '+fmt(cfg.modifierPercent)+'% (check it does not duplicate API effects).</p>'+
+      '<p class="tiny">Other active benefits may affect happy, energy, refill size, cooldowns or effective combat stats. These are shown but not automatically turned into unsupported training multipliers.</p></div>';
+    if(!dataReady)out+='<div class="warn">Perk details are not available from this refresh. Any benefits still missing are not included in the gain multiplier.</div>';
+    for(const k of groups){
+      const rows=perks.rows.filter(x=>x.category===k);
+      out+='<details class="card" '+(k==="faction"||k==="job"?"open":"")+'><summary>'+k[0].toUpperCase()+k.slice(1)+
+        ' — '+rows.length+' active descriptions</summary>'+
+        (rows.length?'<ul>'+rows.map(x=>'<li>'+escape(x.description)+(x.applied?' <span class="good">[Modelled as gym gain]</span>':' <span class="tiny">[Informational / not quantified]</span>')+'</li>').join("")+'</ul>':
+          '<p class="tiny">No confirmed perks returned for this source.</p>')+'</details>';
+    }
+    out+='<div class="card"><h3>Account context</h3>'+
+      '<p>Company: '+escape(job?.name||job?.type||"Unknown")+
+      (Number.isFinite(job?.rating)?" · "+job.rating+" stars":"")+'</p>'+
+      '<p>Property: '+escape(property?.name||property?.property?.name||"Current happy already reflected in bars")+'</p>'+
+      '<p>Merit upgrades: '+(data.merits?merits.length+" recorded":"API unavailable")+'</p>'+
+      '<p>Completed education courses: '+(education?education.complete.length:"API unavailable")+'</p>'+
+      '<p>Held stock types: '+(data.stocks?holdings.length:"API unavailable")+'</p>'+
+      '<p>Faction upgrade API: '+(data.faction?"Available; refer to faction perks above":"Unavailable or faction access not granted")+'</p>'+
+      '<p class="tiny">Company, property, faction and stock descriptions are sourced from Torn. Stock dividends and job points are not assumed to have been claimed or redeemed.</p></div>';
+    out+='<h2>Your books</h2>'+
+      (rawBooks===null?'<div class="warn"><b>Book inventory unavailable.</b><p>Inventory can fail independently (including error 21). No ownership or unused status has been assumed.</p></div>':
+      !books.length?'<div class="card">No books appeared in the returned book inventory. This does not prove you own none if a category response was incomplete.</div>':
+      books.map(b=>'<div class="card"><h3>'+escape(b.name)+'</h3>'+
+        '<p>'+escape(b.recommendation)+'</p>'+
+        (b.threshold?'<p class="good">Maximum value at '+fmt(b.threshold)+' '+escape(b.stat)+'.</p>':'')+
+        (b.forecast?'<p class="muted">Illustrative timing: '+escape(b.forecast)+'.</p>':'')+
+        '<p class="tiny">'+escape(b.ownership)+'</p></div>').join(""))+
+      '<div class="warn">Books are unique and usually provide one 31-day use. Used books remain as display copies in inventory: check the item in Torn before treating this as a usable asset. No book is automatically used.</div>';
+    return out;
+  }
   function render(){
     if(!opened)return;
     const live=readyState(), input=buildInput(), plans=input?score(input):null;
