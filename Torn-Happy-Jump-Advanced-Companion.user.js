@@ -1,17 +1,19 @@
 // ==UserScript==
 // @name         Torn Happy Jump Advanced Companion
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#companion
-// @version      0.9.0
+// @version      0.9.1
 // @description  Read-only perks, book timing, gyms and stat goals for stable HJ 0.7
 // @author       IamEEKY
 // @match        https://www.torn.com/*
 // @match        https://torn.com/*
 // @run-at       document-end
+// @updateURL    https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Advanced-Companion.user.js
+// @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Advanced-Companion.user.js
 // @grant        none
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", API="https://api.torn.com/v2", VER="0.9.0", ID="hhj-advanced-companion";
+const KEY="###PDA-APIKEY###", API="https://api.torn.com/v2", VER="0.9.1", ID="hhj-advanced-companion";
 if(!/^(www\.)?torn\.com$/i.test(location.hostname))return;
 const ST=["strength","defense","speed","dexterity"];
 const BOOKS={744:["strength","stat"],745:["speed","stat"],746:["defense","stat"],747:["dexterity","stat"],
@@ -238,18 +240,34 @@ function show(){
  (errors.length?box("Unavailable sources",errors.map(e=>'<p class="hhja-small">'+esc(e)+'</p>').join("")):"")+
  '<p class="hhja-small">IamEEKY · Read-only training analysis · '+VER+'</p>';
 }
+let watching=null;
+function launchAdvanced(){
+ panel.style.display="block";
+ show();
+}
 function attach(){
  const base=document.getElementById("hhj-compact-panel");
  if(!base||!document.body)return;
  if(!document.getElementById(panel.id))document.body.appendChild(panel);
  if(!document.getElementById(css.id))(document.head||document.body).appendChild(css);
- const baseHeader=base.firstElementChild||base.children?.[0];
- if(baseHeader&&!document.getElementById(ID+"-open")){
+ // The stable helper redraws its tab row by assigning innerHTML. Attaching
+ // after the title/version/close header was clipped on narrow TornPDA screens.
+ // Inject into the actual horizontally scrolling tab row instead.
+ const tabs=base.querySelector?.(".tabs");
+ if(tabs&&!tabs.querySelector?.("#"+ID+"-open")){
   const button=document.createElement("button");
   button.id=ID+"-open";button.textContent="Advanced";button.type="button";
-  button.style.cssText="background:#087f77;color:white;border:1px solid #7ae9d8;border-radius:8px;padding:7px 9px;font:700 12px system-ui";
-  button.addEventListener("click",()=>{panel.style.display="block";show()});
-  baseHeader.appendChild(button);
+  button.setAttribute("aria-label","Open Happy Jump Advanced Companion");
+  button.style.cssText="flex:0 0 auto!important;min-width:88px!important;white-space:nowrap!important;background:#087f77!important;color:#fff!important;border:2px solid #7ae9d8!important;border-radius:8px!important;padding:8px 12px!important;font:700 12px system-ui!important;visibility:visible!important;opacity:1!important;";
+  button.addEventListener("click",launchAdvanced);
+  if(typeof tabs.insertBefore==="function")tabs.insertBefore(button,tabs.firstChild);
+  else if(typeof tabs.prepend==="function")tabs.prepend(button);
+  else tabs.appendChild(button);
+ }
+ if(typeof MutationObserver==="function"&&watching!==base){
+  watching=base;
+  const observer=new MutationObserver(()=>attach());
+  observer.observe(base,{subtree:true,childList:true});
  }
 }
 panel.addEventListener("click",event=>{
@@ -266,6 +284,6 @@ panel.addEventListener("click",event=>{
  }
 });
 attach();document.addEventListener?.("DOMContentLoaded",attach,{once:true});
-window.setInterval(attach,3000);
+window.setInterval(attach,1000);
 if(typeof window!=="undefined")window.__HHJAdvancedCompanion=VER;
 })();
