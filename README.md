@@ -66,16 +66,18 @@ To validate locally, run `npm run check` (syntax, unit and simulated TornPDA int
 
 `v0.2` is a working beta verified by simulated API/browser fixtures. It has **not** been tested against your actual live TornPDA session. Timers use the last manual snapshot; the weekly model is a capacity approximation, not a validated minute-by-minute scheduler.
 
-## Troubleshooting — missing HJ launcher (v0.4.1)
+## Troubleshooting — missing HJ launcher (v0.4.2)
 
-The launcher should appear as a contrasting **HJ ◉** pill around the middle-right side of Torn's page. v0.4.1 specifically fixes startup before `document.body` exists and remounts the launcher after Torn navigates or replaces the page body. The remount check is DOM-only and makes **no API calls**. A launcher click also displays a self-contained error message if the dashboard cannot render.
+**Important:** editing GitHub does **not** guarantee that TornPDA's already-installed copy was updated. In TornPDA Settings → Advanced Browser Settings → Manage Scripts, explicitly **Update** the Happy Jump Helper from its raw URL, or delete only that script and re-import the latest source. Confirm version **0.4.2**, enabled state, and injection time **END**, then reload a `torn.com` page in TornPDA.
 
-1. In TornPDA's **Manage Scripts**, confirm **Torn Happy Jump Helper** is enabled and its injection timing is **END**.
-2. Open `https://www.torn.com/` in TornPDA's own browser (not an external browser), then reload the page.
-3. If the HJ pill is still missing, open the script in TornPDA and replace it with the [current raw script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js); make sure there are no duplicate copies enabled.
-4. For error details, TornPDA's Developer Tools are available from its browser title/URL menu → **Open Dev Tools** → **Terminal**. The helper does not replace the app's developer console.
+v0.4.2 adds `@run-at document-end`, fixes a startup early-exit if the game page exposes a global `module.exports`, delays stylesheet insertion until the body exists and uses a visibly styled middle-right HJ button. It still periodically restores the UI if Torn replaces the page body. Tests exercise each of these start-up conditions.
 
-The fix is covered by an automated test that injects the script before the DOM has a body, then replaces that body and verifies the launcher returns. Live device compatibility still requires a manual check.
+**If it is still missing**, install the separate [HJ Injection Test](Torn-HJ-Injection-Test.user.js) using its raw GitHub URL, with injection END. Its small **HJ TEST ✓** button should appear on the left. The test makes **zero** Torn API calls and does not perform game actions. Tap it to confirm scripts execute.
+
+- **HJ TEST appears but HJ does not:** the helper is not being installed or executed correctly, or is hitting an early error; inspect TornPDA Dev Tools → Scripts/Terminal, confirm v0.4.2, and send the visible error text.
+- **Neither button appears:** check TornPDA's global userscript enabled toggle, the individual script enabled status, matching Torn domain and injection END. This indicates a script-injection / installation issue, not a stat-calculation bug.
+
+Remove or disable the diagnostic script after confirming execution.
 
 ## Install
 
