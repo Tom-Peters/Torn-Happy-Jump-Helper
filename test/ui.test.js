@@ -217,7 +217,7 @@ test("Torn page global module.exports cannot suppress the HJ launcher",()=>{
   assert.ok(document.body.children.some(x=>x.id==="hhj-panel"));
   assert.equal(foreignModule.exports.otherScript,true);
   assert.ok(!foreignModule.exports.schedule,"foreign module should not be overwritten");
-  assert.equal(window.__TornHappyJumpLoaded,"0.5.0");
+  assert.equal(window.__TornHappyJumpLoaded,"0.6.0");
   assert.equal(window.__TornHappyJumpStage.phase,"mounted");
 });
 
@@ -250,7 +250,7 @@ test("tiny TornPDA launcher appears before it downloads the heavyweight engine",
       real.id="hhj-launch";
       real.click=()=>{clicked++;};
       body.appendChild(real);
-      window.__TornHappyJumpLoaded="0.5.0";
+      window.__TornHappyJumpLoaded="0.6.0";
     };
   }
   new Function("document","window","location","PDA_httpGet","Function",installed)(
