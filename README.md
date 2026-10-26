@@ -4,6 +4,32 @@
 
 An on-demand, live-API planning panel for Torn training. It **never performs Torn gameplay actions**: no item use, gym training, purchases, refills, background scraping, simulated taps, or automatic gameplay requests.
 
+## Version 0.3 — Conditional 7-day schedules and passive-effect audits
+
+**This is a read-only forecast, not automated gameplay.**
+
+### Exact clock times with explicit uncertainty
+
+- The planner simulates a **UTC timestamped action sequence** in 60-second increments across seven days, regenerating natural energy, recovering 5 Happy at the 15-minute marks, honouring cooldowns, holding energy at its proper caps, resetting temporarily elevated Happy and respecting the daily refill and budget. Each predicted action is clearly **manual**.
+- Each scenario is ranked using its **simulated total weekly gym gain**, rather than the older estimated jump-capacity score. It counts only actions it could actually afford and complete during the simulated week.
+- Future Xanax cooldown lengths are **random (6–8 hours)**. The schedule uses a user-configurable assumed duration (7 hours by default), and four-hour illustrative Ecstasy cooldown; actual timers, overdose risk, market stock, missed check-ins, travel times and game changes will require manual refresh/replanning. Times are exact **given the assumptions**, not guaranteed in-game timestamps.
+- Being abroad: if you know your return time, enter **Hours until return**; otherwise all listed gym times are **hypothetical until you return to Torn**.
+- The mobile **Compare** and **Plan** pages let you switch **Per Week / Per Happy Jump**. Non-jump strategies show *No Happy jump* instead of a misleading number.
+- The **Overview** describes *why* a winning Xanax-only schedule may beat Happy jumps, with the energy actually trained, lost regeneration, item cost and predicted stat growth for each scenario.
+
+### Passive effects and books
+
+- User-initiated API v2 reads: `user/perks`, `user/merits`, `user/education`, `user/job`, `user/property`, `user/stocks` and `faction/upgrades`, in addition to bars, gym, cooldowns, inventory, travel, markets and refills.
+- The Perks tab shows actual source descriptions, **not invented or guessed bonuses**. Verified, positive gym-gain percentage descriptions are multiplied into the training estimate by source and target stat. Other effects are visible but are not silently treated as a gym-gain percentage. Merits affecting effective combat stats are **not** interchangeable with gym gains.
+- Current maximum Happy and max Energy are taken from bars, reflecting property / qualifying effects already included in those API values.
+- Recognisable current active perks for Goal Oriented Happy loss, doubled eDVDs, 50% consumable cooldown book, doubled-candy book, Ignorance Is Bliss reset exemption and eligible faction Candy happy percentage are also factored in if identified. Non-recognised descriptions and stock dividends, employee job points, faction point perks or unclaimed rewards require review rather than being fictionalised.
+- Fetches **Book-category inventory** with the same conservative treatment as other optional inventory categories. Detects training-relevant books, predicts their theoretical upside, and recommends when to **SAVE**.
+- The four books that grant 5% of a stat, capped at 10,000,000, have their full mathematical value once the **specific base stat reaches 200,000,000**. Prior to that, the helper shows your current potential and a planning target; its time-to-target estimate is conditional.
+- For 31-day gym training books, displays illustrative additional gains from the current weekly pace, while explaining that saving them for a high-output month can be worthwhile.
+- **Important limitation:** Torn keeps unusable copies of previously read books in inventory. API inventory alone does not prove the displayed book is still unused. The dashboard will not recommend consuming anything automatically or pretend to verify unused status.
+
+To validate locally, run `npm run check` (syntax, unit and simulated TornPDA interface checks). The model has not been verified against the user's live TornPDA account, so labels deliberately distinguish confirmed API values, user assumptions and projections.
+
 ## Version 0.2: mobile usability and budget optimisation
 
 - **Four readable tabs**: Overview, Compare, Steps, Settings. High-contrast dark theme by default and an optional bright light theme.
