@@ -16,7 +16,7 @@ function createNode(tag){
     querySelectorAll(selector){return this.lists?.[selector]||[];}
   };
 }
-function setup(gymPage=false){
+function setup(gymPage=false,inventoryMode="error"){
   const body=createNode("body"), root=createNode("html");
   const document={body,documentElement:root,createElement:createNode,getElementById:()=>null};
   const tabs=["today","compare","steps","gyms","bonuses","progress","settings"].map(name=>({dataset:{tab:name},onclick:null}));
@@ -46,7 +46,17 @@ function setup(gymPage=false){
     assert.ok(!url.includes("test-placeholder-key"),"API key must not appear in URL");
     assert.equal(headers.Authorization,"ApiKey test-placeholder-key");
     const endpoint=url.replace("https://api.torn.com/v2","");
-    return {status:200,responseText:JSON.stringify(endpoint.startsWith("/user/inventory")?{error:{code:21}}:(fixture[endpoint]||{error:{code:4}}))};
+    let payload;
+    if(endpoint.startsWith("/user/inventory")){
+      const cat=decodeURIComponent(endpoint.match(/cat=([^&]+)/)?.[1]||"");
+      if(inventoryMode==="partial"){
+        if(cat==="Drug")payload={inventory:{items:[{id:206,name:"Xanax",amount:8,faction_owned:false}]},_metadata:{total:1}};
+        else if(cat==="Book")payload={inventory:{items:[{id:744,name:"Brawn Over Brains",amount:1,faction_owned:false}]},_metadata:{total:1}};
+        else if(cat==="Booster")payload={inventory:{items:[]},_metadata:{total:0}};
+        else payload={error:{code:21}};
+      } else payload={error:{code:21}};
+    } else payload=fixture[endpoint]||{error:{code:4}};
+    return {status:200,responseText:JSON.stringify(payload)};
   };
   const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.full.js"),"utf8")
     .replace("###PDA-APIKEY###","test-placeholder-key");
@@ -293,4 +303,26 @@ test("Plan shows daily gains and supply checklist",async()=>{
   app.tabs.find(x=>x.dataset.tab==="steps").onclick();
   assert.match(app.panel.innerHTML,/Daily gain breakdown/);
   assert.match(app.panel.innerHTML,/Shopping & supply checklist/);
+});
+
+test("partial category failure preserves verified inventory and book data",async()=>{
+  const app=setup(false,"partial");
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  assert.match(app.panel.innerHTML,/Some inventory categories failed/);
+  app.tabs.find(x=>x.dataset.tab==="bonuses").onclick();
+  assert.match(app.panel.innerHTML,/Brawn Over Brains/);
+  assert.match(app.panel.innerHTML,/still-usable status is unverified/);
+  assert.ok(app.requests.some(x=>x.url.includes("cat=Book")));
+  assert.ok(app.requests.some(x=>x.url.includes("cat=Drug")));
+});
+test("Plan displays cooldown sensitivity alongside full weekly gain forecast",async()=>{
+  const app=setup(false,"partial");
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  app.modes.find(x=>x.dataset.mode==="happyjump").onclick();
+  app.tabs.find(x=>x.dataset.tab==="steps").onclick();
+  assert.match(app.panel.innerHTML,/Cooldown sensitivity/);
+  assert.match(app.panel.innerHTML,/Ecstasy 200m/);
+  assert.match(app.panel.innerHTML,/Daily gain breakdown/);
 });
