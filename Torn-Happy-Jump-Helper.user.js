@@ -594,7 +594,7 @@
   // TornPDA can inject before <body> exists, and Torn can replace body during
   // navigation. Never let either situation permanently remove the launcher.
   function mountHelper(){
-    const root=document.body||document.documentElement;
+    const root=document.body; // wait until body exists; never attach UI directly under <html>
     if(!root)return false;
     if(!document.getElementById("hhj-launch"))root.appendChild(launcher);
     if(!document.getElementById("hhj-panel"))root.appendChild(panel);
