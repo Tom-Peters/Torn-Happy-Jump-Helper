@@ -14,7 +14,7 @@ test("advanced preview boots under Torn CSP with real full features and no auto 
   assert.ok(!/\bnew\s+Function\s*\(|\beval\s*\(/.test(source));
   const mounted=new Map();
   function element(tag){
-    return {tag,id:"",style:{},children:[],innerHTML:"",textContent:"",
+    return {tag,id:"",style:{},dataset:{},children:[],innerHTML:"",textContent:"",
       append(...xs){for(const x of xs)this.appendChild(x);},
       appendChild(x){this.children.push(x);if(x.id)mounted.set(x.id,x);return x;},
       setAttribute(){},
