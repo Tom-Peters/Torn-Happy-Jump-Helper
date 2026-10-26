@@ -19,7 +19,7 @@ function createNode(tag){
 function setup(gymPage=false){
   const body=createNode("body"), root=createNode("html");
   const document={body,documentElement:root,createElement:createNode,getElementById:()=>null};
-  const tabs=["today","compare","steps","gyms","bonuses","settings"].map(name=>({dataset:{tab:name},onclick:null}));
+  const tabs=["today","compare","steps","gyms","bonuses","progress","settings"].map(name=>({dataset:{tab:name},onclick:null}));
   const modes=["training","happyjump"].map(mode=>({dataset:{mode},onclick:null}));
   const hours=[24,168].map(h=>({dataset:{hours:String(h)},onclick:null}));
   const requests=[];
@@ -72,6 +72,7 @@ test("TornPDA script opens with readable six-tab panel",()=>{
   assert.match(app.panel.innerHTML,/Settings/);
   assert.match(app.panel.innerHTML,/Perks/);
   assert.match(app.panel.innerHTML,/Gyms/);
+  assert.match(app.panel.innerHTML,/Progress/);
   assert.match(app.panel.innerHTML,/Training schedule/);
   assert.match(app.panel.innerHTML,/Happy-jump schedule/);
   assert.match(app.panel.innerHTML,/Refresh Torn data/);
@@ -268,4 +269,24 @@ test("launcher remains visible and shows error when heavyweight engine fails to 
     "launcher should remain clickable after load error");
   const panel=document.getElementById("hhj-loader-status");
   assert.ok(panel.children.some(x=>String(x.textContent).includes("HTTP 503")));
+});
+
+test("Progress displays current base stats and supports empty local history",async()=>{
+  const app=setup();
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  app.tabs.find(x=>x.dataset.tab==="progress").onclick();
+  assert.match(app.panel.innerHTML,/Progress & long-term goals/);
+  assert.match(app.panel.innerHTML,/Your current base stats/);
+  assert.match(app.panel.innerHTML,/Observed changes/);
+  assert.match(app.panel.innerHTML,/Clear local history/);
+  assert.match(app.panel.innerHTML,/No account history, API keys or stats are uploaded/);
+});
+test("Plan shows daily gains and supply checklist",async()=>{
+  const app=setup();
+  app.launcher.onclick();
+  await app.refresh.onclick();
+  app.tabs.find(x=>x.dataset.tab==="steps").onclick();
+  assert.match(app.panel.innerHTML,/Daily gain breakdown/);
+  assert.match(app.panel.innerHTML,/Shopping & supply checklist/);
 });
