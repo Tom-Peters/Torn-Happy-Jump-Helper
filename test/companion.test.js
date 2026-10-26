@@ -87,5 +87,5 @@ test("Manual Refresh loads relevant perks, books and gym proof only",async()=>{
  assert.equal(gym[0].gym.name,"Better gym");
  assert.ok(gym[0].change>0);
  assert.match(p.api.books(),/200,000,000 speed/);
- assert.match(p.api.books(),/unread\/usable status/i);
+ assert.match(p.api.books(),/Usability cannot be confirmed/i);
 });
