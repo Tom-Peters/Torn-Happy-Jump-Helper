@@ -1,5 +1,18 @@
 # Torn Happy Jump Helper
 
+## v0.7.1 — Screenshot-driven compact mobile polish
+
+A live Android TornPDA screenshot confirmed the compact script starts, refreshes Torn data and correctly displays the daily point refill as **USED**. Follow-up fixes:
+
+- Floating **HJ ◉** launcher is now **hidden while the dashboard is open** and restored after pressing the internal close button. This prevents it covering the live training card.
+- Seven tabs are now **horizontally swipeable, non-wrapping buttons** with a sticky tab strip; the selected tab stays in view as you move around.
+- Training method and stat selections now use compact left-aligned choices rather than stretching buttons to opposite edges.
+- If the daily point refill shows **USED** from Torn, its card no longer offers the contradictory **Mark used today** action. A manual used-day override can be cleared, while unknown/available status still allows manually marking used.
+- Minor panel height and header padding adjustments leave more space for actual plan details. **54/54 simulated tests pass**. The compact self-contained no-eval/no-runtime-loader startup architecture is unchanged.
+
+All training/drug/refill operations remain **read-only forecasts**; validate the next action's actual cooldown and energy in Torn. User-specific data is not committed to the public repository.
+
+
 ## v0.7.0 — Compact TornPDA compatibility release (CURRENT)
 
 **Why:** On the user's Android TornPDA installation, the former ~5 KB remote loader displayed the HJ button but Torn's Content Security Policy blocked its `new Function` evaluation. Replacing it with the complete ~111 KB script stopped the button appearing again. There is no confirmed official TornPDA byte limit; do not treat file size as a proven cause.
