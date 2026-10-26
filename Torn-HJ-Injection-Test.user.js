@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn HJ Injection Diagnostic
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      1.2.0
+// @version      1.3.0
 // @description  Diagnose userscript injection and Happy Jump Helper startup. No API access.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -30,18 +30,21 @@
       d.style.cssText="position:fixed!important;left:8px!important;top:40%!important;z-index:2147483647!important;max-width:min(85vw,390px)!important;padding:14px!important;border:2px solid #a7f3d0!important;border-radius:12px!important;background:#101f2b!important;color:#fff!important;font:14px/1.5 system-ui!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;box-shadow:0 6px 24px #000c!important;";
       root.appendChild(d);
     }
+    const direct=window.__TornHappyJumpLoaded;
     const loader=window.__HHJLoader;
     const tinyButton=document.getElementById("hhj-quick-launch");
     const state=window.__TornHappyJumpStage;
     const button=document.getElementById("hhj-launch");
-    const panel=document.getElementById("hhj-panel");
+    const panel=document.getElementById("hhj-panel")||document.getElementById("hhj-compact-panel");
     const ph=state?.phase||"NOT STARTED";
     const ver=state?.version||"unknown";
     const style=button&&window.getComputedStyle?.(button);
     const hidden=!!button&&(style?.display==="none"||style?.visibility==="hidden"||style?.opacity==="0");
-    d.textContent="HJ DIAGNOSTIC v1.1\n"+
+    d.textContent="HJ DIAGNOSTIC v1.3\n"+
       "TornPDA script injection: WORKING\n"+
       "Main script phase: "+ph+"\n"+
+      "Direct script version: "+(direct||"not started")+"\n"+
+      "Legacy small launcher: "+(loader?.status||"not present")+"\n"+
       "Main script version: "+ver+"\n"+
       "HJ button in page: "+(button?"YES":"NO")+"\n"+
       "HJ panel in page: "+(panel?"YES":"NO")+"\n"+
