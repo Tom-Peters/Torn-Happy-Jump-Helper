@@ -583,6 +583,24 @@
   if(!location.hostname.endsWith("torn.com") || document.getElementById("hhj-launch"))return;
   let data={}, quotes={}, lastRefresh=0, errors=[],selected="", opened=false,busy=false;
   let inventoryWarning="",activeTab="today",showAll=false;
+  let dataRevision=0,planMemo={key:"",result:null};
+  const HISTORY_KEY="hhj-local-history-v1";
+  let localHistory=[];
+  try{
+    const history=JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]");
+    if(Array.isArray(history))localHistory=history.filter(x=>
+      x&&Number.isFinite(x.timestamp)&&x.stats&&typeof x.stats==="object").slice(-90);
+  }catch(_){}
+  function recordObservedStats(){
+    const stats=data.stats?.battlestats;
+    if(!stats||!STATS.every(k=>Number.isFinite(+stats[k]?.value)))return;
+    const sample={timestamp:Math.floor(Date.now()/1000),
+      stats:Object.fromEntries(STATS.map(k=>[k,+stats[k].value]))};
+    const prior=localHistory[localHistory.length-1];
+    if(prior&&sample.timestamp-prior.timestamp<3600)return;
+    localHistory.push(sample);localHistory=localHistory.slice(-90);
+    try{localStorage.setItem(HISTORY_KEY,JSON.stringify(localHistory));}catch(_){}
+  }
   let gymEvidence=[],gymNotice="",verifiedGyms={},gymVerifiedAt=0;
   const completedSteps=new Set(); // Local tick-boxes only, never Torn gameplay actions.
   const defaults={budget:10000000,stat:"dexterity",statGoal:"weakest",objective:"growth",
@@ -885,6 +903,8 @@
         }else errors.push(label+": "+err.message);
       }
     }
+    recordObservedStats();
+    dataRevision++;planMemo.key="";
     busy=false;render();
   }
   const field=(name,label,type,extra)=>'<label>'+label+'<input data-field="'+name+'" type="'+type+'" value="'+escape(cfg[name])+'" '+(extra||"")+'></label>';
@@ -1058,7 +1078,19 @@
   }
   function render(){
     if(!opened)return;
-    const live=readyState(), input=buildInput(), plans=input?score(input):null;
+    const live=readyState(), input=buildInput();
+    // A 7-day event simulation is expensive: recompute for actual changes in
+    // inputs, never for tab navigation, dark mode or opening a detail card.
+    const memoKey=dataRevision+"|"+JSON.stringify({
+      budget:cfg.budget,stat:cfg.stat,statGoal:cfg.statGoal,objective:cfg.objective,
+      maxJumpsDaily:cfg.maxJumpsDaily,refill:cfg.refill,
+      gymOverride:cfg.gymOverride,modifierPercent:cfg.modifierPercent,
+      candyPercent:cfg.candyPercent,dvdHappy:cfg.dvdHappy,boosterReduction:cfg.boosterReduction,
+      happyLoss:cfg.happyLoss,boosterCap:cfg.boosterCap,
+      autoPerks:cfg.autoPerks,xanaxHours:cfg.xanaxHours,returnHours:cfg.returnHours
+    });
+    if(planMemo.key!==memoKey){planMemo={key:memoKey,result:input?score(input):null};}
+    const plans=planMemo.result;
     const list=plans?(cfg.scheduleMode==="happyjump"?plans.options:plans.baseline):[];
     const affordable=list.filter(x=>x.known&&x.cost<=cfg.budget&&(cfg.scheduleMode!=="happyjump"||x.jumps>0));
     const recommended=[...affordable].sort((a,b)=>{
