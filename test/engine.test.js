@@ -282,3 +282,37 @@ test("cooldown sensitivity uses valid Ecstasy and Xanax intervals",()=>{
   assert.ok(Math.abs(sensitivity.slow.assumptions.ecstasyHours-231/60)<1e-8);
   assert.ok(sensitivity.max>=sensitivity.min);
 });
+
+test("daily 30-point refill fills to cap, never stacks on top of current energy",()=>{
+  const now=Date.parse("2026-10-26T20:40:00Z")/1000;
+  const i=input({now,refill:true,refillMode:"both",refillReady:true,refillUsed:false,
+    statName:"speed",currentEnergy:40,currentHappy:5000,maxE:150,
+    regenInterval:600,regenIncrement:5,regenFirstSeconds:480,budget:50000000});
+  const withRefill=E.score(i).baseline.find(x=>x.id==="refills:normal");
+  assert.ok(withRefill&&withRefill.known);
+  const first=withRefill.timeline.events.slice(0,4);
+  assert.ok(first.some(x=>x.kind==="train"&&x.detail.includes("before confirmed available daily refill")));
+  const refill=first.find(x=>x.kind==="refill");
+  assert.ok(refill,"First day should include an available affordable energy refill");
+  assert.ok(refill.qty<=150);
+  assert.equal(refill.qty,150); // first 40 E was trained before restoring to 150.
+  const later=withRefill.timeline.events.filter(x=>x.kind==="refill");
+  assert.ok(later.every(x=>x.qty>0&&x.qty<=150),"Refills cannot add 150 on top of an existing bar");
+});
+test("refill already used or unknown cannot cause premature 40 E training",()=>{
+  const now=Date.parse("2026-10-26T20:40:00Z")/1000;
+  const i=input({now,refill:true,refillMode:"both",refillReady:false,
+    statName:"speed",currentEnergy:40,currentHappy:5000,maxE:150,
+    regenInterval:600,regenIncrement:5,regenFirstSeconds:480,budget:50000000});
+  for(const version of [i,{...i,refillReady:undefined}]){
+    const p=E.score(version).baseline.find(x=>x.id==="refills:normal");
+    assert.ok(p);
+    const todays=p.timeline.events.filter(x=>x.time<Math.floor(now/86400+1)*86400);
+    assert.ok(!todays.some(x=>x.kind==="refill"),"No further refill on the first day");
+    assert.ok(!todays.some(x=>x.detail.includes("before confirmed available daily refill")));
+  }
+  const noPoints=E.score({...i,refillReady:true,books:{...i.books,points:undefined}});
+  const p=noPoints.baseline.find(x=>x.id==="refills:normal");
+  assert.ok(!p.timeline.events.some(x=>x.detail.includes("before confirmed available daily refill")),
+    "Cannot train early for a refill that is not affordably available");
+});
