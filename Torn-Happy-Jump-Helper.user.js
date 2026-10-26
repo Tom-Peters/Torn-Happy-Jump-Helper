@@ -178,7 +178,7 @@
     if(!["growth","value"].includes(cfg.objective))cfg.objective="growth";
   }catch(_){}
   const style=document.createElement("style");
-  style.textContent = \`
+  style.textContent = `
 #hhj-launch{position:fixed!important;bottom:90px;right:12px;z-index:2147483646!important;background:#155e72!important;color:#fff!important;border:2px solid #a5f3fc!important;border-radius:999px!important;padding:12px 16px!important;font:800 15px system-ui,sans-serif!important;box-shadow:0 4px 22px #000b!important;cursor:pointer}
 #hhj-panel{--hj-bg:#0a111c;--hj-card:#182639;--hj-raised:#20344b;--hj-text:#f5f8ff;--hj-muted:#c3d0e2;--hj-line:#50677f;--hj-link:#a3e4ff;--hj-accent:#62f0d0;--hj-alert:#3b3024;position:fixed!important;inset:8px 8px 12px!important;max-width:610px!important;margin:auto!important;z-index:2147483647!important;display:flex;flex-direction:column;overflow:hidden!important;border:2px solid var(--hj-line)!important;border-radius:17px!important;color:var(--hj-text)!important;background:var(--hj-bg)!important;box-shadow:0 0 0 200vmax #0009,0 18px 50px #000a!important;font:15px/1.48 system-ui,-apple-system,sans-serif!important;color-scheme:dark!important}
 #hhj-panel[data-theme=light]{--hj-bg:#f5f8ff;--hj-card:#fff;--hj-raised:#e9f0f8;--hj-text:#142238;--hj-muted:#334960;--hj-line:#a7b5c9;--hj-link:#07537d;--hj-accent:#077f72;--hj-alert:#fff1d5;color-scheme:light!important}
@@ -232,7 +232,7 @@
 #hhj-panel .scroll{overflow-x:auto}
 #hhj-panel a{color:var(--hj-link)!important}
 @media(max-width:410px){#hhj-panel{inset:2px 3px 4px!important;border-radius:11px!important}#hhj-panel .body{padding:10px 11px 30px}#hhj-panel .head{padding:10px 12px}#hhj-panel .tabs{padding:5px}#hhj-panel .tabs button{font-size:11px!important}#hhj-panel .metric{font-size:20px}#hhj-panel .card{padding:11px}}
-\`;
+`;
   document.documentElement.appendChild(style);
   const launcher=document.createElement("button");launcher.id="hhj-launch";launcher.type="button";launcher.textContent="HJ ◉";launcher.setAttribute("aria-label","Open Happy Jump Helper");
   const panel=document.createElement("section");panel.id="hhj-panel";panel.style.display="none";panel.setAttribute("aria-label","Happy Jump Helper");panel.setAttribute("role","dialog");
