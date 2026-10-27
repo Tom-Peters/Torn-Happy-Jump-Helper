@@ -60,7 +60,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<57000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.9\.9/);
+  assert.match(src,/@version\s+0\.10\.0/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -71,7 +71,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.9");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.0");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -281,17 +281,17 @@ test("Gym page observation compares a read-only train result with calculated gai
   "Observed player data must not be bundled into the public userscript");
  await a.btn.onclick();
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
- assert.match(html,/Compare with Torn/);
+ assert.match(html,/Latest visible gym session/);
  assert.match(html,/640.5/);
- assert.match(html,/Model estimates now/);
+ assert.match(html,/Model per train/);
  assert.match(html,/Per gym train/);
 });
 
-test("v0.9.9 keeps the mobile launcher visible before API work",()=>{
+test("v0.10.0 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.9.9");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.0");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -660,7 +660,7 @@ test("overlapping duplicate checkpoints cannot manufacture covered days",async()
  assert.match(html,/No days meet this filter/);
 });
 
-test("v0.9.9 opens a Just happened → Next action card on Today and Schedule",async()=>{
+test("v0.10.0 opens a Just happened → Next action card on Today and Schedule",async()=>{
  const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
  await a.btn.onclick();
  const panel=a.document.getElementById("hhj-compact-panel");
@@ -764,4 +764,76 @@ test("generic manual completion never silently marks an energy refill used",asyn
  assert.equal(notes[0].kind,"REFILL");
  assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),null,
  "The separate refill API/manual override remains authoritative");
+});
+
+test("a gym session gain close to seven standard trains is NOT compared against one train",async()=>{
+ const a=setup(false,false,"2026-10-27T21:51:00Z",
+  {budget:50000000,stat:"strength",sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"},7,"/gym.php");
+ a.document.body.innerText="You gained 4,344.19 strength";
+ await a.btn.onclick();
+ const observed=a.core.readGymResult();
+ assert.equal(observed.amount,4344.19);
+ assert.equal(observed.trains,null,"No explicitly reported repetitions");
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Latest visible gym session/);
+ assert.match(html,/normal trains/);
+ assert.match(html,/inferred, not verified/);
+ assert.match(html,/Model equivalent total/);
+ assert.ok(!html.includes("+598.6%"),"A seven-train total must not be compared with one train");
+});
+test("explicit repetition count from the Gym result overrides an inferred equivalent",async()=>{
+ const a=setup(false,false,"2026-10-27T21:51:00Z",
+  {budget:50000000,stat:"strength"},7,"/gym.php");
+ a.document.body.innerText="You completed 7 split squats with perfect technique\nYou gained 4,344.19 strength";
+ await a.btn.onclick();
+ const observed=a.core.readGymResult();
+ assert.equal(observed.trains,7);
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Explicit result: 7 trains/);
+ assert.match(html,/7 × 10 E assumed/);
+});
+test("UK 22:00-08:00 quiet hours use Europe/London independent of WebView timezone",async()=>{
+ const now="2026-10-27T21:51:00Z";
+ const a=setup(true,false,now,{budget:50000000,stat:"strength",
+ sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"},7);
+ a.fixture["/user/bars"].bars.energy.current=0;
+ a.fixture["/user/cooldowns"].cooldowns.drug=72000;
+ await a.btn.onclick();
+ const night=Date.parse("2026-10-27T22:59:00Z")/1000;
+ const morning=Date.parse("2026-10-28T08:00:00Z")/1000;
+ assert.equal(a.core.sleeping(night),true);
+ assert.equal(a.core.sleeping(morning),false);
+ for(const p of a.core.plans())assert.ok(!p.events.some(e=>e.t>=night&&e.t<morning),
+ "No manual events may be planned during default sleeping hours");
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.ok(!html.includes("Next recommended: TRAIN · 27 Oct, 22:59"),
+ "Do not show a sleeping-hours action as the next recommendation");
+ assert.match(html,/Quiet hours: 22:00–08:00 local/);
+});
+test("UK daylight saving BST shifts quiet-hour boundaries relative to UTC",async()=>{
+ const a=setup(false,false,"2026-06-27T18:00:00Z",
+ {sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00",stat:"strength"},7);
+ await a.btn.onclick();
+ const t=x=>Date.parse(x)/1000;
+ assert.equal(a.core.sleeping(t("2026-06-27T20:59:00Z")),false,"21:59 BST awake");
+ assert.equal(a.core.sleeping(t("2026-06-27T21:00:00Z")),true,"22:00 BST asleep");
+ assert.equal(a.core.sleeping(t("2026-06-28T06:59:00Z")),true,"07:59 BST asleep");
+ assert.equal(a.core.sleeping(t("2026-06-28T07:00:00Z")),false,"08:00 BST awake");
+});
+test("changing quiet hours to 23:00 legitimately permits a 22:59 UTC prebed action",async()=>{
+ const a=setup(false,false,"2026-10-27T21:30:00Z",{budget:50000000,stat:"strength",
+ sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00"},7);
+ await a.btn.onclick();
+ assert.equal(a.core.sleeping(Date.parse("2026-10-27T22:59:00Z")/1000),false);
+ assert.equal(a.core.sleeping(Date.parse("2026-10-27T23:00:00Z")/1000),true);
+});
+test("a boosted single train is labelled noncomparable instead of a misleading extreme error",async()=>{
+ const a=setup(false,false,"2026-10-27T21:51:00Z",
+ {budget:50000000,stat:"strength"},7,"/gym.php");
+ a.document.body.innerText="You completed 1 squat with perfect technique\nYou gained 4,344.19 strength";
+ await a.btn.onclick();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Explicit result: 1 trains/);
+ assert.match(html,/Not comparable/);
+ assert.ok(!html.includes("+598.6%"));
 });
