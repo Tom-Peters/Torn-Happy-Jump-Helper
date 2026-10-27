@@ -1,57 +1,67 @@
-# Torn Happy Jump Helper — v0.9.7
+# Torn Happy Jump Helper — v0.9.8
 
-**Current incremental Android release: v0.9.7 · Author: IamEEKY**
+**Current incremental test release: v0.9.8 · Author: IamEEKY**
 
-**[Install / update the main TornPDA userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
+[**Update the main TornPDA userscript**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)
 
-v0.9.6 was confirmed working on Android. This update keeps its floating launcher, full-screen panel, automatic refresh on each HJ opening, eight tabs, corrected gym-gain formula and **Torn $50m weekly budget**.
+This release validates the existing **7-day Progress chart and Show partial days toggle** without changing the HJ floating-button startup, automatic refresh on opening, training formula, eight-tab full-screen UI, 22:00–08:00 local quiet hours, or your saved **Torn $50m weekly budget**.
 
-## v0.9.7 — better Progress charts
+## Progress: trustworthy observations and comparisons
 
-**Progress → 7-day Strength / Defense / Speed / Dexterity · observed vs planned** shows paired bars:
+The **Progress → 7-day [stat] · observed vs planned** chart shows:
 
-- **Observed**: only actual stat differences captured between successful API refreshes.
-- **Scheduled**: only the hypothetical gains from the **same saved refresh intervals**, when the previously selected training stat matches the chart's focus stat. It is not an assertion that those gym actions occurred.
-- Different focus-stat forecasts are not mixed together; days with no matching intervals show 0 comparable intervals rather than fabricated gains.
+- **Observed (matched):** real API stat differences only during saved intervals whose *original forecast* targeted the displayed stat.
+- **Scheduled (matched):** projected gains from that original forecast over **those same intervals**. A forecast is a hypothetical plan, not a record of actual gym actions.
+- **Recorded:** a single observed bar on days that have measurements but no trustworthy same-stat forecast. No invented zero-gain forecast is shown.
+- **Recorded today / Latest recorded gain:** previously working snapshot-based totals remain intact; a zero-change refresh cannot overwrite your latest meaningful gain.
 
-A persistent **Show partial days** toggle is **ON** by default:
+**Important fix:** v0.9.7 inferred the interval's `stat` from whichever battle stat changed, but could keep the forecast from a *different* training stat. In v0.9.8, new checkpoints explicitly store `forecastStat` separately from the observed stat. Only a genuinely matching forecastStat is used for paired bars. Old v0.9.3–0.9.7 checkpoints that lack `forecastStat` remain visible as recorded observations, but are **not retroactively assumed comparable**.
 
-- **ON · Show all**: shows any day that contains usable recorded observations; bars are labelled **Partial** or **Covered**.
-- **OFF · Covered only**: hides partial bars. If no day qualifies, it explains why and lets the user switch partial days back on. Observed gain totals and existing data are never deleted by the toggle.
-- **Covered** is deliberately stringent: snapshot intervals must span almost the entire UTC day (near 00:00 through 24:00), contain at least 23 hours of interval coverage, have no gap between recorded endpoints longer than two hours, and include at least one comparable interval. It is **not** a guarantee that every manual Torn gym action was independently logged. The current, unfinished UTC day normally stays **Partial**.
+### Coverage toggle
 
-The previous **Recorded today**, **Latest recorded gain**, no-change-check explanations, observed stat history and rolling one-train comparisons remain in Progress.
+**Show partial days** is ON by default, is stored locally as `show-partial`, and remains set after an HJ reload:
 
-### Why the chart may be partial
+- **ON · Show all:** show days with actual recorded observations, labelled Partial or Covered.
+- **OFF · Covered only:** show only days that meet coverage rules; when none qualify, explain that and allow switching partial days back on.
+- **Covered:** a **completed UTC day**, observations starting within 15 minutes of midnight and ending within 15 minutes of the day's end, at least **23 hours of distinct interval coverage**, no checkpoint interval longer than 2 hours, no gap longer than 2 hours, and at least one matching focus-stat forecast interval. Overlapping or duplicate checkpoints cannot inflate coverage.
+- Covered is **snapshot coverage**, not proof every Torn gym action was performed or individually logged. Current/unfinished UTC days remain Partial. Missing days aren't interpreted as zero training.
 
-Stat differences from Torn API snapshots cannot reconstruct every individual training event if tracking only began after training or a refresh interval spans midnight. The partial-day toggle changes *display only*, not observations or estimates.
+The chart toggle changes **display only**. It never removes your verification ledger, old training observations, saved budget or settings. Cross-midnight refresh intervals are assigned to the day of the ending refresh and cannot make that date qualify as fully covered.
 
-## Planned optional gym-log reconciliation (not enabled)
+## Optional Torn-log reconciliation — planned, disabled
 
-Torn has a restricted `/user/log` API, and custom keys can be scoped to selected log categories. We will consider a separate **explicit opt-in** gym-only reconciliation feature that safely deduplicates logs against stat snapshots, but **v0.9.7 does not access user logs or require any new API permissions**. Individual session-history screens are deferred.
+Torn offers a restricted log API and scoped-key possibilities. **v0.9.8 does not call `/user/log`, request extra permissions, read other user activity, or import historical gym sessions.** An opt-in gym-log reconciliation design is documented in [docs/optional-gym-log-reconciliation.md](docs/optional-gym-log-reconciliation.md). The exact permission scopes and log schemas must be verified before a separate implementation. Individual session history is deferred.
 
-Implementation outline: [Optional gym-log reconciliation design](docs/optional-gym-log-reconciliation.md).
+## Existing features unchanged
 
-## Existing features
+- HJ ◉ floating launcher with a full-screen **Today, Compare, Schedule, Supplies, Gyms, Perks & books, Progress, Settings** interface.
+- **Refresh Torn data every time HJ opens**, with no background API polling.
+- Gym modifiers normalized correctly for Torn v2, accurate single-train gain estimates and per-train, 24-hour and seven-day planning.
+- Happy jump and regular training comparison, market/budget estimates and point-refill safeguards.
+- Configurable **22:00–08:00 local sleep hours** and estimated wasted regeneration during sleep.
+- Locally stored stat checkpoints and rolling verification (bounded history). All gameplay remains read-only/manual.
 
-- Read-only maximum-gain regular and single Happy-jump planning with per-train, 24-hour and seven-day forecasts, market estimates, refills and supply checks.
-- Sleep-aware **22:00–08:00 local** default schedule with editable hours and predicted regeneration-cap waste.
-- Full-screen **Today, Compare, Schedule, Supplies, Gyms, Perks & books, Progress, Settings** tabs.
-- User-confirmed gym access safeguards; gym optimisation upgrades remain deferred.
-- Automatic refresh when the HJ launcher is pressed to open, with no background API polling.
+## Install and recovery
 
-## Install and rollback
+1. Keep **one** main HJ helper enabled. Disable any duplicate/Advanced/Companion versions.
+2. Update it from the [v0.9.8 raw userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js), injection **END**.
+3. Reload Torn, tap HJ ◉ and confirm the header says **v0.9.8**.
+4. In **Progress**, toggle **Show partial days** off and on. Confirm the observed totals remain unchanged; reopen HJ to verify the preference persists.
 
-1. Keep exactly **one** main HJ script enabled in TornPDA. Disable duplicate, Enhanced, Advanced or Companion scripts.
-2. Update it using the main raw link above, set injection to **END**, reload Torn and confirm **v0.9.7**.
-3. Visit **Progress** to inspect the paired chart and tap **Show partial days** to filter coverage. Tap again to restore all recorded days.
+If the button disappears, disable the new version and use the independently installable [**v0.9.6 phone-confirmed recovery script**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.9.6-known-good.user.js). An independent [v0.9.7 previous-chart build](archive/Torn-Happy-Jump-Helper-v0.9.7-previous.user.js) is also archived, but was not independently confirmed on the phone. **Never clear local storage when rolling back.**
 
-If this update causes the HJ button to disappear, disable it and use the [**phone-confirmed v0.9.6 independent rollback**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.9.6-known-good.user.js). Keep only one enabled script and **do not clear local data**.
+## Validation and privacy
 
-## Test status and privacy
+**39/39 targeted v0.9.8 regression tests passed** using simulated TornPDA/Torn API responses, including:
 
-**35/35 targeted userscript checks passed** in a simulated TornPDA/DOM environment, covering launch, opening refresh, correct gym dots, item and refill arithmetic, sleep rules, existing rolling observations, partial/covered toggling, persistence, and focus-matched observed/planned comparison. The userscript is approximately **55.4 KB**, below the prior roughly 58 KB experimental build whose launcher failed, although file size was never proven to be the cause. **Android v0.9.7 and GitHub Actions are not yet independently confirmed.**
+- Floating launcher, on-open refresh, existing gym/energy calculations and sleep rules.
+- Persisted toggle state across fresh injection and preserved local history.
+- Correct observed/forecast pairing when the *actual trained stat differs from the planned stat*.
+- Accurate legacy observations without inventing comparable old forecasts.
+- Duplicate/overlapping checkpoints staying Partial, and an actually near-full tracked UTC day qualifying as Covered.
 
-Real keys, player records, finances and gym activity are never committed to the public repository. All observations remain local, all gameplay actions remain manual. MIT · IamEEKY.
+Source parses as JavaScript and stays below the existing compact-helper size guard (**55.9 KB**). **Live v0.9.8 Android behaviour and the full GitHub Actions suite are not yet independently confirmed.** Source size has not been established as the earlier launcher regression cause.
 
-[Historical release notes](docs/legacy-release-notes.md)
+No real Torn API keys, private account records, balances or personal observations are included in this public repository; checkpoints remain on-device.
+
+MIT · IamEEKY · [Historical release notes](docs/legacy-release-notes.md).
