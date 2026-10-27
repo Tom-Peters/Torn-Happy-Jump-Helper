@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.9.9
+// @version      0.10.0
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -12,13 +12,20 @@
 // @grant        none
 // ==/UserScript==
 (function(){
-"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.9";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
+"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.10.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
 xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Number.isFinite(n)?Math.round(n).toLocaleString("en-US"):"—";const cash=n=>Number.isFinite(n)?"$"+fmt(n):"Price unknown";const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const compactUtc=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Math.floor(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),showPartial=get("show-partial",true),actionNotes=get("action-notes",[]),start=Date.now()/1000;const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>refillStatus(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}
 function mins(v,back){return validClock(v)?Number(v.slice(0,2))*60+Number(v.slice(3)):back}
 function sleeping(t){
-if(!cfg.sleepEnabled)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),m=d.getHours()*60+d.getMinutes();return a<b?m>=a&&m<b:m>=a||m<b;}
+if(!cfg.sleepEnabled)return false;
+const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;
+let m;try{
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/London",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(t*1000)).split(":");
+ m=(Number(parts[0])%24)*60+Number(parts[1]);
+}catch(_){const d=new Date(t*1000);m=d.getHours()*60+d.getMinutes();}
+return a<b?m>=a&&m<b:m>=a||m<b;
+}
 function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" local":"Disabled"}
 
 function gymDots(raw){
@@ -63,8 +70,8 @@ if(stack===4&&t>=nextDrug&&boosterCD===0&&t%900===60){
 const candy=method==="happy-candy";const paidBoost=candy?use("lollipop",48):use("dvd",4);const paidEcstasy=use("ecstasy",1);h=Math.min(99999,2*(h+(candy?48*25:4*2500)));boosterCD=24*3600;jumps++;add(t,"JUMP","Use "+(candy?"48 lollipops":"four Erotic DVDs")+" consecutively, then Ecstasy; train before the next 15-minute happiness reset · estimated Happy "+fmt(h),0,0,paidBoost+paidEcstasy);train(t,"Happy-jump gym training");}
 }
 }
-return {method,events,losses,gain:gainTotal,cost,energy:trainedE,lost:regenLost,sleepLost,drugs:drugCount,jumps,count,start:now,end:until,affordable:cost<=cfg.budget&&Number.isFinite(cost),note:method.startsWith("happy")?"Single prepared Happy jump only; not a reliable repeated weekly forecast":
-"Assumes every manual action happens on time and future Xanax cooldowns are 7 hours"};}
+return {method,events,losses,gain:gainTotal,cost,energy:trainedE,lost:regenLost,sleepLost,drugs:drugCount,jumps,count,start:now,end:until,affordable:cost<=cfg.budget&&Number.isFinite(cost),note:method.startsWith("happy")?"One prepared Happy jump, not weekly repeatable":
+"Assumes on-time actions and 7-hour Xanax cooldowns"};}
 function plans(){const p=loadInput();if(!p)return [];return ["natural","xanax","happy-candy","happy"].map(k=>simulate(k,p));}
 function summary(p,hours=168,now=null){
 if(!p)return null;const start=now??p.start,end=start+hours*3600;const events=p.events.filter(x=>x.t>=start&&x.t<end),losses=(p.losses||[]).filter(x=>x.t>=start&&x.t<end);return {hours,events,lost:losses.reduce((n,x)=>n+x.q,0),sleepLost:losses.filter(x=>x.asleep).reduce((n,x)=>n+x.q,0),gain:events.reduce((v,x)=>v+(x.g||0),0),energy:events.filter(x=>x.kind==="TRAIN").reduce((v,x)=>v+(x.q||0),0),cost:events.reduce((v,x)=>v+(x.spent||0),0),trains:events.filter(x=>x.kind==="TRAIN").length,refills:events.filter(x=>x.kind==="REFILL").length,xanax:events.filter(x=>x.kind==="XANAX").length,jumps:events.filter(x=>x.kind==="JUMP").length};}
@@ -143,18 +150,36 @@ else if(priorStyle!==css&&priorStyle.textContent!==css.textContent)priorStyle.te
 function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
 function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
 function readGymResult(){
-if(!/\/gym\.php$/.test(location.pathname||""))return null;const root=document.querySelector?.("#gymroot")||document.body;const visible=String(root?.innerText||"");const pattern=/\bYou gained\s+([\d,.]+)\s+(strength|defense|speed|dexterity)\b/gi;let found=null,match;while((match=pattern.exec(visible)))found=match;if(!found)return null;const amount=Number(found[1].replace(/,/g,""));return Number.isFinite(amount)&&amount>0?{stat:found[2].toLowerCase(),amount}:null;}
+if(!/\/gym\.php$/.test(location.pathname||""))return null;
+const visible=String((document.querySelector?.("#gymroot")||document.body)?.innerText||"");
+const re=/\bYou gained\s+([\d,.]+)\s+(strength|defense|speed|dexterity)\b/gi;
+let match,last;while((match=re.exec(visible)))last=match;
+if(!last)return null;const amount=Number(last[1].replace(/,/g,""));if(!(amount>0))return null;
+const before=visible.slice(Math.max(0,last.index-170),last.index);
+const explicit=before.match(/You completed\s+(\d+)\b[^\n]{0,140}$/i);
+const trains=explicit?Number(explicit[1]):null;
+return {stat:last[2].toLowerCase(),amount,trains:trains>0&&trains<=150?trains:null};
+}
 function actualComparison(observed){
-if(!observed)return "";const g=gym(),st=stats(),bar=happy(),s=observed.stat;if(!g||!(st[s]>0)||!(gymDots(g.modifiers?.[s])>0))return "";const predicted=gain(g.energy_cost||10,bar.current??bar.maximum??0,st[s],gymDots(g.modifiers[s]),g.energy_cost||10,bonus(s));const diff=predicted>0?100*(observed.amount/predicted-1):null;const dec=x=>Number(x).toLocaleString("en-GB",{maximumFractionDigits:2,minimumFractionDigits:0});return card("Compare with Torn's latest visible train",'<p class="sub">Training result detected on the current Gym page. This is an observed result, not an API forecast.</p>'+
-'<div class="metric-grid"><div><span>Torn awarded</span><strong>+'+dec(observed.amount)+'</strong><small>'+esc(s)+'</small></div>'+
-'<div><span>Model estimates now</span><strong>+'+dec(predicted)+'</strong><small>'+fmt(g.energy_cost||10)+' energy</small></div>'+
-'<div><span>Observed vs model</span><strong>'+(diff===null?"—":(diff>=0?"+":"")+diff.toFixed(1)+"%")+
-'</strong><small>Perks, timing, happiness and randomness affect differences</small></div></div>'+
-'<p class="sub">This uses current values, which may differ from past training.</p>');}
-function statMatrix(){
-const g=gym(),bar=energy(),h=happy(),statValues=stats(),all=[];if(!g)return [];for(const stat of ST){
-if(!(statValues[stat]>0)||!(gymDots(g.modifiers?.[stat])>0))continue;const inp={gym:g,stat,value:statValues[stat],dots:gymDots(g.modifiers[stat]),cost:g.energy_cost||10,energy:bar.current||0,maxE:bar.maximum||150,regen:bar.interval||120,inc:bar.increment||1,happy:h.current||h.maximum,maxH:h.maximum,drug:cd().drug||0,booster:cd().booster||0,m:bonus(stat),refill:refill(),now:Date.now()/1000};const options=["natural","xanax"].map(method=>simulate(method,inp));const best=options.filter(x=>x.affordable).sort((a,b)=>b.gain-a.gain)[0]||options[0];all.push({stat,perTrain:trainEstimate(inp),daily:summary(best,24),weekly:summary(best,168),method:best.method});}
-return all;}
+if(!observed)return "";
+const g=gym(),st=stats(),h=happy(),k=observed.stat;
+if(!g||!(st[k]>0)||!(gymDots(g.modifiers?.[k])>0))return "";
+const per=gain(g.energy_cost||10,h.current??h.maximum??0,st[k],gymDots(g.modifiers[k]),g.energy_cost||10,bonus(k));
+const ratio=observed.amount/per,guess=Math.round(ratio);
+const inferred=!observed.trains&&guess>=2&&guess<=150&&Math.abs(ratio/guess-1)<=.12?guess:null;
+const n=observed.trains||inferred||1,comparable=!!(observed.trains||inferred||ratio<=1.8);
+const expected=per*n,diff=comparable?100*(observed.amount/expected-1):null;
+const dec=x=>Number(x).toLocaleString("en-GB",{maximumFractionDigits:2});
+const desc=observed.trains?"Explicit result: "+observed.trains+" trains":
+inferred?"About "+inferred+" normal 10 E trains' worth (inferred, not verified)":
+"Session size/boosts unknown — not safely comparable as one train";
+return card("Latest visible gym session",'<p><b>'+esc(desc)+'</b></p>'+
+'<div class="metric-grid"><div><span>Torn awarded</span><strong>+'+dec(observed.amount)+'</strong><small>'+esc(k)+'</small></div>'+
+'<div><span>Model '+(n>1?"equivalent total":"per train")+'</span><strong>+'+dec(expected)+'</strong><small>'+n+' × '+(g.energy_cost||10)+' E assumed</small></div>'+
+'<div><span>Difference</span><strong>'+(diff===null?"Not comparable":(diff>=0?"+":"")+diff.toFixed(1)+"%")+
+'</strong><small>At current stats and happiness</small></div></div>'+
+'<p class="sub">A boosted session can resemble multiple normal trains. Inferred counts are not confirmed actions.</p>');
+}
 function recommendation(){
 const input=loadInput(),regular=(lastPlan||[]).filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable&&x.gain>0)
 .sort((a,b)=>b.gain-a.gain),jumps=(lastPlan||[]).filter(x=>x.method.startsWith("happy")&&x.jumps===1);const natural=(lastPlan||[]).find(x=>x.method==="natural"&&x.affordable);if(!input)return card("Training recommendation","Refresh live data to compare options.");let out='<p class="sub"><b>Weekly spending limit: '+cash(cfg.budget)+'</b> · Based on your saved setting. Change under Settings.</p>';out+=regular.length?'<p><b>Best regular 7-day plan:</b> '+esc(regular[0].method)+
@@ -263,7 +288,7 @@ html+=actionFlow(p);const summaryNow=summary(p,hours,Date.now()/1000);html+=card
 fmt(summaryNow.energy)+' E</strong><small>'+summaryNow.trains+' train actions</small></div>'+
 '<div><span>Estimated spend</span><strong>'+cash(summaryNow.cost)+'</strong><small>'+
 summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
-'<p class="sub">'+esc(p.note)+' · All actions are manual. Figures include only actions within this window.</p>');html+=card("Predicted energy lost at cap",'<div class="metric-grid"><div><span>Total overflow</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
+'<p class="sub">'+esc(p.note)+' · Manual actions only; totals match this period.</p>');html+=card("Predicted energy lost at cap",'<div class="metric-grid"><div><span>Total overflow</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
 '<div><span>While asleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div><p class="sub">Quiet hours: '+esc(sleepLabel())+
 '. Forecast totals match the selected period.</p>');if(!summaryNow.events.length)return html+card("No actions within this window","Try the seven-day view. A jump may require more than 24 hours of preparation.");let dayKey="",count=0;for(const ev of summaryNow.events){
 if(count++>=120)break;const date=day(ev.t);if(date!==dayKey){dayKey=date;html+='<h3 class="day-header">'+date+' UTC</h3>'}
@@ -299,9 +324,9 @@ const delta=Object.fromEntries(ST.map(k=>[k,st[k]-(Number(rolling.s[k])||0)]));c
 Math.abs(delta[stat]/n-single)/single<=0.12;ledger.push({t:now,from:rolling.t,stat,forecastStat:rolling.stat,observed:delta,expected,method:rolling.method,single:single>0?single:null,inferred:consistent?n:null});ledger=ledger.filter(x=>now-x.t<30*86400).slice(-120);put("verification",ledger);}
 rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};return true;}
 function actionFlow(p){
-const now=Date.now()/1000,obs=[...ledger].reverse().find(x=>ST.some(k=>(x.observed?.[k]||0)>0)),last=actionNotes[actionNotes.length-1],next=p?.events.find(e=>e.t>=now);
+const now=Date.now()/1000,obs=[...ledger].reverse().find(x=>ST.some(k=>(x.observed?.[k]||0)>0)),last=actionNotes[actionNotes.length-1],next=p?.events.find(e=>e.t>=now&&!sleeping(e.t));
 let h=obs?'<p><b>Detected:</b> '+ST.filter(k=>(obs.observed?.[k]||0)>0).map(k=>'+'+fmt(obs.observed[k])+' '+esc(k)).join(', ')+
-' · '+compactUtc(obs.t)+'</p><p class="sub">Snapshot: '+(obs.inferred?obs.inferred+' train(s) inferred.':'exact actions unknown.')+'</p>':
+' · '+compactUtc(obs.t)+'</p><p class="sub">Snapshot interval change, not a single train. '+(obs.inferred?obs.inferred+' train(s) inferred.':'Exact actions unknown.')+'</p>':
 '<p class="sub">No gains detected; reopen after training.</p>';
 if(last)h+='<p><b>You marked done:</b> '+esc(last.kind)+' · '+compactUtc(last.t)+
 ' <button data-act="undo-note">Undo</button></p>';
@@ -310,14 +335,14 @@ h+=next?'<p><b>Next recommended:</b> '+esc(next.kind)+' · '+compactUtc(next.t)+
 '<p class="sub">Record completion when due.</p>')+
 '<p class="sub">Self-reported, not verified. Reopening HJ checks Torn data.</p>':
 '<p>No further actions scheduled. Refresh to replan.</p>';
-return card("Just happened → Next action",h);
+return card("Just happened → Next action",h+'<p class="sub">Quiet hours: '+esc(sleepLabel())+'</p>');
 }
 function gainsChart(daily){
 const k=cfg.stat,days=Object.keys(daily).sort(),view=days.filter(d=>showPartial||daily[d].covered);
 let html='<div class="row"><b>Show partial days</b><button data-act="partial">'+
 (showPartial?"ON · Show all":"OFF · Covered only")+'</button></div>'+
 '<p class="sub">Covered means near-full snapshots, not verified gym logs. Today and old records are partial.</p>';
-if(!days.length)return card("Daily gains · coverage","No measured refresh intervals yet. Open HJ after training.");
+if(!days.length)return card("Daily gains · coverage","No recorded gains yet; reopen after training.");
 if(!view.length)return card("Daily gains · coverage",html+"No days meet this filter. Turn on partial days to view recorded changes.");
 const max=Math.max(1,...view.map(d=>Math.max(0,daily[d].real[k],daily[d].matched,daily[d].predicted)));
 const bar=(n,color)=>'<div style="height:9px;background:#0c2232;border-radius:7px;overflow:hidden;margin:3px 0"><div style="width:'+
@@ -367,7 +392,7 @@ const latest=recent[recent.length-1],lastGain=[...recent].reverse().find(x=>(x.o
 (lastGain?.inferred?'<p>Latest matching interval: estimated +'+fmt(lastGain.single)+
 ' per train, +'+fmt(lastGain.observed[focus]/lastGain.inferred)+
 ' observed per inferred train ('+lastGain.inferred+' inferred).</p>':
-'<p class="sub">No reliable individual-train comparison yet. Current stat changes can include several actions or bonuses.</p>')+
+'<p class="sub">No reliable individual-train comparison yet. Several actions or bonuses may be included.</p>')+
 '<p class="sub">Partial coverage: gains before baseline or in untracked gaps can be missing. '+
 (start?'Earliest stored checkpoint: '+compactUtc(start)+'. ':'')+
 'Torn logs can show more trains.</p>':
