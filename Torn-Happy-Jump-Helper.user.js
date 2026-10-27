@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.8.0
+// @version      0.8.1
 // @description  Compact CSP-safe TornPDA gym, Happy jump and book planner (read only)
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.8.0";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.8.1";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -38,6 +38,14 @@ const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gy
 const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));
 const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};
 const cd=()=>data.cooldowns?.cooldowns||{};
+// Torn API v2 gyms report modifiers as displayed dots (Atlas Strength: 7.0).
+// Older API fixtures/resources may express the same multiplier as 70.
+// Accept either form without silently dividing current v2 data by 10.
+function gymDots(raw){
+ const dots=Number(raw);
+ if(!Number.isFinite(dots)||dots<=0)return 0;
+ return dots>10?dots/10:dots;
+}
 const perkRows=()=>Object.entries(data.perks?.perks||{}).flatMap(([type,entries])=>
 (Array.isArray(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));
 const bonus=stat=>perkRows().reduce((n,r)=>{
@@ -81,7 +89,7 @@ if(n==="elites")return d>=1.25*Math.max(a,v,c);
 if(n.includes("sports science"))return false;
 return true;
 }
-function sessionGain(g,k,e,h,b){return gain(e,h,b[k],(+g.modifiers?.[k]||0)/10,g.energy_cost||10,bonus(k));}
+function sessionGain(g,k,e,h,b){return gain(e,h,b[k],gymDots(g.modifiers?.[k]),g.energy_cost||10,bonus(k));}
 function statAdvice(){
 const b=stats(),g=gym(),e=energy().maximum||150,h=happy().maximum||5000;
 if(!g||!ST.every(k=>b[k]>0))return null;
@@ -90,8 +98,8 @@ return {balance:[...baseline].sort((x,y)=>x.current-y.current)[0],value:[...base
 }
 function loadInput(){
 const g=gym(),b=stats(),k=cfg.stat,bar=energy(),h=happy();
-if(!g||!(b[k]>0)||!(+g.modifiers?.[k]>0)||!(h.maximum>0))return null;
-return {gym:g,stat:k,value:b[k],dots:g.modifiers[k]/10,cost:g.energy_cost||10,
+if(!g||!(b[k]>0)||!(gymDots(g.modifiers?.[k])>0)||!(h.maximum>0))return null;
+return {gym:g,stat:k,value:b[k],dots:gymDots(g.modifiers[k]),cost:g.energy_cost||10,
 energy:bar.current||0,maxE:bar.maximum||150,regen:bar.interval||120,inc:bar.increment||1,
 happy:h.current||h.maximum,maxH:h.maximum,drug:cd().drug||0,booster:cd().booster||0,
 m:bonus(k),refill:refill(),now:Date.now()/1000};
@@ -300,8 +308,8 @@ function statMatrix(){
  const g=gym(),bar=energy(),h=happy(),statValues=stats(),all=[];
  if(!g)return [];
  for(const stat of ST){
-  if(!(statValues[stat]>0)||!(+g.modifiers?.[stat]>0))continue;
-  const inp={gym:g,stat,value:statValues[stat],dots:g.modifiers[stat]/10,cost:g.energy_cost||10,
+  if(!(statValues[stat]>0)||!(gymDots(g.modifiers?.[stat])>0))continue;
+  const inp={gym:g,stat,value:statValues[stat],dots:gymDots(g.modifiers[stat]),cost:g.energy_cost||10,
   energy:bar.current||0,maxE:bar.maximum||150,regen:bar.interval||120,inc:bar.increment||1,
   happy:h.current||h.maximum,maxH:h.maximum,drug:cd().drug||0,booster:cd().booster||0,
   m:bonus(stat),refill:refill(),now:Date.now()/1000};
@@ -499,7 +507,7 @@ function plan(){
 }
 function gyms(){
 const g=gym(),all=data.gyms?.gyms||[],k=cfg.stat,b=stats(),e=energy().maximum||150,h=happy().maximum||5000;
-let html=g?card("Current gym",esc(g.name)+" · "+((g.modifiers?.[k]||0)/10).toFixed(1)+" dots "+esc(k)):
+let html=g?card("Current gym",esc(g.name)+" · "+gymDots(g.modifiers?.[k]).toFixed(1)+" dots "+esc(k)):
 card("Gym unavailable","Refresh first.");
 const baseline=g?sessionGain(g,k,e,h,b):0;
 const eligible=all.filter(x=>x.id!==g?.id&&["owned","buy"].includes(verified[x.id])&&gymEligible(x,b))
