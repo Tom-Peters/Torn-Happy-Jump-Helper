@@ -40,7 +40,7 @@ If v0.9.9 fails to load, disable it and install the separately packaged **[v0.9.
 
 ## Testing, model limits and privacy
 
-**44/44 targeted mock TornPDA regression tests passed**, including early launcher creation, on-open refresh, sleep-window timing, daily progress, stat/forecast alignment, a detected stat change, action confirmation, undo, session persistence, avoiding duplicate self-reports, and refusal to mark distant future actions as completed. JavaScript syntax passed; the main userscript remains **56.9 KB**, below the existing 57 KB compact-file test limit.
+**46/46 targeted mock TornPDA regression tests passed**, including early launcher creation, on-open refresh, sleep-window timing, daily progress, stat/forecast alignment, a detected stat change, action confirmation, undo, session persistence, avoiding duplicate self-reports, and refusal to mark distant future actions as completed. JavaScript syntax passed; the main userscript remains **56.9 KB**, below the existing 57 KB compact-file test limit.
 
 **Live Android v0.9.9 behaviour and the complete GitHub Actions suite are not yet verified.** The helper remains entirely read-only with respect to Torn gameplay. Only already-permitted API GET requests are issued; `/user/log` is *not* called. Optional gym-log reconciliation remains an unimplemented, permission-controlled design in [docs/optional-gym-log-reconciliation.md](docs/optional-gym-log-reconciliation.md).
 
