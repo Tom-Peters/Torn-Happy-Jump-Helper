@@ -167,11 +167,11 @@ if(!g||!(st[k]>0)||!(gymDots(g.modifiers?.[k])>0))return "";
 const per=gain(g.energy_cost||10,h.current??h.maximum??0,st[k],gymDots(g.modifiers[k]),g.energy_cost||10,bonus(k));
 const ratio=observed.amount/per,guess=Math.round(ratio);
 const inferred=!observed.trains&&guess>=2&&guess<=150&&Math.abs(ratio/guess-1)<=.12?guess:null;
-const n=observed.trains||inferred||1,comparable=!!(observed.trains||inferred||ratio<=1.8);
+const n=observed.trains||inferred||1,comparable=!!(inferred||observed.trains&&Math.abs(ratio/observed.trains-1)<=.2||ratio<=1.8);
 const expected=per*n,diff=comparable?100*(observed.amount/expected-1):null;
 const dec=x=>Number(x).toLocaleString("en-GB",{maximumFractionDigits:2});
 const desc=observed.trains?"Explicit result: "+observed.trains+" trains":
-inferred?"About "+inferred+" normal 10 E trains' worth (inferred, not verified)":
+inferred?"About "+inferred+" normal trains' worth (inferred, not verified)":
 "Session size/boosts unknown — not safely comparable as one train";
 return card("Latest visible gym session",'<p><b>'+esc(desc)+'</b></p>'+
 '<div class="metric-grid"><div><span>Torn awarded</span><strong>+'+dec(observed.amount)+'</strong><small>'+esc(k)+'</small></div>'+
