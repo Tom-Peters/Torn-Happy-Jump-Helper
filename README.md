@@ -1,44 +1,45 @@
-# Torn Happy Jump Helper — v0.9.1 launcher recovery
+# Torn Happy Jump Helper — v0.9.2
 
-**Current stable mobile release: v0.9.1 · author: IamEEKY**
+**Current incremental Android release: v0.9.2 · Author: IamEEKY**
 
-**[Install/update the main TornPDA HJ script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
+**[Install/update v0.9.2 TornPDA main userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
 
-## Android hotfix — missing HJ floating button
+v0.9.1's full-screen floating HJ launcher was **confirmed working on Android**. v0.9.2 deliberately retains that launcher/startup design and reintroduces **only** sleep-aware scheduling as a small, independently testable change.
 
-Version 0.9.0 stopped showing the HJ button on the real phone. The main userscript had grown to approximately 58 KB, versus the last confirmed-working v0.8.1 (approximately 46.7 KB). The specific on-device startup failure has **not been proven**: source size, re-injection or a runtime problem remain possibilities.
+## v0.9.2 — sleep-aware planning
 
-**v0.9.1 intentionally restores the previously working v0.8.1 launcher and full-screen dashboard code**, with a new higher version number so TornPDA can update the existing script. It does not require clearing any saved local data.
+- Sleep preference enabled by default, **22:00–08:00 in the device's local time**.
+- Under **Settings → Sleep schedule**, edit bedtime/wake time or disable the restriction entirely.
+- The same sleep rules apply to regular training, Xanax, and single Happy jump forecasts; manual actions are never scheduled within the chosen sleep window.
+- When feasible, the model trains surplus energy **just before bedtime** and **on waking** to reduce time spent at the full energy cap.
+- **Today** shows predicted regeneration loss over 24 hours and seven days, including how much is projected to occur overnight.
+- **Schedule** reports energy loss for the exact 24-hour or seven-day time window selected. These are *simulated estimates*, not observed losses.
+- A ready point refill is labelled **postpone until awake** when the dashboard is viewed during quiet hours. No actions are executed automatically.
 
-### Install or recover
+All existing per-train/24-hour/seven-day gym calculations, eight tabs, and your stored **Torn $50m/week** budget remain intact.
 
-1. In TornPDA, open **Settings → Userscripts / Manage scripts** (the name may vary by app version).
-2. Keep **one** enabled **Torn Happy Jump Helper** main script. Disable any older Enhanced, Advanced Preview, Companion or duplicate HJ scripts, as their launchers can conflict.
-3. Update/replace that main script's code with the **[raw v0.9.1 source](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**.
-4. Keep injection time set to **END**.
-5. Fully reload Torn in TornPDA and check for **HJ ◉** at the right edge. Open it and confirm **v0.9.1**, then press **Refresh data**.
+**[Download independently installable v0.9.1 known-good rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.9.1-known-good.user.js)** — this separate userscript has unique identity metadata and does not automatically update to the experimental version. Keep only **one** HJ userscript enabled.
 
-If it still doesn't appear, verify the script is enabled, inspect the script's error/diagnostic information from TornPDA's Userscripts/Dev Tools, and try disabling and re-enabling the script before reloading. If needed, the separately installable [v0.7.1 recovery script](Torn-Happy-Jump-Helper-v0.7.1-backup.user.js) remains available as an emergency fallback.
+## Install
 
-## Features in this recovery release
+1. In TornPDA's userscript manager, update the single enabled main Torn Happy Jump Helper script from the current main raw link.
+2. Use **END** injection, disable duplicate or experimental HJ scripts and reload Torn.
+3. Confirm the floating **HJ ◉** launcher opens the page and displays **v0.9.2**.
+4. Under **Settings**, confirm Sleep schedule defaults to **22:00–08:00**; then refresh live Torn data and inspect Schedule.
 
-The existing full-screen **Today, Compare, Schedule, Supplies, Gyms, Perks & books, Progress, Settings** tabs are preserved, including:
+If the button disappears, disable v0.9.2, install/enable the independent **v0.9.1 known-good rollback** and reload; do **not** clear local storage. Report whether the rollback button reappears.
 
-- Estimated training gains per 10 E gym train, 24 hours and seven days.
-- Corrected Torn API v2 gym-dot units, with real Gym-page train-result comparison.
-- Maximum-gain regular and single Happy jump alternatives, with item pricing.
-- Existing weekly Torn $50 million default and saved budget preferences.
-- Manual daily point refill status, gym eligibility and verified access safeguards.
-- Basic history, plus one-time predicted gain / stat progress views.
+## Test and release status
 
-**Temporarily deferred to restore mobile reliability:** the v0.9.0 experimental rolling interval ledger, automated checks, configurable 22:00–08:00 sleep mode, predicted overnight regeneration waste and expanded verified-gym ranking. The full experimental source and its 25-test regression suite are preserved separately at [archive/Torn-Happy-Jump-Helper-v0.9.0-experimental.user.js](archive/Torn-Happy-Jump-Helper-v0.9.0-experimental.user.js) and [archive/tests/compact-v0.9.0.test.js](archive/tests/compact-v0.9.0.test.js). They are **not** part of the current reliable main build. Those features should be reintroduced incrementally only after the launcher is confirmed on-device.
+- **22/22 targeted regression tests passed**, covering startup without an API call, tabs/launcher, gym dot values, market/refill calculations, sleep-window boundaries, pre-bed training, waking training, overnight waste and disabling quiet hours.
+- The v0.9.2 main script is about **49.8 KB**, versus 46.7 KB for phone-confirmed v0.9.1 and 58 KB for the previous non-launching v0.9.0 experiment.
+- **v0.9.2 is not yet confirmed on a real Android TornPDA installation**, and script size alone has not been proven to cause the earlier non-launch.
+- Full GitHub Actions suite has not been independently confirmed.
 
-## Verification and privacy
+### Features preserved for later incremental reintroduction
 
-**18/18 focused recovery tests passed** in a simulated TornPDA/DOM environment, including immediate launcher creation without API requests, open/close, visible full-screen panel, the working gym-dot model, forecast totals, refill safety and item calculations. **v0.9.1 has not yet been confirmed working on the real phone.**
+Rolling actual-vs-forecast stat verification, seven-day observed gains, scheduled 15-minute checks, and advanced verified-gym ranking are **not** in v0.9.2. The earlier experimental implementation is preserved in [archived v0.9.0 code](archive/Torn-Happy-Jump-Helper-v0.9.0-experimental.user.js) and [tests](archive/tests/compact-v0.9.0.test.js). Those changes will be restored only after the smaller sleep release is confirmed on the phone.
 
-No real API keys, player inventory, financial balances, training observations or other personal records are committed. All actions are read-only recommendations; the helper doesn't train or consume items automatically.
+Historical development: [archived release notes](docs/legacy-release-notes.md).
 
-Older technical release notes: [Historical archive](docs/legacy-release-notes.md).
-
-MIT · IamEEKY
+This script is **read-only**, makes manual recommendations and does not publish real API keys, player records or account details. MIT · IamEEKY.
