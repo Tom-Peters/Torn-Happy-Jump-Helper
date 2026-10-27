@@ -954,3 +954,21 @@ test("24-hour schedule stays focused while seven-day overview is available via h
  panel.onclick({target:{closest(){return {dataset:{act:"horizon",val:"168"}};}}});
  assert.match(panel.children[1].innerHTML,/7-day action overview/);
 });
+
+test("recently due action is the one visibly offered for confirmation, not a later event",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",refills:true,ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"natural"}};}}});
+ a.advance(180);
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Next recommended:.*TRAIN/);
+ assert.match(html,/I completed this in Torn/);
+ panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
+ const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes"));
+ assert.equal(notes[0].kind,"TRAIN");
+ assert.ok(notes[0].scheduled<=Date.parse("2026-10-27T09:03:00Z")/1000);
+});
