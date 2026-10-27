@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.10.2
+// @version      0.10.3
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -12,7 +12,7 @@
 // @grant        none
 // ==/UserScript==
 (function(){
-"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.10.2";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
+"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.10.3";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
 xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Number.isFinite(n)?Math.round(n).toLocaleString("en-US"):"—";const cash=n=>Number.isFinite(n)?"$"+fmt(n):"Price unknown";const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const compactUtc=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Math.floor(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),showPartial=get("show-partial",true),actionNotes=get("action-notes",[]),start=Date.now()/1000;const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>refillStatus(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}
@@ -238,7 +238,7 @@ function today(){
 const p=loadInput(),a=activePlan();let out='<div class="toolbar"><b>MAX GAINS · '+esc(cfg.stat.toUpperCase())+'</b>'+
 '<button data-act="refresh"'+(busy?' disabled':'')+'>'+(busy?'Refreshing…':'↻ Refresh data')+'</button></div>'+
 '<p class="sub">'+(updated?'Last refreshed '+new Date(updated).toLocaleTimeString("en-GB"):
-'No API refresh yet')+' · Training forecasts are estimates.</p>';out+=controls("Training type",cfg.mode,[["training","Regular"],["happy","Happy jump"]],"mode");out+=controls("Target stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");if(!p){
+'No API refresh yet')+' · Forecast estimates.</p>';out+=controls("Training type",cfg.mode,[["training","Regular"],["happy","Happy jump"]],"mode");out+=controls("Target stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");if(!p){
 out+=card("Live training data required","Refresh to load stats, gym and cooldowns.");if(errs.length)out+=card("API diagnostics",errs.map(x=>'<p>'+esc(x)+'</p>').join(""));return out;}
 out+=actionFlow(a);const window24=summary(a,24),window7=summary(a,168),single=trainEstimate(p);const fullE=Math.floor(p.energy/p.cost)*p.cost,barGain=trainEstimate(p,fullE),isAsleep=sleeping(Date.now()/1000);out+=card("Your training numbers",'<div class="metric-grid">'+
 '<div><span>Per gym train</span><strong>+'+fmt(single)+'</strong><small>'+p.cost+' E at live happiness</small></div>'+
@@ -246,7 +246,7 @@ out+=actionFlow(a);const window24=summary(a,24),window7=summary(a,168),single=tr
 '<div><span>Next 24 hours</span><strong>+'+fmt(window24?.gain??NaN)+'</strong><small>'+fmt(window24?.energy??NaN)+' E · '+cash(window24?.cost)+'</small></div>'+
 '<div><span>Next 7 days</span><strong>+'+fmt(window7?.gain??NaN)+'</strong><small>'+fmt(window7?.energy??NaN)+' E · '+cash(window7?.cost)+'</small></div>'+
 '</div><p class="sub">Selected forecast: '+esc(a?.method||"none")+' · Budget '+cash(cfg.budget)+
-' · Additional purchases '+cash(window7?.cost)+(window7?.cost===0&&(a?.count?.xanax>0||a?.count?.points>0)?' (covered by owned supplies)':'')+'. Per-train uses current happiness; other totals are simulated.</p>','hero');out+=actualComparison(readGymResult());out+=card("Sleep-aware schedule",'<p><b>'+esc(sleepLabel())+'</b> · '+(isAsleep?"Manual actions postponed until wake time.":"No manual actions during your sleep window.")+'</p>'+
+' · Additional purchases '+cash(window7?.cost)+(window7?.cost===0&&(a?.count?.xanax>0||a?.count?.points>0)?' (covered by owned supplies)':'')+'. Per-train uses current happiness; other totals are simulated.</p>','hero');out+=actualComparison(readGymResult());out+=card("Sleep-aware schedule",'<p><b>'+esc(sleepLabel())+'</b> · '+(isAsleep?"Actions resume on waking.":"No actions while asleep.")+'</p>'+
 '<div class="metric-grid"><div><span>Predicted 24h energy waste</span><strong>'+fmt(window24?.lost??0)+' E</strong><small>'+fmt(window24?.sleepLost??0)+' E overnight</small></div>'+
 '<div><span>Predicted 7-day energy waste</span><strong>'+fmt(window7?.lost??0)+' E</strong><small>'+fmt(window7?.sleepLost??0)+' E overnight</small></div></div>'+
 '<p class="sub">Trains before bed and on waking where possible. Some overnight overflow is unavoidable.</p>');const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);if(refillState==="ready"){
@@ -291,7 +291,7 @@ return html;}
 function scheduleDays(events){
 const days={};for(const e of events){const d=day(e.t),x=days[d]||(days[d]={n:0,q:0,g:0,c:0});
 if(e.kind==="TRAIN"){x.n++;x.q+=e.q||0;x.g+=e.g||0}x.c+=e.spent||0}
-return card("7-day action overview",'<p class="sub">Planned only. First/last UTC dates may be partial.</p>'+
+return card("7-day action overview",'<p class="sub">Planned only. Boundary dates may be partial.</p>'+
 Object.entries(days).map(([d,x])=>'<div class="row"><b>'+d+'</b><small>'+x.n+' trains · '+fmt(x.q)+' E · +'+fmt(x.g)+
 ' '+esc(cfg.stat)+' · '+cash(x.c)+' extra</small></div>').join(''));
 }
@@ -307,7 +307,7 @@ fmt(summaryNow.energy)+' E</strong><small>'+summaryNow.trains+' train actions</s
 summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
 '<p class="sub">'+esc(p.note)+' · Manual actions; totals match period.</p>');html+=card("Predicted energy lost at cap",'<div class="metric-grid"><div><span>Total overflow</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
 '<div><span>While asleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div><p class="sub">Quiet: '+esc(sleepLabel())+
-'. Totals match the selected period.</p>');if(hours===168)html+=scheduleDays(summaryNow.events);if(!summaryNow.events.length)return html+card("No actions within this window","A jump may take over 24 hours; try seven days.");let dayKey="",count=0;for(const ev of summaryNow.events){
+'. Totals match the selected period.</p>');if(hours===168)html+=scheduleDays(summaryNow.events);if(!summaryNow.events.length)return html+card("No planned actions","Jump may exceed 24h; try 7 days.");let dayKey="",count=0;for(const ev of summaryNow.events){
 if(count++>=120)break;const date=day(ev.t);if(date!==dayKey){dayKey=date;html+='<h3 class="day-header">'+date+' UTC</h3>'}
 html+='<div class="timeline-row"><span>'+compactUtc(ev.t)+'</span><b>'+esc(ev.kind)+
 '</b><span>'+esc(ev.detail)+'</span>'+(ev.spent?'<small>'+cash(ev.spent)+' estimated cost</small>':'')+'</div>';}
@@ -346,13 +346,13 @@ function actionFlow(p){
 const now=Date.now()/1000,obs=[...ledger].reverse().find(x=>ST.some(k=>(x.observed?.[k]||0)>0)),last=actionNotes[actionNotes.length-1],due=dueAction(p,now),future=(p?.events||[]).filter(e=>e.t>=now&&!sleeping(e.t)),queue=due?[due,...future.filter(e=>e!==due)]:future,next=queue[0],after=queue[1],third=queue[2];
 let h=obs?'<p><b>Detected:</b> '+ST.filter(k=>(obs.observed?.[k]||0)>0).map(k=>'+'+fmt(obs.observed[k])+' '+esc(k)).join(', ')+
 ' · '+compactUtc(obs.t)+'</p><p class="sub">'+(obs.inferred?'Likely training: '+obs.inferred+' train(s) inferred.':'Snapshot interval; actions unknown.')+'</p>':
-'<p class="sub">No gains yet; reopen after gym.</p>';
+'<p class="sub">No gains detected.</p>';
 if(last)h+='<p><b>You marked done:</b> '+esc(last.kind)+' · '+compactUtc(last.t)+
 ' <button data-act="undo-note">Undo</button></p>';
 h+=next?'<p><b>Next recommended:</b> '+esc(next.kind)+' · '+compactUtc(next.t)+' ('+eta(next.t)+')</p>'+
-'<p>'+esc(next.detail)+'</p>'+(after?'<p><b>Then:</b> '+esc(after.kind)+' · '+compactUtc(after.t)+'</p>':'')+(third?'<p><b>After:</b> '+esc(third.kind)+' · '+compactUtc(third.t)+'</p>':'')+(due?'<button data-act="note-done">Confirm '+esc(due.kind)+' · '+compactUtc(due.t)+'</button>':
+'<p>'+esc(next.detail)+'</p>'+(due&&due.t<now?'<p class="warn"><b>OVERDUE '+Math.ceil((now-due.t)/60)+'m</b> · Confirm or refresh.</p>':'')+(after?'<p><b>Then:</b> '+esc(after.kind)+' · '+compactUtc(after.t)+'</p>':'')+(third?'<p><b>After:</b> '+esc(third.kind)+' · '+compactUtc(third.t)+'</p>':'')+(due?'<button data-act="note-done">Confirm '+esc(due.kind)+' · '+compactUtc(due.t)+'</button>':
 '<p class="sub">Confirm when due.</p>')+
-'<p class="sub">Self-reported, not verified.</p>':
+'<p class="sub">Self-reported only.</p>':
 '<p>No steps left; refresh to replan.</p>';
 return card("Just happened → Next action",h+'<p class="sub">Quiet hours: '+esc(sleepLabel())+'</p>');
 }
