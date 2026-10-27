@@ -737,3 +737,31 @@ test("self-reported action notes from a previous session display without claimin
  assert.match(html,/Self-reported, not verified/);
  assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes")).length,1);
 });
+
+test("repeated taps on the same scheduled action do not create duplicate confirmations",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength"},7);
+ a.fixture["/user/cooldowns"].cooldowns.drug=0;
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ const tap=()=>panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
+ tap();tap();
+ const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes"));
+ assert.equal(notes.length,1);
+ assert.equal(typeof notes[0].t,"number");
+});
+test("generic manual completion never silently marks an energy refill used",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength"},7);
+ a.fixture["/user/bars"].bars.energy.current=5;
+ a.fixture["/user/cooldowns"].cooldowns.drug=72000;
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ assert.match(panel.children[1].innerHTML,/Next recommended:/);
+ panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
+ const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes"));
+ assert.equal(notes[0].kind,"REFILL");
+ assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),null,
+ "The separate refill API/manual override remains authoritative");
+});
