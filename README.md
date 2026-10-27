@@ -1,3 +1,21 @@
+# v0.7.5 — Android screenshot fixes (27 October 2026)
+
+**Current stable candidate:** [Torn-Happy-Jump-Helper.user.js](Torn-Happy-Jump-Helper.user.js), source [raw link](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js). Update the existing **main HJ** userscript in TornPDA, use injection **END**, and reload Torn. Keep only the main helper enabled; disable the older Advanced Companion, Enhanced Preview, Advanced Preview, and any duplicated HJ main scripts. Preserve local storage. The dashboard should say **v0.7.5**.
+
+Fixes based on an actual Android TornPDA screenshot showing v0.7.4:
+
+- **Floating HJ over the panel:** the overlay is raised above the launcher, the launcher is explicitly hidden whenever open (including after remount), and the current script can replace older mounted HJ button/panel/style elements. A single-version boot guard prevents duplicate instances.
+- **Refill-ready handling:** removed the artificial **12:00 UTC** wait from the scheduler. A ready daily point refill can be used now; the Today screen shows it independently of the Xanax-maximising forecast, including an instruction to train existing usable energy before using the refill. Refills already used today remain excluded.
+- **Usable next action:** smaller day/time in UTC with relative countdown, explicit plan type, and a warning to recheck current Torn data rather than treating predictions as live commands.
+- **Budget transparency:** displays the *stored budget*, projected spend as a percentage, and a lower-cost natural-energy alternative, if affordable. The screenshot's apparent $28.2m week can be explained by a saved legacy $50m setting; a new install defaults to **Torn $10m**, but this update deliberately does **not** override existing saved preferences.
+- **Phone layout:** taller mobile panel and less crowded action time; manual planning remains read-only.
+
+**Validation:** mocked boot with an old HJ panel and launcher already mounted; replacement, hide-on-open, hide-after-mount, show-on-close, visible saved $50m budget, mobile timestamp, natural alternative, immediate pre-noon refill, and API refresh all passed. The suite was updated with regression cases. **Live on-device confirmation and complete GitHub Actions execution are not yet verified.** Script availability is not proof of a valid Torn forecast; verify energy, points, market offers and actual cooldowns before any game action.
+
+**Rollback:** if this release does not behave on the phone, disable it and enable the unchanged [v0.7.1 recovery file](Torn-Happy-Jump-Helper-v0.7.1-backup.user.js) with injection END. Do not delete local settings/history.
+
+---
+
 # Happy Jump Helper v0.7.4 — training decisions that account for cost (27 October 2026)
 
 **Recommended TornPDA install:** use just [Torn-Happy-Jump-Helper.user.js](Torn-Happy-Jump-Helper.user.js) from this repo. Update its source to [the raw current file](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js), injection **END**, then reload Torn. Disable the old Advanced Companion, Enhanced and Advanced previews to avoid duplicate panels. Preserve stored settings and data. Look for floating **HJ ◉** and dashboard **v0.7.4**.
