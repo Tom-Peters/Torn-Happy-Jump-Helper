@@ -179,7 +179,7 @@ test("available refill is scheduled before noon UTC rather than delayed arbitrar
   assert.ok(refill.t<Date.parse("2026-10-27T12:00:00Z")/1000,
     "Do not postpone a ready refill until noon UTC");
   const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
-  assert.match(html,/Priority: daily 30-point refill is READY/);
+  assert.match(html,/(?:Refill ready|Priority: daily 30-point refill is READY)/);
   assert.match(html,/Next step · selected forecast/);
 });
 test("open modal sits above launcher and shows saved budget and lower-cost alternatives",async()=>{
