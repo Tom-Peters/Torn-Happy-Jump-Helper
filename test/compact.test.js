@@ -72,7 +72,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.equal(a.window.__TornHappyJumpLoaded,"0.9.5");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
-  assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh data/);
+  assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
 });
 test("true Torn refill flag excludes another same-day refill and train-to-refill sequence",async()=>{
   const a=setup(true);
@@ -119,12 +119,12 @@ test("compact tab bar uses horizontally scrollable non-wrapping buttons",()=>{
 });
 test("used refill has no redundant Mark used action; manual override can be cleared",async()=>{
   const used=setup(true);
-  used.btn.onclick();await used.refresh();
+  await used.btn.onclick();
   const usedHTML=used.document.getElementById("hhj-compact-panel").children[1].innerHTML;
   assert.match(usedHTML,/Next daily reset 00:00 UTC/);
   assert.ok(!usedHTML.includes('data-act="mark-used"'));
   const ready=setup(false);
-  ready.btn.onclick();await ready.refresh();
+  await ready.btn.onclick();
   const p=ready.document.getElementById("hhj-compact-panel");
   assert.match(p.children[1].innerHTML,/data-act="mark-used"/);
   p.onclick({target:{closest(){return {dataset:{act:"mark-used"}};}}});
@@ -180,10 +180,9 @@ test("available refill is scheduled before noon UTC rather than delayed arbitrar
 test("open modal sits above launcher and shows saved budget and lower-cost alternatives",async()=>{
   const a=setup(false,false,"2026-10-27T06:24:00Z",{budget:50000000});
   const panel=a.document.getElementById("hhj-compact-panel");
-  a.btn.onclick();
+  await a.btn.onclick();
   assert.match(panel.style.cssText,/z-index:2147483647/);
   assert.match(a.btn.style.cssText,/display:none!important/);
-  await a.refresh();
   const html=panel.children[1].innerHTML;
   assert.match(html,/Weekly spending limit: \$50,000,000/);
   assert.match(html,/Lower-cost option/);
@@ -294,7 +293,7 @@ test("v0.9.5 keeps the mobile launcher visible before API work",()=>{
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
- assert.match(html,/Refresh data/);
+ assert.match(html,/(?:Refreshing|Refresh data)/);
 });
 test("sleep schedule suppresses every manual action 22–08 and trains before bed and on waking",async()=>{
  const from=new Date(2026,9,27,21,30).toISOString();
