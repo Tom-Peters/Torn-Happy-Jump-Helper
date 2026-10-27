@@ -159,7 +159,7 @@ const visible=String((document.querySelector?.("#gymroot")||document.body)?.inne
 const re=/\bYou gained\s+([\d,.]+)\s+(strength|defense|speed|dexterity)\b/gi;
 let match,last;while((match=re.exec(visible)))last=match;
 if(!last)return null;const amount=Number(last[1].replace(/,/g,""));if(!(amount>0))return null;
-const before=visible.slice(Math.max(0,last.index-170),last.index);
+const before=visible.slice(Math.max(0,last.index-170),last.index).trimEnd();
 const explicit=before.match(/You completed\s+(\d+)\b[^\n]{0,140}$/i);
 const trains=explicit?Number(explicit[1]):null;
 return {stat:last[2].toLowerCase(),amount,trains:trains>0&&trains<=150?trains:null};
