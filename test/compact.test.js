@@ -972,3 +972,15 @@ test("recently due action is the one visibly offered for confirmation, not a lat
  assert.equal(notes[0].kind,"TRAIN");
  assert.ok(notes[0].scheduled<=Date.parse("2026-10-27T09:03:00Z")/1000);
 });
+
+test("an overdue action beyond ten minutes cannot be confirmed as if just completed",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength",refills:false,sleepEnabled:true},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"natural"}};}}});
+ a.advance(11*60);
+ panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
