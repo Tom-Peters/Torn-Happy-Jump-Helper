@@ -1186,7 +1186,7 @@ test("overnight due action can still be reviewed after waking, never during slee
  assert.ok(watched&&watched.t<=Date.parse("2026-10-27T22:40:00Z")/1000);
  a.advance(2400);await a.refresh();
  assert.ok(!a.document.getElementById("hhj-compact-panel").children[1].innerHTML.includes("Past due · unconfirmed"));
- a.advance(8*3600+25*60);await a.refresh();
+ a.advance(9*3600+15*60);await a.refresh(); // 08:30 UK time, after waking.
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.match(html,/Past due · unconfirmed/);
  assert.match(html,/Missed it · Replan/);
