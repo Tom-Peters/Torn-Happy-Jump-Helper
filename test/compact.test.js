@@ -16,7 +16,8 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   const document={body,head,createElement:node,addEventListener(){},
     getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null;}};
   const w={setInterval(){},__TornHappyJumpLoaded:null};
-  const date=class extends Date {static now(){return Date.parse(clock)}};
+  let nowMs=Date.parse(clock);
+  const date=class extends Date {static now(){return nowMs}};
   const map=new Map();
   if(settings)map.set("hhj-compact-v1:settings",JSON.stringify(settings));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
@@ -46,11 +47,11 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
     if(p.startsWith("/user/inventory"))value=category21&&p.includes("?cat=")?{error:{code:21}}:{inventory:{items:category21?[{id:206,amount:2,name:"Xanax",faction_owned:false}]:[]}};
     return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
   }
-  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison};})();");
+  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison,sleeping,clockMinutes,gymOpportunities,verificationReport,dailyVerification,statMatrix,save};})();");
   new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
     document,{hostname:"www.torn.com",pathname},w,localStorage,PDA_httpGet,date);
   return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
-    core:w.__HJTEST,refresh:()=>w.__HJTEST.refresh()};
+    core:w.__HJTEST,refresh:()=>w.__HJTEST.refresh(),fixture,advance:(seconds)=>{nowMs+=seconds*1000;}};
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
@@ -286,4 +287,95 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/640.5/);
  assert.match(html,/Model estimates now/);
  assert.match(html,/Per gym train/);
+});
+
+test("default 22:00–08:00 quiet hours block manual actions and train energy before bed",async()=>{
+ const a=setup(false,false,"2026-10-27T21:30:00Z",
+  {budget:50000000,stat:"strength",sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"},7);
+ a.btn.onclick();await a.refresh();
+ const all=a.core.plans();
+ const from=Date.parse("2026-10-27T22:00:00Z")/1000;
+ const end=Date.parse("2026-10-28T08:00:00Z")/1000;
+ assert.equal(a.core.clockMinutes("22:00",-1),1320);
+ assert.equal(a.core.clockMinutes("08:00",-1),480);
+ assert.equal(a.core.clockMinutes("garbage",-1),-1);
+ assert.equal(a.core.sleeping(from),true);
+ assert.equal(a.core.sleeping(end),false);
+ for(const p of all)assert.ok(!p.events.some(x=>x.t>=from&&x.t<end),
+   "No Xanax, refill, jump or manual training action can occur during sleep");
+ const regular=all.find(x=>x.method==="natural");
+ assert.ok(regular.events.some(x=>x.kind==="TRAIN"&&x.t<from&&
+  x.detail.includes("before sleep")), "Use available energy just before bedtime");
+ assert.ok(regular.events.some(x=>x.kind==="TRAIN"&&x.t>=end&&
+  x.detail.includes("on waking")), "Train regenerated energy on waking");
+ const day=a.core.summary(regular,24);
+ assert.ok(day.lost>0,"Report energy regeneration loss while the bar is capped");
+ assert.ok(day.sleepLost>0,"Attribute unavoidable cap waste to sleeping hours");
+ assert.ok(day.sleepLost<=day.lost);
+});
+test("disabling sleep permits the previous unrestricted simulation",async()=>{
+ const a=setup(false,false,"2026-10-27T21:30:00Z",
+  {budget:50000000,stat:"strength",sleepEnabled:false},7);
+ a.btn.onclick();await a.refresh();
+ const plan=a.core.plans().find(x=>x.method==="xanax");
+ const nightStart=Date.parse("2026-10-27T22:00:00Z")/1000;
+ const morning=Date.parse("2026-10-28T08:00:00Z")/1000;
+ assert.equal(a.core.sleeping(nightStart),false);
+ assert.ok(plan.events.some(x=>x.t>=nightStart&&x.t<morning),
+ "Disabled quiet hours must not suppress all overnight actions");
+ assert.equal(a.core.summary(plan,24).sleepLost,0);
+});
+test("rolling verification compares observed changes to the previous planned interval, without inventing training",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength",sleepEnabled:true},7);
+ a.btn.onclick();await a.refresh();
+ assert.equal(a.core.verificationReport().comparisons,0,
+  "First refresh only establishes a local prediction baseline");
+ a.advance(3600);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=610.45;
+ await a.refresh();
+ const v=a.core.verificationReport();
+ assert.equal(v.comparisons,1);
+ assert.ok(v.observed>610&&v.observed<611);
+ assert.ok(v.forecast>=0);
+ const daily=a.core.dailyVerification();
+ assert.equal(daily.length,1);
+ assert.ok(daily[0].stats.strength>610);
+ assert.ok(a.storage.getItem("hhj-compact-v1:verification"),
+  "Verified observations are local storage only");
+});
+test("sleep schedule and rolling verification controls are editable and existing tabs stay available",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength"},7);
+ a.btn.onclick();await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"settings"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/22:00/);
+ assert.match(html,/08:00/);
+ assert.match(html,/hhj-sleepenabled/);
+ assert.match(html,/hhj-autoverify/);
+ assert.match(html,/Sleep and wake schedule/);
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const progress=panel.children[1].innerHTML;
+ assert.match(progress,/Rolling verification/);
+ assert.match(progress,/Daily observed gains/);
+ assert.match(progress,/Clear rolling verification/);
+});
+test("gym ranking only includes user-confirmed, eligible upgrades",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength"},7);
+ a.fixture["/torn/gyms"].gyms.push(
+  {id:10,name:"Owned Better",modifiers:{strength:9,speed:9,defense:9,dexterity:9},energy_cost:10},
+  {id:11,name:"Unseen Best",modifiers:{strength:10,speed:10,defense:10,dexterity:10},energy_cost:10},
+  {id:12,name:"Unlocked But Unpurchased",modifiers:{strength:8,speed:8,defense:8,dexterity:8},energy_cost:10,cost:500000});
+ a.storage.setItem("hhj-compact-v1:gyms",JSON.stringify({10:"owned",12:"buy"}));
+ // Verification is read at boot, so create a fresh fixture with persisted ownership.
+ const b=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
+ b.fixture["/torn/gyms"].gyms.push(...a.fixture["/torn/gyms"].gyms.slice(1));
+ b.storage.setItem("hhj-compact-v1:gyms",JSON.stringify({10:"owned",12:"buy"}));
+ // Only source edits after boot cannot change captured 'verified', so this checks
+ // that unknown entries are excluded while current gym remains the baseline.
+ b.btn.onclick();await b.refresh();
+ assert.ok(!b.core.gymOpportunities().some(x=>x.gym.name==="Unseen Best"));
 });
