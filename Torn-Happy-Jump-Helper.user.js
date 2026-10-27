@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.7.3
+// @version      0.7.4
 // @description  Compact CSP-safe TornPDA gym, Happy jump and book planner (read only)
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.3";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.4";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
 xanax:206,ecstasy:197,lollipop:310,dvd:366
@@ -54,6 +54,16 @@ const rows=[...(prices[item]||[])].filter(x=>Number.isFinite(+x.price)&&+x.price
 let remaining=buy,total=0;for(const r of rows){const take=Math.min(remaining,r.amount);remaining-=take;total+=take*r.price;if(!remaining)return total}
 const manual=+cfg.manualPrices?.[item];return manual>0&&Number.isFinite(manual)?total+remaining*manual:Infinity;
 }
+
+function jumpKit(){
+ const required={xanax:4,dvd:4,ecstasy:1};
+ const entries=Object.entries(required).map(([name,num])=>({
+  name,num,have:owned(name),missing:Math.max(0,num-owned(name)),price:basket(name,num,owned(name))
+ }));
+ const total=entries.reduce((sum,x)=>sum+x.price,0);
+ return {entries,total,available:Number.isFinite(total)&&total<=cfg.budget};
+}
+function kitAffordable(){return jumpKit().available}
 function owned(name){return name==="points"?Math.max(0,+cfg.ownedPoints||0):Math.max(0,+inv[name]||0)}
 function needs(plan){return Object.entries(plan?.count||{}).filter(([,num])=>num>0).map(([name,num])=>({name,num,have:owned(name),missing:Math.max(0,num-owned(name)),price:basket(name,num,owned(name))}));}
 function gymEligible(g,b){
@@ -110,12 +120,13 @@ const restored=cap-e;use("points",30);refilled=true;e=cap;
 add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,restored);train(t,"Train refilled energy");
 }
 }else if(method==="happy"){
-if(jumps>0)continue;
-if(stack<3&&t>=nextDrug&&e<=750&&afford("xanax")){use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
-nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/3",250)}
-if(stack===3&&t>=nextDrug&&boosterCD===0&&t%900===60&&afford("lollipop",4)&&afford("ecstasy")&&cost+Math.max(0,bookCost("lollipop",count.lollipop+4)-bookCost("lollipop",count.lollipop))+Math.max(0,bookCost("ecstasy",count.ecstasy+1)-bookCost("ecstasy",count.ecstasy))<=cfg.budget){
-use("lollipop",4);use("ecstasy",1);h=Math.min(99999,2*(h+4*25));jumps++;
-add(t,"JUMP","Use 4 lollipops, then Ecstasy, then train immediately · estimated Happy "+fmt(h));
+if(jumps>0||!kitAffordable())continue;
+if(stack===0&&t===now&&e>=p.cost)train(t,"Train current energy before Xanax stacking");
+if(stack<4&&t>=nextDrug&&e<=750){use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
+nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250)}
+if(stack===4&&t>=nextDrug&&boosterCD===0&&t%900===60){
+use("dvd",4);use("ecstasy",1);h=Math.min(99999,2*(h+4*2500));boosterCD=24*3600;jumps++;
+add(t,"JUMP","Use four Erotic DVDs consecutively, then Ecstasy; train before the next 15-minute happiness reset · estimated Happy "+fmt(h));
 train(t,"Happy-jump gym training");
 }
 }
@@ -217,7 +228,12 @@ let out=regular.length?'<p><b>Best regular 7-day plan:</b> '+esc(regular[0].meth
 '<p class="warn">Regular plan not fully priced or not possible within budget. Check Supplies.</p>';
 if(jump?.jumps)out+='<p><b>One prepared Happy jump:</b> +'+fmt(jump.gain)+' '+esc(input.stat)+
 ' · '+cash(jump.cost)+'</p><button data-act="choose" data-val="happy">Show Happy jump actions</button>';
-else out+='<p class="warn">Happy jump unavailable with the current energy, cooldown, priced supplies or budget. Review Supplies before planning a jump.</p>';
+else {const kit=jumpKit();
+ out+='<p class="warn">No fully funded Happy jump forecast: four Xanax, four Erotic DVDs and one Ecstasy cost '+
+ (Number.isFinite(kit.total)?cash(kit.total):"an unknown amount")+
+ ' to buy what you lack, against a '+cash(cfg.budget)+' weekly budget.</p>'+
+ '<button data-act="tab" data-val="supplies">Review jump kit and costs</button>';
+ }
 out+='<p class="sub">These are different time horizons: regular = seven days, Happy jump = one preparation and train session. A Happy jump is not an automatic repeatable weekly gain.</p>';
 return card("What should I do?",out,"hero");
 }
@@ -238,6 +254,17 @@ out+=card("Forecast basket",'<p><b>'+esc(chosen.method.toUpperCase())+'</b> · '
 (missing.length?'<p class="warn">Unknown market prices: '+esc(missing.map(x=>x.name).join(", "))+
 '. No zero-cost assumptions; enter a manual price in Settings or refresh markets.</p>':
 '<p class="sub">Cost is a purchasing estimate. Prices and inventory may be cached; owned points must be entered manually.</p>'));
+const kit=jumpKit();
+out+=card("Real Happy-jump preparation kit",
+'<p><b>4 Xanax + 4 Erotic DVDs + 1 Ecstasy</b> (conservative 24-hour booster capacity).</p>'+
+kit.entries.map(x=>'<div class="row"><span>'+esc(x.name)+' × '+fmt(x.num)+
+' (owned '+fmt(x.have)+', need '+fmt(x.missing)+')</span><b>'+
+(Number.isFinite(x.price)?cash(x.price):"Market price missing")+'</b></div>').join("")+
+'<div class="row"><b>Kit purchases</b><b>'+(Number.isFinite(kit.total)?cash(kit.total):"Incomplete prices")+'</b></div>'+
+'<p class="'+(kit.available?"good":"warn")+'">'+(kit.available?
+"Within budget for the required items. Cooldowns, happiness reset and overdose risk still apply.":
+"Not funded or not fully priced. No complete Happy jump is recommended; increase the budget only if you want to compare it.")+
+'</p><p class="sub">All four DVDs may be used consecutively when booster cooldown permits. The timing is an estimate, not an automatic action. More DVDs require verified extra booster capacity.</p>');
 out+=card("Source health",'<p>'+esc(errs.length?errs.join(" · "):"No API errors reported at last refresh.")+'</p>');
 return out;
 }
