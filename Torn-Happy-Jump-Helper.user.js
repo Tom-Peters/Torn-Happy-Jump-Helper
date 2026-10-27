@@ -29,7 +29,7 @@ const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"
 const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
-const CFG={budget:10000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{}};
+const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{}};
 let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";
@@ -402,12 +402,14 @@ function today(){
   const prevGain=fullE>0?trainEstimate(p,fullE):0;
   const afterH=Math.max(0,p.happy-fullE*.5),afterS=p.value+prevGain;
   const refillGain=gain(Math.floor(p.maxE/p.cost)*p.cost,afterH,afterS,p.dots,p.cost,p.m);
-  out+=card("Priority: daily 30-point refill is READY",'<p class="alert"><b>Best immediate refill sequence:</b> '+
+  out+=card(cfg.mode==="happy"?"Refill available — protect your jump timing":"Priority: daily 30-point refill is READY",'<p class="alert"><b>Best immediate refill sequence:</b> '+
    (fullE>0?'Train '+fmt(fullE)+' E (≈ +'+fmt(prevGain)+' '+esc(cfg.stat)+'), then ':'')+
    'use the 30-point energy refill in Torn, and train the new energy (≈ +'+fmt(refillGain)+').</p>'+
    '<p>Combined immediate estimated gain: <b class="good">+'+fmt(prevGain+refillGain)+'</b> '+esc(cfg.stat)+
    ' · Cost: 30 points (check your actual point balance).</p>'+
-   '<p class="sub">This is an alternative to taking Xanax now; do not use a refill on a full bar.</p>'+
+   '<p class="sub">'+(cfg.mode==="happy"?
+  "If preparing a Happy jump, do not spend the refill prematurely. Compare the jump schedule first; it may be better used immediately before the final happy training session.":
+  "This is an alternative to taking Xanax now; do not refill a full bar.")+'</p>'+
    '<button data-act="mark-used">Mark refill used after you spend it</button>');
  }else out+=card("Daily point refill",'<div class="row"><b>'+
   (refillState==="used"?"USED TODAY":"UNVERIFIED")+'</b>'+
@@ -425,7 +427,8 @@ function today(){
  if(advice)out+=card("Stat strategy",'<p><b>Balance:</b> '+esc(advice.balance.stat)+
   ' ('+fmt(advice.balance.current)+')</p><p><b>Largest current full-bar gain:</b> '+
   esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+') </p>'+
-  '<p class="sub">Maximum gains is your priority; selecting a different stat recalculates every projection.</p>');
+  '<button data-act="stat" data-val="'+esc(advice.value.stat)+'">Use max-gain stat</button>'+
+  '<p class="sub">Maximum gains is your priority; changing focus recalculates every projection.</p>');
  out+=card("Current Torn snapshot",'<div class="metric-grid">'+
   '<div><span>Energy</span><strong>'+fmt(p.energy)+'/'+fmt(p.maxE)+'</strong></div>'+
   '<div><span>Happiness</span><strong>'+fmt(p.happy)+'/'+fmt(p.maxH)+'</strong></div>'+
