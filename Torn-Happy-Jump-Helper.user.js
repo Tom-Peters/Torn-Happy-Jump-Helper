@@ -55,8 +55,8 @@ let remaining=buy,total=0;for(const r of rows){const take=Math.min(remaining,r.a
 const manual=+cfg.manualPrices?.[item];return manual>0&&Number.isFinite(manual)?total+remaining*manual:Infinity;
 }
 
-function jumpKit(){
- const required={xanax:4,dvd:4,ecstasy:1};
+function jumpKit(method="happy"){
+ const required=method==="happy-candy"?{xanax:4,lollipop:48,ecstasy:1}:{xanax:4,dvd:4,ecstasy:1};
  const entries=Object.entries(required).map(([name,num])=>({
   name,num,have:owned(name),missing:Math.max(0,num-owned(name)),price:basket(name,num,owned(name))
  }));
@@ -96,7 +96,7 @@ function simulate(method,input,hours=168){
 const p=input,now=Math.ceil(p.now/60)*60,until=now+3600*hours,cap=p.maxE;
 let e=p.energy,h=p.happy,stat=p.value,nextDrug=now+p.drug,spent=0,gainTotal=0,trainedE=0,regenLost=0,drugCount=0,jumps=0;
 const events=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);
-const kitOk=method!=="happy"||jumpKit().available;
+const kitOk=!method.startsWith("happy")||jumpKit(method).available;
 let firstRefill=p.refill!=="ready",yday="",refilled=false,bank=0,stack=0,boosterCD=p.booster,cost=0,available=true;
 const add=(t,kind,detail,q=0,g=0)=>events.push({t,kind,detail,q,g});
 const bookCost=(name,n)=>basket(name,n,owned(name));
@@ -120,28 +120,30 @@ if(e>=p.cost)train(t,"Train before available daily point refill");
 const restored=cap-e;use("points",30);refilled=true;e=cap;
 add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,restored);train(t,"Train refilled energy");
 }
-}else if(method==="happy"){
+}else if(method==="happy"||method==="happy-candy"){
 if(jumps>0||!kitOk)continue;
 if(stack===0&&t===now&&e>=p.cost)train(t,"Train current energy before Xanax stacking");
 if(stack<4&&t>=nextDrug&&e<=760){use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
 nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250)}
 if(stack===4&&t>=nextDrug&&boosterCD===0&&t%900===60){
-use("dvd",4);use("ecstasy",1);h=Math.min(99999,2*(h+4*2500));boosterCD=24*3600;jumps++;
-add(t,"JUMP","Use four Erotic DVDs consecutively, then Ecstasy; train before the next 15-minute happiness reset · estimated Happy "+fmt(h));
+const candy=method==="happy-candy";
+if(candy)use("lollipop",48);else use("dvd",4);
+use("ecstasy",1);h=Math.min(99999,2*(h+(candy?48*25:4*2500)));boosterCD=24*3600;jumps++;
+add(t,"JUMP","Use "+(candy?"48 lollipops":"four Erotic DVDs")+" consecutively, then Ecstasy; train before the next 15-minute happiness reset · estimated Happy "+fmt(h));
 train(t,"Happy-jump gym training");
 }
 }
 }
 return {method,events,gain:gainTotal,cost,energy:trainedE,lost:regenLost,drugs:drugCount,jumps,count,
 start:now,end:until,affordable:cost<=cfg.budget&&Number.isFinite(cost),
-note:method==="happy"?"Single prepared Happy jump only; not a reliable repeated weekly forecast":
+note:method.startsWith("happy")?"Single prepared Happy jump only; not a reliable repeated weekly forecast":
 "Assumes every manual action happens on time and future Xanax cooldowns are 7 hours"};
 }
-function plans(){const p=loadInput();if(!p)return [];return ["natural","xanax","happy"].map(k=>simulate(k,p));}
+function plans(){const p=loadInput();if(!p)return [];return ["natural","xanax","happy-candy","happy"].map(k=>simulate(k,p));}
 function activePlan(){
 const list=lastPlan||[];if(!list.length)return null;
 if(selectedMethod!=="auto")return list.find(x=>x.method===selectedMethod)||list[0];
-return list.filter(x=>x.method!=="happy"&&x.affordable).sort((a,b)=>b.gain-a.gain)[0]||list[0];
+return list.filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable).sort((a,b)=>b.gain-a.gain)[0]||list[0];
 }
 function projection(s,g){return [50000000,100000000,200000000,1000000000].map(goal=>{
 let value=s,weeks=0;while(value<goal&&weeks<5200){value+=Math.max(0,g*(1+Math.max(0,value-s)*0.00000002));weeks++}
@@ -220,21 +222,22 @@ if(!document.getElementById("hhj-mini-css")){css.id="hhj-mini-css";(document.hea
 function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
 function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
 function recommendation(){
-const input=loadInput(),regular=(lastPlan||[]).filter(x=>x.method!=="happy"&&x.affordable&&x.gain>0)
-.sort((a,b)=>b.gain-a.gain),jump=(lastPlan||[]).find(x=>x.method==="happy");
+const input=loadInput(),regular=(lastPlan||[]).filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable&&x.gain>0)
+.sort((a,b)=>b.gain-a.gain),jumps=(lastPlan||[]).filter(x=>x.method.startsWith("happy")&&x.jumps===1);
 if(!input)return card("Training recommendation","Refresh live data to compare options.");
 let out=regular.length?'<p><b>Best regular 7-day plan:</b> '+esc(regular[0].method)+
 ' · +'+fmt(regular[0].gain)+' '+esc(input.stat)+' · '+cash(regular[0].cost)+
 '</p><button data-act="choose" data-val="'+esc(regular[0].method)+'">Show regular schedule</button>':
 '<p class="warn">Regular plan not fully priced or not possible within budget. Check Supplies.</p>';
-if(jump?.jumps)out+='<p><b>One prepared Happy jump:</b> +'+fmt(jump.gain)+' '+esc(input.stat)+
-' · '+cash(jump.cost)+'</p><button data-act="choose" data-val="happy">Show Happy jump actions</button>';
-else {const kit=jumpKit();
- out+='<p class="warn">No fully funded Happy jump forecast: four Xanax, four Erotic DVDs and one Ecstasy cost '+
- (Number.isFinite(kit.total)?cash(kit.total):"an unknown amount")+
- ' to buy what you lack, against a '+cash(cfg.budget)+' weekly budget.</p>'+
- '<button data-act="tab" data-val="supplies">Review jump kit and costs</button>';
- }
+for(const method of ["happy-candy","happy"]){
+const jump=jumps.find(x=>x.method===method),kit=jumpKit(method);
+const name=method==="happy-candy"?"Budget candy jump":"eDVD Happy jump";
+if(jump)out+='<p><b>'+name+':</b> +'+fmt(jump.gain)+' '+esc(input.stat)+
+' · '+cash(jump.cost)+'</p><button data-act="choose" data-val="'+method+'">Show '+name+' schedule</button>';
+else out+='<p class="sub">'+name+': not affordable or fully priced (kit '+
+(Number.isFinite(kit.total)?cash(kit.total):"cost unknown")+'; budget '+cash(cfg.budget)+
+'). <button data-act="tab" data-val="supplies">Check supplies</button></p>';
+}
 out+='<p class="sub">These are different time horizons: regular = seven days, Happy jump = one preparation and train session. A Happy jump is not an automatic repeatable weekly gain.</p>';
 return card("What should I do?",out,"hero");
 }
@@ -242,7 +245,7 @@ function supplies(){
 const list=lastPlan||plans(),chosen=list.find(x=>x.method===selectedMethod)||
 list.find(x=>x.method==="xanax")||list[0];
 let out=controls("Supply plan",selectedMethod==="auto"?"xanax":selectedMethod,
-[["natural","Natural"],["xanax","Xanax"],["happy","Happy jump"]],"choose-supply");
+[["natural","Natural"],["xanax","Xanax"],["happy-candy","Candy jump"],["happy","eDVD jump"]],"choose-supply");
 if(!chosen)return out+card("Supplies unavailable","Refresh gym, stats and market data first.");
 const rows=needs(chosen),missing=rows.filter(x=>x.missing>0&&!Number.isFinite(x.price));
 out+=card("Forecast basket",'<p><b>'+esc(chosen.method.toUpperCase())+'</b> · '+fmt(chosen.energy)+
@@ -255,17 +258,20 @@ out+=card("Forecast basket",'<p><b>'+esc(chosen.method.toUpperCase())+'</b> · '
 (missing.length?'<p class="warn">Unknown market prices: '+esc(missing.map(x=>x.name).join(", "))+
 '. No zero-cost assumptions; enter a manual price in Settings or refresh markets.</p>':
 '<p class="sub">Cost is a purchasing estimate. Prices and inventory may be cached; owned points must be entered manually.</p>'));
-const kit=jumpKit();
-out+=card("Real Happy-jump preparation kit",
-'<p><b>4 Xanax + 4 Erotic DVDs + 1 Ecstasy</b> (conservative 24-hour booster capacity).</p>'+
+for(const method of ["happy-candy","happy"]){
+const kit=jumpKit(method),candy=method==="happy-candy";
+out+=card(candy?"Budget candy-jump kit":"eDVD Happy-jump kit",
+'<p><b>'+(candy?"4 Xanax + 48 lollipops + 1 Ecstasy":"4 Xanax + 4 Erotic DVDs + 1 Ecstasy")+
+'</b> (base 24-hour booster capacity).</p>'+
 kit.entries.map(x=>'<div class="row"><span>'+esc(x.name)+' × '+fmt(x.num)+
 ' (owned '+fmt(x.have)+', need '+fmt(x.missing)+')</span><b>'+
 (Number.isFinite(x.price)?cash(x.price):"Market price missing")+'</b></div>').join("")+
 '<div class="row"><b>Kit purchases</b><b>'+(Number.isFinite(kit.total)?cash(kit.total):"Incomplete prices")+'</b></div>'+
 '<p class="'+(kit.available?"good":"warn")+'">'+(kit.available?
-"Within budget for the required items. Cooldowns, happiness reset and overdose risk still apply.":
-"Not funded or not fully priced. No complete Happy jump is recommended; increase the budget only if you want to compare it.")+
-'</p><p class="sub">All four DVDs may be used consecutively when booster cooldown permits. The timing is an estimate, not an automatic action. More DVDs require verified extra booster capacity.</p>');
+"Within budget for the required items. Actual cooldowns, the happiness reset and overdose risk still apply.":
+"Insufficient budget or unknown price; no complete jump recommended.")+
+'</p><p class="sub">Assumes stacking from near-empty energy. Use boosters consecutively only when cooldown permits, followed by Ecstasy and training before the next 15-minute happiness reset. Extra booster capacity and special item effects are not modeled.</p>');
+}
 out+=card("Source health",'<p>'+esc(errs.length?errs.join(" · "):"No API errors reported at last refresh.")+'</p>');
 return out;
 }
