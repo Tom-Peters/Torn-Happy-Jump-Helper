@@ -1,14 +1,23 @@
 # Torn Happy Jump Helper — v0.10.3
 
-**Current incremental Android release: v0.10.3 · Author: IamEEKY**
+**Current Android test release: v0.10.3 · Author: IamEEKY**
 
 [**Install/update the main TornPDA Happy Jump Helper**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)
 
-v0.10.1 was **confirmed working on Android**. This update keeps its full-screen floating HJ launcher, eight tabs, correct gym calculations, refill handling, UK sleep rules, charts, automatic data refresh on opening, and locally saved user settings. No extra Torn API permissions are requested.
+v0.10.2 was **confirmed working on Android**. This update keeps its full-screen floating HJ launcher, eight tabs, correct gym calculations, refill handling, UK sleep rules, charts, automatic data refresh on opening, and locally saved user settings. No extra Torn API permissions are requested.
 
 ## New in v0.10.3
 
-**Recently overdue actions:** when a scheduled action is within the existing ten-minute confirmation window but its scheduled time has passed, the Next Action card now highlights **OVERDUE** with elapsed minutes. The button still identifies the action being confirmed; overdue is not evidence of completion. Older events cannot be retrospectively confirmed, and the next live refresh replans from Torn data. The original v0.10.1 rollback remains available.
+**Overdue recommendations now survive refreshes.** The helper remembers the earliest upcoming action from the last successfully refreshed plan. When that action is **10–90 minutes past its scheduled time**, it can appear as **Past due · unconfirmed** in **Today, Schedule and Progress**, even after reopening HJ.
+
+- The overdue card displays the **action, original scheduled time and minutes elapsed**. Its status never claims the action was missed or completed.
+- **I did it** records a self-reported completion in local device storage. **Dismiss** clears the reminder without recording completion. Neither action trains in Torn, takes Xanax, spends points or fabricates battle-stat gains; both re-fetch Torn data to recalculate the next steps.
+- During the configured **UK sleep hours**, reminders are suppressed. Expired actions older than 90 minutes are dropped rather than accumulating into an overnight backlog.
+- For training, a matching recorded stat increase within the refresh interval suppresses the reminder; a refill confirmed used by Torn, or a fresh drug cooldown for Xanax, similarly prevents an inappropriate warning. These indicators avoid nagging; they **are not evidence that an exact scheduled action happened**.
+- When the selected training strategy or target stat changes, a warning from the previous strategy is not carried into the new one.
+- The original **ten-minute due-action button** is preserved. The older overdue card uses separate, clearly labelled manual controls for the previous recommendation.
+
+Only **one previous recommendation** is watched at a time. This feature does not schedule notifications, poll in the background, import gym logs or perform gameplay actions.
 
 ## What's new in v0.10.2
 
@@ -51,13 +60,13 @@ The old second "Next step · selected forecast" panel has been removed. Its info
 3. Reload Torn, tap **HJ ◉** and check the full-screen header reads **v0.10.3**.
 4. Inspect the three-step panel and **Schedule → 7 days**. For a due manual action, the Confirm button should show the specific action and time. Refresh after training to see an inferred activity result.
 
-If the launcher or panel fails, disable v0.10.3 and install the independent **[phone-confirmed v0.10.1 rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.1-known-good.user.js)**. Leave one enabled and **do not clear local storage**.
+If the launcher or panel fails, disable v0.10.3 and install the independent **[phone-confirmed v0.10.2 rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.2-known-good.user.js)**. Leave one enabled and **do not clear local storage**.
 
 ## Validation and privacy
 
-**64/64 focused userscript regression tests passed** in a simulated TornPDA and Torn API environment. This covers launcher boot, API refresh on opening, the existing eight tabs, sleep/DST boundaries, refill rules, training estimates, rolling actual gains, day grouping, three-action order, named due-action confirmations, 10-minute retrospective completion, double-tap protection and rejecting actions more than 10 minutes old.
+**70/70 focused userscript regression tests passed** in a simulated TornPDA and Torn API environment. This covers launcher boot, API refresh on opening, the existing eight tabs, sleep/DST boundaries, refill rules, training estimates, rolling actual gains, day grouping, three-action order, named due-action confirmations, 10-minute retrospective completion, double-tap protection, recently overdue actions across refreshes, sleep-hour suppression, observed-training recognition, overdue Done/Dismiss, expired reminders and changed-strategy safeguards.
 
-The self-contained main script is **56,989 characters**, under the 57,000-character compact-source guard. **Live Android v0.10.3 and the complete GitHub Actions suite are not yet independently verified.**
+The self-contained main script is **56,992 characters**, under the 57,000-character compact-source guard. **Live Android v0.10.3 and the complete GitHub Actions suite are not yet independently verified.**
 
 No real API keys, user stats, personal item inventories or financial records are committed to the public repository. Actions in Torn remain entirely manual.
 
