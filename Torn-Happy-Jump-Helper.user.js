@@ -96,6 +96,7 @@ function simulate(method,input,hours=168){
 const p=input,now=Math.ceil(p.now/60)*60,until=now+3600*hours,cap=p.maxE;
 let e=p.energy,h=p.happy,stat=p.value,nextDrug=now+p.drug,spent=0,gainTotal=0,trainedE=0,regenLost=0,drugCount=0,jumps=0;
 const events=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);
+const kitOk=method!=="happy"||jumpKit().available;
 let firstRefill=p.refill!=="ready",yday="",refilled=false,bank=0,stack=0,boosterCD=p.booster,cost=0,available=true;
 const add=(t,kind,detail,q=0,g=0)=>events.push({t,kind,detail,q,g});
 const bookCost=(name,n)=>basket(name,n,owned(name));
@@ -120,9 +121,9 @@ const restored=cap-e;use("points",30);refilled=true;e=cap;
 add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,restored);train(t,"Train refilled energy");
 }
 }else if(method==="happy"){
-if(jumps>0||!kitAffordable())continue;
+if(jumps>0||!kitOk)continue;
 if(stack===0&&t===now&&e>=p.cost)train(t,"Train current energy before Xanax stacking");
-if(stack<4&&t>=nextDrug&&e<=750){use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
+if(stack<4&&t>=nextDrug&&e<=760){use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
 nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250)}
 if(stack===4&&t>=nextDrug&&boosterCD===0&&t%900===60){
 use("dvd",4);use("ecstasy",1);h=Math.min(99999,2*(h+4*2500));boosterCD=24*3600;jumps++;
