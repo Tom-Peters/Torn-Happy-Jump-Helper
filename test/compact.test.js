@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php"){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -46,9 +46,9 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
     if(p.startsWith("/user/inventory"))value=category21&&p.includes("?cat=")?{error:{code:21}}:{inventory:{items:category21?[{id:206,amount:2,name:"Xanax",faction_owned:false}]:[]}};
     return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
   }
-  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary};})();");
+  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison};})();");
   new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
-    document,{hostname:"www.torn.com",pathname:"/index.php"},w,localStorage,PDA_httpGet,date);
+    document,{hostname:"www.torn.com",pathname},w,localStorage,PDA_httpGet,date);
   return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
     core:w.__HJTEST,refresh:()=>w.__HJTEST.refresh()};
 }
@@ -271,14 +271,19 @@ test("v2 Atlas gym modifiers 7.0 yield hundreds of Strength per 10-energy train"
  assert.ok(Math.abs(a.core.summary(regular,168).gain-regular.gain)<0.00001);
 });
 
-test("the displayed actual gym train can be compared with a formula estimate",async()=>{
+test("Gym page observation compares a read-only train result with calculated gain",async()=>{
  const a=setup(false,false,"2026-10-27T09:52:00Z",
-  {budget:50000000,stat:"strength"},7);
- a.document.body.innerText="You completed 1 press. You gained 640.50 strength";
- // The result parser only runs on Torn's Gym page; existing setup uses index.php.
+  {budget:50000000,stat:"strength"},7,"/gym.php");
+ a.document.body.innerText="You completed one 10E training exercise. You gained 640.50 strength";
+ const observed=a.core.readGymResult();
+ assert.equal(observed.stat,"strength");
+ assert.equal(observed.amount,640.5);
  assert.ok(!a.source.includes("640.50 strength"),
-  "Real player observations must never be bundled into the public userscript");
+  "Observed player data must not be bundled into the public userscript");
  a.btn.onclick();await a.refresh();
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Compare with Torn's latest visible train/);
+ assert.match(html,/640.5/);
+ assert.match(html,/Model estimates now/);
  assert.match(html,/Per gym train/);
 });
