@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php"){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -20,6 +20,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   const date=class extends Date {static now(){return nowMs}};
   const map=new Map();
   if(settings)map.set("hhj-compact-v1:settings",JSON.stringify(settings));
+  if(seedVerification)map.set("hhj-compact-v1:verification",JSON.stringify(seedVerification));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
     setItem(k,v){map.set(k,String(v));}};
   const fixture={
@@ -414,14 +415,19 @@ test("multi-stat or book-like gains do not invent a per-train calibration",async
  assert.match(panel.children[1].innerHTML,/No reliable per-train match/);
  assert.ok(!panel.children[1].innerHTML.includes("Estimated per train"));
 });
-test("legacy v0.9.3 observation entries show actual gains without pretending a missing baseline exists",async()=>{
- const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
- a.storage.setItem("hhj-compact-v1:verification",JSON.stringify([
-  {t:Date.parse("2026-10-27T08:30:00Z")/1000,stat:"strength",
-   expected:29000,observed:{strength:630,defense:0,speed:0,dexterity:0},method:"xanax"}
- ]));
- // Local verification is loaded on boot: fixture reload check is handled by code's
- // ordinary persistence path. Here verify source doesn't reintroduce the old label.
- assert.ok(!a.source.includes("Last interval: planned +"));
- assert.ok(a.source.includes("Observed stat gains"));
+test("legacy v0.9.3 observations remain visible but do not claim a matched baseline",async()=>{
+ const legacy=[{t:Date.parse("2026-10-27T08:30:00Z")/1000,stat:"strength",
+  expected:29000,observed:{strength:630,defense:0,speed:0,dexterity:0},method:"xanax"}];
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength"},7,"/index.php",legacy);
+ a.btn.onclick();await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Observed stat gains/);
+ assert.match(html,/No reliable per-train match/);
+ assert.match(html,/Current single-train reference/);
+ assert.ok(!html.includes("Last interval: planned +"));
+ assert.ok(!html.includes("Observed changes"));
+ assert.match(html,/str: 630/);
 });
