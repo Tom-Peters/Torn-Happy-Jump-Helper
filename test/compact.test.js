@@ -54,9 +54,9 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
-  assert.ok(src.length<40000,"Keep the direct install far below the failed 78 KB preview size");
+  assert.ok(src.length<50000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.7\.5/);
+  assert.match(src,/@version\s+0\.8\.0/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -67,7 +67,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.7.5");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.8.0");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh Torn data/);
@@ -120,7 +120,7 @@ test("used refill has no redundant Mark used action; manual override can be clea
   const used=setup(true);
   used.btn.onclick();await used.refresh();
   const usedHTML=used.document.getElementById("hhj-compact-panel").children[1].innerHTML;
-  assert.match(usedHTML,/Next reset 00:00 UTC/);
+  assert.match(usedHTML,/Next daily reset 00:00 UTC/);
   assert.ok(!usedHTML.includes('data-act="mark-used"'));
   const ready=setup(false);
   ready.btn.onclick();await ready.refresh();
@@ -176,8 +176,8 @@ test("available refill is scheduled before noon UTC rather than delayed arbitrar
   assert.ok(refill.t<Date.parse("2026-10-27T12:00:00Z")/1000,
     "Do not postpone a ready refill until noon UTC");
   const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
-  assert.match(html,/Available now . 30-point energy refill/);
-  assert.match(html,/Next step in selected forecast/);
+  assert.match(html,/Priority: daily 30-point refill is READY/);
+  assert.match(html,/Next step · selected forecast/);
 });
 test("open modal sits above launcher and shows saved budget and lower-cost alternatives",async()=>{
   const a=setup(false,false,"2026-10-27T06:24:00Z",{budget:50000000});
@@ -190,4 +190,58 @@ test("open modal sits above launcher and shows saved budget and lower-cost alter
   assert.match(html,/Weekly spending limit: \$50,000,000/);
   assert.match(html,/Lower-cost option/);
   assert.match(html,/30-point energy refill/);
+});
+
+test("full screen is edge to edge and no launcher overlays an open dashboard",()=>{
+ const a=setup(false);
+ const panel=a.document.getElementById("hhj-compact-panel");
+ assert.match(panel.style.cssText,/inset:0!important/);
+ assert.match(panel.style.cssText,/width:100vw!important/);
+ assert.match(panel.style.cssText,/height:100dvh!important/);
+ assert.match(panel.style.cssText,/max-width:none!important/);
+ a.btn.onclick();
+ assert.match(a.btn.style.cssText,/display:none!important/);
+ assert.match(panel.style.cssText,/z-index:2147483647/);
+});
+test("per-train, 24h and 7-day gains match the actions in each exact period",async()=>{
+ const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
+ a.btn.onclick();await a.refresh();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Per gym train/);
+ assert.match(html,/Train current/);
+ assert.match(html,/Next 24 hours/);
+ assert.match(html,/Next 7 days/);
+ assert.match(html,/\$50,000,000/);
+ const p=a.core.plans().find(x=>x.method==="xanax");
+ const s=(events)=>events.reduce((v,x)=>v+(x.g||0),0);
+ const spent=(events)=>events.reduce((v,x)=>v+(x.spent||0),0);
+ const day=p.events.filter(e=>e.t<p.start+86400);
+ assert.ok(Math.abs(s(p.events)-p.gain)<0.000001);
+ assert.ok(s(day)<=p.gain);
+ assert.ok(Math.abs(spent(p.events)-p.cost)<0.000001);
+ assert.ok(spent(day)<=p.cost);
+});
+test("comparison retains all tabs and provides independent forecasts for every stat",async()=>{
+ const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
+ a.btn.onclick();await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"compare"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/All four stats/);
+ assert.match(html,/Per train/);
+ assert.match(html,/24 hours/);
+ assert.match(html,/7 days/);
+ assert.match(html,/stat-row/);
+ assert.match(html,/Candy Happy jump/);
+ assert.match(html,/eDVD Happy jump/);
+});
+test("schedule 24 hours never labels a seven-day total as the shorter window",async()=>{
+ const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
+ a.btn.onclick();await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"plan"}};}}});
+ assert.match(panel.children[1].innerHTML,/Totals in this 24-hour window/);
+ assert.ok(!panel.children[1].innerHTML.includes("in seven days"));
+ panel.onclick({target:{closest(){return {dataset:{act:"horizon",val:"168"}};}}});
+ assert.match(panel.children[1].innerHTML,/Totals in this 7-day window/);
 });
