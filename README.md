@@ -1,42 +1,60 @@
-# Torn Happy Jump Helper — v0.10.1
+# Torn Happy Jump Helper — v0.10.2
 
-**Current Android test release: v0.10.1 · Author: IamEEKY**
+**Current incremental Android release: v0.10.2 · Author: IamEEKY**
 
 [**Install/update the main TornPDA Happy Jump Helper**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)
 
-This is a narrow UI update on top of **v0.10.0**, which was confirmed opening on Android. It does **not** change the underlying training formula, the budget, the Xanax/point inventory deductions, UK sleep hours or the working launcher.
+v0.10.1 was **confirmed working on Android**. This update keeps its full-screen floating HJ launcher, eight tabs, correct gym calculations, refill handling, UK sleep rules, charts, automatic data refresh on opening, and locally saved user settings. No extra Torn API permissions are requested.
 
-## Clarification from the real Android screenshots
+## What's new
 
-- The configured sleep schedule was **23:00–08:00 UK time**, chosen by the player. At 22:19 UK time, training before bedtime is an appropriate recommendation. The default for new installations remains 22:00–08:00 until changed in Settings.
-- The projected **Torn $0 spending** is correct when sufficient Xanax and points are already owned. The simulation estimates **additional purchases**, not the replacement value of existing inventory. Do not treat the items as free.
+### Three-step action guidance
 
-## Improvements in v0.10.1
+**Just happened → Next action**, shown in **Today, Schedule and Progress**, now shows up to **three upcoming steps**: Next recommended → Then → After.
 
-- **Today → Your training numbers:** The weekly cost summary now says **Additional purchases $0 (covered by owned supplies)** when it uses saved owned Xanax/points and the actual incremental purchase cost is zero. Positive costs and unpriced unavailable inventory remain subject to the original cost model.
-- **Just happened → Next action:** Alongside the immediate upcoming recommended action, the card now shows **Then: [following action]**. For example, with a usable energy bar and an available point refill, it can show *TRAIN* followed by *REFILL*. Actions remain hypothetical until completed manually, with optional self-reported confirmation and Undo.
-- **Mobile navigation:** Removed the negative top margin from the sticky tab bar and added CSS layer isolation/accelerated composition to mitigate partially drawn duplicate-looking tabs on Android WebView. This is an **on-device visual fix to verify**, not proof that no WebView can display a ghost tab row.
-- The independently tested **on-open API refresh, all eight tabs and full-screen panel** remain intact.
+When live stat changes match the expected gain for one or more ordinary gym trains under the same gym, the helper displays **Likely training — N train(s) inferred**. This is a snapshot inference, not proof that the planned gym action happened at a particular time; Xanax, point refills and boosters are *not* automatically marked completed.
 
-## Existing features retained
+**Manual confirmation is clearer and safer:**
+- The confirmation button identifies the **due action and scheduled timestamp** rather than simply saying "I completed this."
+- You can confirm an action from **10 minutes before to 10 minutes after** its predicted scheduled time. Actions outside the window are not presented as due.
+- Double taps within two seconds cannot mark two separate events. A manual note is stored locally, can be undone and does not fabricate stat gains or mark a daily refill as used.
+- If the due action has just passed, it remains visible before later future events so the button matches the action being confirmed.
+- When you confirm, the helper refreshes actual Torn values and recalculates recommendations. The note remains explicitly **self-reported**, not API-verified.
 
-The per-train, 24-hour and seven-day forecast, accurate Torn API v2 gym-dot normalization, multi-train gym comparison, UK GMT/BST-aware configurable sleep rules, Progress charts with the partial-day toggle, rolling stat observations, Xanax/Happy-jump plans, daily refill checks and existing Torn **$50m/week** planning limit remain unchanged.
+### Readable rolling seven-day schedule
 
-## Install and rollback
+Open **Schedule → 7 days** to see the new **7-day action overview**, grouping forecast events by UTC date with the number of planned gym sessions, scheduled energy, expected stat gains and *additional* purchase costs. Because the forecast covers the next **168 hours**, it can span parts of eight UTC calendar dates; the first and last date rows may be partial. The usual individual action timeline follows the overview.
 
-1. Keep **only one main HJ userscript** enabled. Disable duplicate Advanced/Preview/Companion HJ variants.
-2. Update the source using the raw main link above; injection should remain **END** in TornPDA.
-3. Reload Torn, open the floating **HJ ◉** button and confirm **v0.10.1** in the full-screen header.
-4. Check that the extra partial tab row has disappeared. On Today, find *Just happened → Next action* and, where available, a *Then* action. Under *Your training numbers*, check that zero cash expenditure due to owned supplies is labelled as **additional purchases**.
+Switch to **24 hours** for the shorter view. Neither overview is claimed to be a log of completed actions, and neither assumes purchases are required for Xanax/points already owned.
 
-If v0.10.1 fails to open or creates another layout regression, disable it and install the separately packaged **[v0.10.0 phone-confirmed rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.0-known-good.user.js)**. Keep one HJ script enabled and **do not clear device storage**.
+### Less repetition on Today
 
-## Validation
+The old second "Next step · selected forecast" panel has been removed. Its information is now in the single three-step **Just happened → Next action** section. Some redundant text has been shortened while preserving controls.
 
-**55/55 focused userscript regression tests passed**, covering launcher startup, tabs, sleep boundaries, actual gym gains, all-stat comparisons, rolling observations, action tracking, owned-points zero incremental spending and the train-before-refill follow-up action. JavaScript syntax passed and the main script remains **56,995 bytes**, under the 57,000-byte compact-source guard.
+## Existing features preserved
 
-Live Android behaviour of v0.10.1 and the complete GitHub Actions test suite are **not yet verified**. CSS repaint bugs vary with WebView versions and devices.
+- Accurate Torn API v2 gym-dot normalization, multi-train session interpretation, and per-train, 24h and seven-day estimated stat gains.
+- Regular/Xanax/Happy-jump plan alternatives with saved **Torn $50 million/week** default spending cap and owned-item purchase deductions.
+- Editable UK sleep window (default 22:00–08:00; a previously saved **23:00–08:00** preference stays unchanged), DST-aware planning and estimated wasted regeneration.
+- Progress charts, inferred training observations, recorded vs scheduled comparisons, persisted partial-day display and historic on-device checkpoint ledger.
+- **Every HJ opening refreshes Torn data.** No background 15-minute polling or automated Torn gameplay.
+- Optional full-access gym-log import remains **disabled and unimplemented**; no additional permissions required.
 
-Read-only Torn gameplay; API requests retrieve live data but do not train, consume items or spend points. No real player API keys, personal account records or balances are committed to this public repository.
+## Installation and rollback
 
-MIT · IamEEKY · [Historical release notes](docs/legacy-release-notes.md).
+1. Keep only **one** enabled main Happy Jump Helper script; disable any duplicate Preview/Advanced/Companion variants.
+2. Update using [the v0.10.2 raw source](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js), keeping injection at **END** in TornPDA.
+3. Reload Torn, tap **HJ ◉** and check the full-screen header reads **v0.10.2**.
+4. Inspect the three-step panel and **Schedule → 7 days**. For a due manual action, the Confirm button should show the specific action and time. Refresh after training to see an inferred activity result.
+
+If the launcher or panel fails, disable v0.10.2 and install the independent **[phone-confirmed v0.10.1 rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.1-known-good.user.js)**. Leave one enabled and **do not clear local storage**.
+
+## Validation and privacy
+
+**63/63 focused userscript regression tests passed** in a simulated TornPDA and Torn API environment. This covers launcher boot, API refresh on opening, the existing eight tabs, sleep/DST boundaries, refill rules, training estimates, rolling actual gains, day grouping, three-action order, named due-action confirmations, 10-minute retrospective completion, double-tap protection and rejecting actions more than 10 minutes old.
+
+The self-contained main script is **56,981 characters**, under the 57,000-character compact-source guard. **Live Android v0.10.2 and the complete GitHub Actions suite are not yet independently verified.**
+
+No real API keys, user stats, personal item inventories or financial records are committed to the public repository. Actions in Torn remain entirely manual.
+
+MIT · IamEEKY · [Historical release notes](docs/legacy-release-notes.md)
