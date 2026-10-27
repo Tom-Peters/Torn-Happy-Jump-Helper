@@ -510,7 +510,7 @@ test("the empty day after its first baseline is not interpreted as proven zero t
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
  const html=panel.children[1].innerHTML;
  assert.match(html,/No recorded gains yet/);
- assert.match(html,/Open HJ to set a baseline/);
+ assert.match(html,/Open HJ before and after training to log gains/);
  assert.ok(!html.includes("checks without a new stat increase today"));
 });
 
@@ -996,4 +996,95 @@ test("recently overdue action is visibly flagged without claiming it was complet
  assert.match(html,/OVERDUE 3m/);
  assert.match(html,/Confirm TRAIN/);
  assert.match(html,/Self-reported only/);
+});
+
+test("overdue warning survives on-open refresh yet remains unconfirmed, not recorded missed training",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ assert.ok(!a.document.getElementById("hhj-compact-panel").children[1].innerHTML.includes("Past due · unconfirmed"));
+ const first=JSON.parse(a.storage.getItem("hhj-compact-v1:watch"));
+ assert.equal(first.kind,"TRAIN");
+ a.advance(1500);
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"close"}};}}});
+ await a.btn.onclick();
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Past due · unconfirmed/);
+ assert.match(html,/25m ago/);
+ assert.match(html,/Previous plan; may be done/);
+ assert.match(html,/I did it/);
+ assert.match(html,/Dismiss/);
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:watch")).t,first.t);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("overdue Dismiss clears old plan without fabricating a completed gym session",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();a.advance(1500);await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ assert.match(panel.children[1].innerHTML,/Past due · unconfirmed/);
+ panel.onclick({target:{closest(){return {dataset:{act:"watch-skip"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:watch"),"null");
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+ assert.ok(!panel.children[1].innerHTML.includes("Past due · unconfirmed"));
+});
+test("manual overdue confirmation creates a self-reported note without adding gains or using refills",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();a.advance(1500);await a.refresh();
+ const before=a.fixture["/user/battlestats"].battlestats.strength.value;
+ const panel=a.document.getElementById("hhj-compact-panel");
+ assert.match(panel.children[1].innerHTML,/Past due · unconfirmed/);
+ panel.onclick({target:{closest(){return {dataset:{act:"watch-done"}};}}});
+ const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes"));
+ assert.equal(notes.length,1);
+ assert.equal(notes[0].kind,"TRAIN");
+ assert.equal(notes[0].scheduled,Date.parse("2026-10-27T09:00:00Z")/1000);
+ assert.equal(a.storage.getItem("hhj-compact-v1:watch"),"null");
+ assert.equal(a.fixture["/user/battlestats"].battlestats.strength.value,before);
+ assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),null);
+ panel.onclick({target:{closest(){return {dataset:{act:"undo-note"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),"[]");
+});
+test("a real recorded stat gain suppresses overdue TRAIN nagging without self-reporting completion",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();a.advance(1500);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=611;
+ await a.refresh();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.ok(!html.includes("Past due · unconfirmed"));
+ assert.match(html,/Detected:/);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("sleep time and old expired plans never surface long-lived overdue warnings",async()=>{
+ const a=setup(false,false,"2026-10-27T22:35:00Z",
+ {budget:50000000,stat:"strength",sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00"},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ a.advance(2400);await a.refresh(); // 23:15 UK time, inside configured sleep.
+ let html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.ok(!html.includes("Past due · unconfirmed"));
+ assert.match(html,/23:00–08:00 UK time/);
+ a.advance(6000);await a.refresh(); // outside 90-minute retention.
+ html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.ok(!html.includes("Past due · unconfirmed"));
+});
+test("switching the forecasted training method does not report old strategy as overdue",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const first=JSON.parse(a.storage.getItem("hhj-compact-v1:watch"));
+ assert.equal(first.method,"xanax");
+ a.advance(1500);
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"natural"}};}}});
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}};}}});
+ assert.ok(!panel.children[1].innerHTML.includes("Past due · unconfirmed"));
 });
