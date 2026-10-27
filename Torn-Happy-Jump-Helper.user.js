@@ -554,7 +554,7 @@ const quiet=sleeping(Date.now()/1000);
   const prevGain=fullE>0?trainEstimate(p,fullE):0;
   const afterH=Math.max(0,p.happy-fullE*.5),afterS=p.value+prevGain;
   const refillGain=gain(Math.floor(p.maxE/p.cost)*p.cost,afterH,afterS,p.dots,p.cost,p.m);
-  out+=card(cfg.mode==="happy"?"Refill available — protect your jump timing":"Priority: daily 30-point refill is READY",'<p class="alert"><b>Best immediate refill sequence:</b> '+
+  out+=card(quiet?"Refill ready — wait until waking":cfg.mode==="happy"?"Refill available — protect your jump timing":"Priority: daily 30-point refill is READY",'<p class="alert"><b>'+(quiet?"After waking:":"Recommended available refill sequence:")+"</b> " +
    (fullE>0?'Train '+fmt(fullE)+' E (≈ +'+fmt(prevGain)+' '+esc(cfg.stat)+'), then ':'')+
    'use the 30-point energy refill in Torn, and train the new energy (≈ +'+fmt(refillGain)+').</p>'+
    '<p>Combined immediate estimated gain: <b class="good">+'+fmt(prevGain+refillGain)+'</b> '+esc(cfg.stat)+
