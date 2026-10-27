@@ -672,6 +672,10 @@ test("v0.9.9 opens a Just happened → Next action card on Today and Schedule",a
  html=panel.children[1].innerHTML;
  assert.match(html,/Just happened → Next action/);
  assert.match(html,/Next recommended:/);
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ html=panel.children[1].innerHTML;
+ assert.match(html,/Just happened → Next action/);
+ assert.match(html,/Observed stat gains/);
 });
 test("last snapshot gain is surfaced but never asserted as a precisely identified action",async()=>{
  const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
