@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.10.0
+// @version      0.10.1
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -12,7 +12,7 @@
 // @grant        none
 // ==/UserScript==
 (function(){
-"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.10.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
+"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.10.1";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
 xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Number.isFinite(n)?Math.round(n).toLocaleString("en-US"):"—";const cash=n=>Number.isFinite(n)?"$"+fmt(n):"Price unknown";const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const compactUtc=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Math.floor(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),showPartial=get("show-partial",true),actionNotes=get("action-notes",[]),start=Date.now()/1000;const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>refillStatus(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}
@@ -125,11 +125,11 @@ if(el.style?.setProperty)el.style.setProperty("display","none","important");else
 }
 }
 }
-const css=document.createElement("style");css.textContent="#hhj-compact-panel button,#hhj-compact-panel select,#hhj-compact-panel input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}#hhj-compact-panel button.on{background:#087e74;border-color:#4be6cf}#hhj-compact-panel button:disabled{opacity:.45}#hhj-compact-panel .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}#hhj-compact-panel .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}#hhj-compact-panel .card{background:#172a40;border:1px solid #426078;border-radius:12px;margin:9px 0;padding:12px}#hhj-compact-panel .hero{border-color:#58decc}#hhj-compact-panel .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}#hhj-compact-panel .choices{justify-content:flex-start;gap:8px}#hhj-compact-panel .choices button{min-width:90px}#hhj-compact-panel .sub{opacity:.75;font-size:12px}#hhj-compact-panel h3{margin:6px 0 12px;font-size:16px}#hhj-compact-panel .good{color:#86f1d7}#hhj-compact-panel .warn{color:#ffd598}";css.textContent+=""+
+const css=document.createElement("style");css.textContent="#hhj-compact-panel button,#hhj-compact-panel select,#hhj-compact-panel input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}#hhj-compact-panel button.on{background:#087e74;border-color:#4be6cf}#hhj-compact-panel button:disabled{opacity:.45}#hhj-compact-panel .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}#hhj-compact-panel .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}#hhj-compact-panel .card{border:1px solid #426078;border-radius:12px}#hhj-compact-panel .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}#hhj-compact-panel .choices{justify-content:flex-start;gap:8px}#hhj-compact-panel .choices button{min-width:90px}#hhj-compact-panel .sub{opacity:.75;font-size:12px}#hhj-compact-panel h3{margin:6px 0 12px;font-size:16px}#hhj-compact-panel .good{color:#86f1d7}#hhj-compact-panel .warn{color:#ffd598}";css.textContent+=""+
 "#hhj-compact-panel{box-sizing:border-box!important}"+
 "#hhj-compact-panel .card{margin:10px 0;padding:13px 14px;background:#142a3c;border-color:#304e65}"+
 "#hhj-compact-panel .hero{border-color:#1dd6cb;background:#133546}"+
-"#hhj-compact-panel .tabs{margin:-12px -14px 14px;padding:10px 14px 12px;top:0;border-bottom:1px solid #24465b;scrollbar-width:none}"+
+"#hhj-compact-panel .tabs{margin:0 -14px 14px;padding:10px 14px 12px;top:0;border-bottom:1px solid #24465b;scrollbar-width:none;isolation:isolate;transform:translateZ(0)}"+
 "#hhj-compact-panel .tabs button{min-height:42px}"+
 "#hhj-compact-panel .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}"+
 "#hhj-compact-panel .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin:10px 0}"+
@@ -246,7 +246,7 @@ out+=actionFlow(a);const window24=summary(a,24),window7=summary(a,168),single=tr
 '<div><span>Next 24 hours</span><strong>+'+fmt(window24?.gain??NaN)+'</strong><small>'+fmt(window24?.energy??NaN)+' E · '+cash(window24?.cost)+'</small></div>'+
 '<div><span>Next 7 days</span><strong>+'+fmt(window7?.gain??NaN)+'</strong><small>'+fmt(window7?.energy??NaN)+' E · '+cash(window7?.cost)+'</small></div>'+
 '</div><p class="sub">Selected forecast: '+esc(a?.method||"none")+' · Budget '+cash(cfg.budget)+
-' · Expected 7-day spending '+cash(window7?.cost)+'. Per-train uses current happiness; other totals are simulated.</p>','hero');out+=actualComparison(readGymResult());out+=card("Sleep-aware schedule",'<p><b>'+esc(sleepLabel())+'</b> · '+(isAsleep?"Manual actions postponed until wake time.":"No manual actions during your sleep window.")+'</p>'+
+' · Additional purchases '+cash(window7?.cost)+(window7?.cost===0&&(a?.count?.xanax>0||a?.count?.points>0)?' (covered by owned supplies)':'')+'. Per-train uses current happiness; other totals are simulated.</p>','hero');out+=actualComparison(readGymResult());out+=card("Sleep-aware schedule",'<p><b>'+esc(sleepLabel())+'</b> · '+(isAsleep?"Manual actions postponed until wake time.":"No manual actions during your sleep window.")+'</p>'+
 '<div class="metric-grid"><div><span>Predicted 24h energy waste</span><strong>'+fmt(window24?.lost??0)+' E</strong><small>'+fmt(window24?.sleepLost??0)+' E overnight</small></div>'+
 '<div><span>Predicted 7-day energy waste</span><strong>'+fmt(window7?.lost??0)+' E</strong><small>'+fmt(window7?.sleepLost??0)+' E overnight</small></div></div>'+
 '<p class="sub">Trains before bed and on waking where possible. Some overnight overflow is unavoidable.</p>');const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);if(refillState==="ready"){
@@ -256,8 +256,8 @@ const prevGain=fullE>0?trainEstimate(p,fullE):0;const afterH=Math.max(0,p.happy-
 '<p>Combined immediate estimated gain: <b class="good">+'+fmt(prevGain+refillGain)+'</b> '+esc(cfg.stat)+
 ' · Cost: 30 points (check your actual point balance).</p>'+
 '<p class="sub">'+(cfg.mode==="happy"?
-"If preparing a Happy jump, do not spend the refill prematurely. Compare the jump schedule first; it may be better used immediately before the final happy training session.":
-"This is an alternative to taking Xanax now; do not refill a full bar.")+'</p>'+
+"Preparing a jump? Keep your refill for the final gym session if the plan needs it.":
+"Compare Xanax timing; don't refill a full bar.")+'</p>'+
 '<button data-act="mark-used">Mark refill used after you spend it</button>');}else out+=card("Daily point refill",'<div class="row"><b>'+
 (refillState==="used"?"USED TODAY":"UNVERIFIED")+'</b>'+
 (marked?'<button data-act="clear-refill">Clear manual mark</button>':'')+
@@ -339,14 +339,14 @@ const delta=Object.fromEntries(ST.map(k=>[k,st[k]-(Number(rolling.s[k])||0)]));c
 Math.abs(delta[stat]/n-single)/single<=0.12;ledger.push({t:now,from:rolling.t,stat,forecastStat:rolling.stat,observed:delta,expected,method:rolling.method,single:single>0?single:null,inferred:consistent?n:null});ledger=ledger.filter(x=>now-x.t<30*86400).slice(-120);put("verification",ledger);}
 rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};return true;}
 function actionFlow(p){
-const now=Date.now()/1000,obs=[...ledger].reverse().find(x=>ST.some(k=>(x.observed?.[k]||0)>0)),last=actionNotes[actionNotes.length-1],next=p?.events.find(e=>e.t>=now&&!sleeping(e.t));
+const now=Date.now()/1000,obs=[...ledger].reverse().find(x=>ST.some(k=>(x.observed?.[k]||0)>0)),last=actionNotes[actionNotes.length-1],queue=(p?.events||[]).filter(e=>e.t>=now&&!sleeping(e.t)),next=queue[0],after=queue[1];
 let h=obs?'<p><b>Detected:</b> '+ST.filter(k=>(obs.observed?.[k]||0)>0).map(k=>'+'+fmt(obs.observed[k])+' '+esc(k)).join(', ')+
 ' · '+compactUtc(obs.t)+'</p><p class="sub">Snapshot interval change, not a single train. '+(obs.inferred?obs.inferred+' train(s) inferred.':'Exact actions unknown.')+'</p>':
 '<p class="sub">No gains detected; reopen after training.</p>';
 if(last)h+='<p><b>You marked done:</b> '+esc(last.kind)+' · '+compactUtc(last.t)+
 ' <button data-act="undo-note">Undo</button></p>';
 h+=next?'<p><b>Next recommended:</b> '+esc(next.kind)+' · '+compactUtc(next.t)+' ('+eta(next.t)+')</p>'+
-'<p>'+esc(next.detail)+'</p>'+(next.t<=now+600?'<button data-act="note-done">I completed this in Torn</button>':
+'<p>'+esc(next.detail)+'</p>'+(after?'<p><b>Then:</b> '+esc(after.kind)+' · '+compactUtc(after.t)+'</p>':'')+(next.t<=now+600?'<button data-act="note-done">I completed this in Torn</button>':
 '<p class="sub">Record completion when due.</p>')+
 '<p class="sub">Self-reported, not verified. Reopening HJ checks Torn data.</p>':
 '<p>No further actions scheduled. Refresh to replan.</p>';
