@@ -350,7 +350,7 @@ let h=obs?'<p><b>Detected:</b> '+ST.filter(k=>(obs.observed?.[k]||0)>0).map(k=>'
 if(last)h+='<p><b>You marked done:</b> '+esc(last.kind)+' · '+compactUtc(last.t)+
 ' <button data-act="undo-note">Undo</button></p>';
 h+=next?'<p><b>Next recommended:</b> '+esc(next.kind)+' · '+compactUtc(next.t)+' ('+eta(next.t)+')</p>'+
-'<p>'+esc(next.detail)+'</p>'+(after?'<p><b>Then:</b> '+esc(after.kind)+' · '+compactUtc(after.t)+'</p>':'')+(third?'<p><b>After:</b> '+esc(third.kind)+' · '+compactUtc(third.t)+'</p>':'')+(due?'<button data-act="note-done">I completed this in Torn</button>':
+'<p>'+esc(next.detail)+'</p>'+(after?'<p><b>Then:</b> '+esc(after.kind)+' · '+compactUtc(after.t)+'</p>':'')+(third?'<p><b>After:</b> '+esc(third.kind)+' · '+compactUtc(third.t)+'</p>':'')+(due?'<button data-act="note-done">Confirm '+esc(due.kind)+' · '+compactUtc(due.t)+'</button>':
 '<p class="sub">Confirm when due.</p>')+
 '<p class="sub">Self-reported; reopening checks Torn.</p>':
 '<p>No remaining steps; refresh to replan.</p>';
