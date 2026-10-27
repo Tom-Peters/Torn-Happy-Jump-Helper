@@ -1,6 +1,6 @@
 # Optional Torn gym-log reconciliation — design, not enabled
 
-**Status:** planned. Not part of v0.9.7. The normal Happy Jump Helper remains read-only and only uses its existing TornPDA key permissions.
+**Status:** planned. Not part of v0.9.8. The normal Happy Jump Helper remains read-only and only uses its existing TornPDA key permissions.
 
 ## Goal
 
