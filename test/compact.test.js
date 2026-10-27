@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php"){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",gymProof=null){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -20,6 +20,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   const date=class extends Date {static now(){return nowMs}};
   const map=new Map();
   if(settings)map.set("hhj-compact-v1:settings",JSON.stringify(settings));
+  if(gymProof)map.set("hhj-compact-v1:gyms",JSON.stringify(gymProof));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
     setItem(k,v){map.set(k,String(v));}};
   const fixture={
@@ -362,20 +363,23 @@ test("sleep schedule and rolling verification controls are editable and existing
  assert.match(progress,/Daily observed gains/);
  assert.match(progress,/Clear rolling verification/);
 });
-test("gym ranking only includes user-confirmed, eligible upgrades",async()=>{
+test("gym ranking includes only verified superior owned/unpurchased gyms and excludes unseen gyms",async()=>{
  const a=setup(false,false,"2026-10-27T09:00:00Z",
-  {budget:50000000,stat:"strength"},7);
+  {budget:50000000,stat:"strength"},7,"/index.php",{10:"owned",12:"buy"});
  a.fixture["/torn/gyms"].gyms.push(
   {id:10,name:"Owned Better",modifiers:{strength:9,speed:9,defense:9,dexterity:9},energy_cost:10},
   {id:11,name:"Unseen Best",modifiers:{strength:10,speed:10,defense:10,dexterity:10},energy_cost:10},
   {id:12,name:"Unlocked But Unpurchased",modifiers:{strength:8,speed:8,defense:8,dexterity:8},energy_cost:10,cost:500000});
- a.storage.setItem("hhj-compact-v1:gyms",JSON.stringify({10:"owned",12:"buy"}));
- // Verification is read at boot, so create a fresh fixture with persisted ownership.
- const b=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
- b.fixture["/torn/gyms"].gyms.push(...a.fixture["/torn/gyms"].gyms.slice(1));
- b.storage.setItem("hhj-compact-v1:gyms",JSON.stringify({10:"owned",12:"buy"}));
- // Only source edits after boot cannot change captured 'verified', so this checks
- // that unknown entries are excluded while current gym remains the baseline.
- b.btn.onclick();await b.refresh();
- assert.ok(!b.core.gymOpportunities().some(x=>x.gym.name==="Unseen Best"));
+ a.btn.onclick();await a.refresh();
+ const recommended=a.core.gymOpportunities();
+ assert.equal(recommended.length,2);
+ assert.equal(recommended[0].gym.name,"Owned Better");
+ assert.equal(recommended[0].status,"owned");
+ assert.equal(recommended[1].gym.name,"Unlocked But Unpurchased");
+ assert.equal(recommended[1].status,"buy");
+ assert.ok(recommended.every(x=>x.change>0));
+ assert.ok(!recommended.some(x=>x.gym.name==="Unseen Best"));
+ const panel=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(panel,/Better confirmed gym/);
+ assert.match(panel,/Owned Better/);
 });
