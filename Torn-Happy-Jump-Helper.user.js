@@ -184,6 +184,17 @@ return card("Latest visible gym session",'<p><b>'+esc(desc)+'</b></p>'+
 '</strong><small>At current stats and happiness</small></div></div>'+
 '<p class="sub">Boosted sessions can resemble several trains. Counts are inferred.</p>');
 }
+function statMatrix(){
+ const base=loadInput();if(!base)return [];
+ const values=stats(),g=base.gym;
+ return ST.map(stat=>{
+  if(!(values[stat]>0)||!(gymDots(g.modifiers?.[stat])>0))return null;
+  const p={...base,stat,value:values[stat],dots:gymDots(g.modifiers[stat]),m:bonus(stat)};
+  const options=["natural","xanax"].map(method=>simulate(method,p));
+  const best=options.filter(x=>x.affordable).sort((x,y)=>y.gain-x.gain)[0]||options[0];
+  return {stat,perTrain:trainEstimate(p),daily:summary(best,24),weekly:summary(best,168),method:best.method};
+ }).filter(Boolean);
+}
 function recommendation(){
 const input=loadInput(),regular=(lastPlan||[]).filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable&&x.gain>0)
 .sort((a,b)=>b.gain-a.gain),jumps=(lastPlan||[]).filter(x=>x.method.startsWith("happy")&&x.jumps===1);const natural=(lastPlan||[]).find(x=>x.method==="natural"&&x.affordable);if(!input)return card("Training recommendation","Refresh live data to compare options.");let out='<p class="sub"><b>Weekly spending limit: '+cash(cfg.budget)+'</b> · Based on your saved setting. Change under Settings.</p>';out+=regular.length?'<p><b>Best regular 7-day plan:</b> '+esc(regular[0].method)+
@@ -210,8 +221,8 @@ list.find(x=>x.method==="xanax")||list[0];let out=controls("Supply plan",selecte
 (Number.isFinite(x.price)?cash(x.price):"Price unavailable")+'</b></div>').join(""):
 '<p>No items forecast for this scenario.</p>')+
 (missing.length?'<p class="warn">Unknown market prices: '+esc(missing.map(x=>x.name).join(", "))+
-'. No zero-cost assumptions; enter a manual price in Settings or refresh markets.</p>':
-'<p class="sub">Cost is a purchasing estimate. Prices and inventory may be cached; owned points must be entered manually.</p>'));for(const method of ["happy-candy","happy"]){
+'. Enter a manual price in Settings or refresh prices.</p>':
+'<p class="sub">Prices are estimates; enter owned points manually.</p>'));for(const method of ["happy-candy","happy"]){
 const kit=jumpKit(method),candy=method==="happy-candy";out+=card(candy?"Budget candy-jump kit":"eDVD Happy-jump kit",'<p><b>'+(candy?"4 Xanax + 48 lollipops + 1 Ecstasy":"4 Xanax + 4 Erotic DVDs + 1 Ecstasy")+
 '</b> (base 24-hour booster capacity).</p>'+
 kit.entries.map(x=>'<div class="row"><span>'+esc(x.name)+' × '+fmt(x.num)+
@@ -219,16 +230,16 @@ kit.entries.map(x=>'<div class="row"><span>'+esc(x.name)+' × '+fmt(x.num)+
 (Number.isFinite(x.price)?cash(x.price):"Market price missing")+'</b></div>').join("")+
 '<div class="row"><b>Kit purchases</b><b>'+(Number.isFinite(kit.total)?cash(kit.total):"Incomplete prices")+'</b></div>'+
 '<p class="'+(kit.available?"good":"warn")+'">'+(kit.available?
-"Within budget for the required items. Actual cooldowns, the happiness reset and overdose risk still apply.":
-"Insufficient budget or unknown price; no complete jump recommended.")+
-'</p><p class="sub">Assumes near-empty energy, booster cooldowns, Ecstasy then gym before happiness resets. Extra effects not modelled.</p>');}
+"Within budget, but cooldowns, happiness reset and overdose risk still apply.":
+"Budget or price insufficient; no jump scheduled.")+
+'</p><p class="sub">Assumes near-empty energy and valid booster cooldowns; other effects excluded.</p>');}
 out+=card("Source health",'<p>'+esc(errs.length?errs.join(" · "):"No API errors reported at last refresh.")+'</p>');return out;}
 function today(){
 const p=loadInput(),a=activePlan(),next=a?.events.find(x=>x.t>=Date.now()/1000);let out='<div class="toolbar"><b>MAX GAINS · '+esc(cfg.stat.toUpperCase())+'</b>'+
 '<button data-act="refresh"'+(busy?' disabled':'')+'>'+(busy?'Refreshing…':'↻ Refresh data')+'</button></div>'+
 '<p class="sub">'+(updated?'Last refreshed '+new Date(updated).toLocaleTimeString("en-GB"):
 'No API refresh yet')+' · All gains and schedules are estimates.</p>';out+=controls("Training type",cfg.mode,[["training","Regular"],["happy","Happy jump"]],"mode");out+=controls("Target stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");if(!p){
-out+=card("Live training data required","Refresh to load your current stats, active gym, energy and cooldowns.");if(errs.length)out+=card("API diagnostics",errs.map(x=>'<p>'+esc(x)+'</p>').join(""));return out;}
+out+=card("Live training data required","Refresh to load stats, gym and cooldowns.");if(errs.length)out+=card("API diagnostics",errs.map(x=>'<p>'+esc(x)+'</p>').join(""));return out;}
 out+=actionFlow(a);const window24=summary(a,24),window7=summary(a,168),single=trainEstimate(p);const fullE=Math.floor(p.energy/p.cost)*p.cost,barGain=trainEstimate(p,fullE),isAsleep=sleeping(Date.now()/1000);out+=card("Your training numbers",'<div class="metric-grid">'+
 '<div><span>Per gym train</span><strong>+'+fmt(single)+'</strong><small>'+p.cost+' E at live happiness</small></div>'+
 '<div><span>Train current '+fmt(fullE)+' E</span><strong>+'+fmt(barGain)+'</strong><small>'+fmt(p.energy)+'/'+fmt(p.maxE)+' E available</small></div>'+
@@ -256,7 +267,7 @@ const prevGain=fullE>0?trainEstimate(p,fullE):0;const afterH=Math.max(0,p.happy-
 '<p>'+esc(next.detail)+'</p><p class="sub">'+eta(next.t)+
 ' · Check live cooldowns, energy and items before any action.</p>'+
 '<button data-act="tab" data-val="plan">Open schedule</button>':
-"No remaining scheduled action in the current forecast. Refresh to recalculate.");out+=recommendation();const advice=statAdvice();if(advice)out+=card("Stat strategy",'<p><b>Balance:</b> '+esc(advice.balance.stat)+
+"No remaining action; refresh to recalculate.");out+=recommendation();const advice=statAdvice();if(advice)out+=card("Stat strategy",'<p><b>Balance:</b> '+esc(advice.balance.stat)+
 ' ('+fmt(advice.balance.current)+')</p><p><b>Largest current full-bar gain:</b> '+
 esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+') </p>'+
 '<button data-act="stat" data-val="'+esc(advice.value.stat)+'">Use max-gain stat</button>'+
@@ -267,8 +278,8 @@ esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+') </p>'+
 '<div><span>Booster cooldown</span><strong>'+fmt(Math.ceil(p.booster/60))+'m</strong></div></div>'+
 '<p>'+esc(p.gym.name)+' · '+p.dots.toFixed(1)+' '+esc(p.stat)+' gym dots</p>');if(errs.length)out+=card("Data diagnostics",errs.map(x=>'<p class="warn">'+esc(x)+'</p>').join(""));return out;}
 function compare(){
-const p=loadInput(),all=lastPlan||[];if(!p)return card("Missing training data","Refresh Torn data to calculate gains.");let html=controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");html+=card("Same-period comparison",'<p>Regular training compares the same 24-hour and seven-day periods. Happy jumps show one prepared jump, not seven days of repeated jumps.</p>'+
-'<p class="sub">Budget '+cash(cfg.budget)+' · '+esc(p.gym.name)+' · '+p.dots.toFixed(1)+' gym dots · Estimates, not observed gains.</p>');html+=card("All four stats — regular training potential",'<p class="sub">What if you focused all gym energy on each stat separately? These forecasts are alternatives, not gains to add together.</p>'+
+const p=loadInput(),all=lastPlan||[];if(!p)return card("Missing training data","Refresh Torn data to calculate gains.");let html=controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");html+=card("Same-period comparison",'<p>Regular plans compare 24h and 7d; Happy jumps are one session.</p>'+
+'<p class="sub">Budget '+cash(cfg.budget)+' · '+esc(p.gym.name)+' · '+p.dots.toFixed(1)+' gym dots · Estimates, not observed gains.</p>');html+=card("All four stats — regular training potential",'<p class="sub">Each stat is an independent scenario, not additive.</p>'+
 statMatrix().map(x=>'<div class="stat-row"><div class="row"><b>'+esc(x.stat)+
 '</b><button data-act="stat" data-val="'+esc(x.stat)+'">Focus</button></div>'+
 '<div class="metric-grid"><div><span>Per train</span><strong>+'+fmt(x.perTrain)+'</strong></div>'+
@@ -294,7 +305,7 @@ fmt(summaryNow.energy)+' E</strong><small>'+summaryNow.trains+' train actions</s
 summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
 '<p class="sub">'+esc(p.note)+' · Manual actions only; totals match this period.</p>');html+=card("Predicted energy lost at cap",'<div class="metric-grid"><div><span>Total overflow</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
 '<div><span>While asleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div><p class="sub">Quiet: '+esc(sleepLabel())+
-'. Forecast totals match the selected period.</p>');if(!summaryNow.events.length)return html+card("No actions within this window","Try the seven-day view. A jump may require more than 24 hours of preparation.");let dayKey="",count=0;for(const ev of summaryNow.events){
+'. Totals match the selected period.</p>');if(!summaryNow.events.length)return html+card("No actions within this window","A jump may need more than 24 hours. Try seven days.");let dayKey="",count=0;for(const ev of summaryNow.events){
 if(count++>=120)break;const date=day(ev.t);if(date!==dayKey){dayKey=date;html+='<h3 class="day-header">'+date+' UTC</h3>'}
 html+='<div class="timeline-row"><span>'+compactUtc(ev.t)+'</span><b>'+esc(ev.kind)+
 '</b><span>'+esc(ev.detail)+'</span>'+(ev.spent?'<small>'+cash(ev.spent)+' estimated cost</small>':'')+'</div>';}
@@ -345,13 +356,13 @@ function gainsChart(daily){
 const k=cfg.stat,days=Object.keys(daily).sort(),view=days.filter(d=>showPartial||daily[d].covered);
 let html='<div class="row"><b>Show partial days</b><button data-act="partial">'+
 (showPartial?"ON · Show all":"OFF · Covered only")+'</button></div>'+
-'<p class="sub">Covered means near-full snapshots, not verified gym logs. Today and old records are partial.</p>';
+'<p class="sub">Covered means snapshots, not gym proof. Today and old records remain partial.</p>';
 if(!days.length)return card("Daily gains · coverage","No recorded gains yet; reopen after training.");
-if(!view.length)return card("Daily gains · coverage",html+"No days meet this filter. Turn on partial days to view recorded changes.");
+if(!view.length)return card("Daily gains · coverage",html+"No covered days. Enable partial days to view gains.");
 const max=Math.max(1,...view.map(d=>Math.max(0,daily[d].real[k],daily[d].matched,daily[d].predicted)));
 const bar=(n,color)=>'<div style="height:9px;background:#0c2232;border-radius:7px;overflow:hidden;margin:3px 0"><div style="width:'+
 (Math.max(0,n)/max*100).toFixed(1)+'%;height:100%;background:'+color+'"></div></div>';
-html+='<p class="sub">Paired bars compare the same refresh intervals only. Some days have no matching forecast.</p>';
+html+='<p class="sub">Paired bars use matching intervals only.</p>';
 html+=view.map(d=>{const v=daily[d],paired=v.matchedN>0;
 return '<div style="margin:11px 0"><div class="row"><b>'+esc(d.slice(5))+' · '+(v.covered?"Covered":"Partial")+
 '</b><small>'+(paired?v.matchedN+' comparable intervals':'No comparable plan')+'</small></div>'+
@@ -419,7 +430,7 @@ function settings(){return card("Planner settings",'<label>Weekly budget <input 
 '<p><label><input id="hhj-sleepenabled" type="checkbox"'+(cfg.sleepEnabled?' checked':'')+'> Avoid manual actions during sleep</label></p>'+
 '<div class="row"><label>Bedtime <input id="hhj-sleepstart" type="time" value="'+esc(cfg.sleepStart||"22:00")+
 '"></label><label>Wake <input id="hhj-sleepend" type="time" value="'+esc(cfg.sleepEnd||"08:00")+'"></label></div>'+
-'<p class="sub">Device local time · Default 22:00–08:00 · The schedule trains spare energy before bed and on waking.</p>'+
+'<p class="sub">UK time · Default 22:00–08:00 · Train before bed and on waking.</p>'+
 '<p><label>Manual extra gym bonus % <input id="hhj-gymbonus" type="number" min="0" max="200" value="'+cfg.gymBonus+'"></label></p>'+
 '<p><label>Points already owned <input id="hhj-points" type="number" min="0" value="'+(+cfg.ownedPoints||0)+'"></label></p>'+
 '<p class="sub">Optional manual unit prices, used only when live market listings cannot cover your basket:</p>'+
