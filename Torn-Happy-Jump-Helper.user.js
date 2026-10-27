@@ -230,10 +230,10 @@ if(!last||last.d!==today){history.push({d:today,s:st});history=history.slice(-90
 try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}busy=false;draw();
 }
 function save(){put("settings",cfg);try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}draw()}
-const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed;z-index:2147483647;inset:8% 8px 6% 8px;max-width:580px;margin:auto;background:#0b1726;border:2px solid #52d9c5;border-radius:15px;color:white;font:14px/1.4 system-ui;overflow:hidden;box-shadow:0 8px 50px #000c";
-const content=document.createElement("div");content.style.cssText="height:calc(100% - 60px);overflow:auto;padding:10px;overscroll-behavior:contain";
-const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;background:#182b42";
-header.innerHTML="<b>⚡ HAPPY JUMP HELPER</b><span>READ ONLY · v"+VER+"</span><button data-act='close'>✕</button>";
+const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed!important;z-index:2147483647!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;background:#091622;color:#f4f8fb;font:14px/1.5 system-ui;overflow:hidden;box-sizing:border-box;border:0!important;box-shadow:none!important";
+const content=document.createElement("div");content.style.cssText="height:calc(100% - 62px);overflow-y:auto;overflow-x:hidden;padding:12px 14px 30px;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch";
+const header=document.createElement("div");header.style.cssText="height:62px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;background:#12283b;border-bottom:1px solid #355568";
+header.innerHTML="<b>⚡ HAPPY JUMP</b><span class='sub'>READ ONLY · v"+VER+"</span><button type='button' data-act='close' aria-label='Close Happy Jump Helper'>✕</button>";
 ui.append(header,content);
 const button=document.createElement("button");button.id="hhj-launch";button.textContent="HJ ◉";button.type="button";
 button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483645!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";
@@ -250,6 +250,28 @@ function showLauncher(visible){
  }
 }
 const css=document.createElement("style");css.textContent="#hhj-compact-panel button,#hhj-compact-panel select,#hhj-compact-panel input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}#hhj-compact-panel button.on{background:#087e74;border-color:#4be6cf}#hhj-compact-panel button:disabled{opacity:.45}#hhj-compact-panel .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}#hhj-compact-panel .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}#hhj-compact-panel .card{background:#172a40;border:1px solid #426078;border-radius:12px;margin:9px 0;padding:12px}#hhj-compact-panel .hero{border-color:#58decc}#hhj-compact-panel .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}#hhj-compact-panel .choices{justify-content:flex-start;gap:8px}#hhj-compact-panel .choices button{min-width:90px}#hhj-compact-panel .sub{opacity:.75;font-size:12px}#hhj-compact-panel h3{margin:6px 0 12px;font-size:16px}#hhj-compact-panel .good{color:#86f1d7}#hhj-compact-panel .warn{color:#ffd598}";
+css.textContent+=""+
+"#hhj-compact-panel{box-sizing:border-box!important}"+
+"#hhj-compact-panel .card{margin:10px 0;padding:13px 14px;background:#142a3c;border-color:#304e65}"+
+"#hhj-compact-panel .hero{border-color:#1dd6cb;background:#133546}"+
+"#hhj-compact-panel .tabs{margin:-12px -14px 14px;padding:10px 14px 12px;top:0;border-bottom:1px solid #24465b;scrollbar-width:none}"+
+"#hhj-compact-panel .tabs button{min-height:42px}"+
+"#hhj-compact-panel .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}"+
+"#hhj-compact-panel .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin:10px 0}"+
+"#hhj-compact-panel .metric-grid>div{background:#0e2332;border:1px solid #304a5c;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0}"+
+"#hhj-compact-panel .metric-grid span{font-size:12px;color:#acc3d0}"+
+"#hhj-compact-panel .metric-grid strong{font-size:clamp(17px,4vw,25px);line-height:1.2;color:#8cf1df;overflow-wrap:anywhere}"+
+"#hhj-compact-panel .metric-grid small{color:#b8c8d4;font-size:11px}"+
+"#hhj-compact-panel .timeline-row{display:grid;grid-template-columns:95px 70px minmax(0,1fr);gap:7px;align-items:start;padding:10px 8px;border-bottom:1px solid #324a5a}"+
+"#hhj-compact-panel .timeline-row span{overflow-wrap:anywhere}"+
+"#hhj-compact-panel .timeline-row small{grid-column:3;font-size:11px;color:#8cf1df}"+
+"#hhj-compact-panel .day-header{position:sticky;top:62px;background:#0d2333;padding:12px;margin:14px -14px 0;z-index:1}"+
+"#hhj-compact-panel button{min-height:41px;touch-action:manipulation}"+
+"#hhj-compact-panel .choices{gap:6px}"+
+"#hhj-compact-panel .choices button{min-width:0}"+
+"#hhj-compact-panel .row>*{min-width:0;overflow-wrap:anywhere}"+
+"#hhj-compact-panel .alert{padding:10px;border-left:3px solid #59e7d7;background:#173444;border-radius:7px}"+
+"@media(max-width:380px){#hhj-compact-panel .timeline-row{grid-template-columns:83px 58px minmax(0,1fr)}#hhj-compact-panel .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}";
 function mount(){
  if(!document.body)return;
  for(const el of [button,ui]){
@@ -329,47 +351,64 @@ out+=card("Source health",'<p>'+esc(errs.length?errs.join(" · "):"No API errors
 return out;
 }
 function today(){
-const p=loadInput(),a=activePlan(),next=a?.events.find(x=>x.t>=Date.now()/1000),
-current=stats();
-let out=controls("Training method",cfg.mode,[["training","Regular"],["happy","Happy jump"]],"mode");
-out+='<div class="row"><button data-act="refresh"'+(busy?' disabled':'')+'>↻ '+(busy?'Refreshing':'Refresh Torn data')+'</button><span class="sub">'+(updated?'Updated '+new Date(updated).toLocaleTimeString():'Not loaded')+'</span></div>';
-if(errs.length)out+=card("API diagnostics",errs.map(x=>"<p class='sub'>"+esc(x)+"</p>").join(""));
-if(!p)return out+card("Waiting for live data","Refresh Torn data to load your current gym, battle stats, energy and cooldowns.");
-const refillReady=cfg.refills&&refill()==="ready";
-if(refillReady){
- const canTrain=Math.floor(p.energy/p.cost)*p.cost;
- out+=card("Available now · 30-point energy refill",
- '<p>Current energy: <b>'+fmt(p.energy)+'/'+fmt(p.maxE)+'</b>. '+
- (canTrain?'Train '+fmt(canTrain)+' E before refilling to avoid wasting it. ':'')+
- 'If you prefer the refill route, spend 30 points in Torn, then train the restored energy.</p>'+
- '<p class="sub">This is an alternative to the Xanax-focused forecast, not an extra refill. Verify your actual points and energy before acting.</p>');
-}
-out+=card("Next step in selected forecast",next?
- "<div><b>"+esc(next.kind)+"</b> · <b>"+compactUtc(next.t)+"</b> <span class='sub'>("+eta(next.t)+")</span></div>"+
- "<p>"+esc(next.detail)+"</p><p class='sub'>Your selected plan is "+esc(a?.method||"none")+
- ". Only proceed after checking the live cooldowns in Torn.</p><button data-act='tab' data-val='plan'>View schedule</button>":
- "No remaining actions are scheduled. Refresh to replan.","hero");
-const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);
-out+=card("Daily point refill",'<div class="row"><b>'+(refillState==="used"?"USED":refillState==="ready"?"AVAILABLE":"UNKNOWN")+
-'</b>'+(refillState==="used"?(marked?'<button data-act="clear-refill">Clear manual mark</button>':'<span class="sub">Next reset 00:00 UTC</span>'):
-'<button data-act="mark-used">Mark used today</button>')+
-'</div><p class="sub">'+(refillState==="used"?"No further refill is scheduled today. ":
-"Check Torn before spending points. ")+
-'API true means used; missing values never count as ready. Manual marks expire at UTC midnight.</p>');
-out+=recommendation();
-const advice=statAdvice();
-if(advice)out+=card("Choose a stat",'<p><b>Balance your stats:</b> '+esc(advice.balance.stat)+' ('+fmt(advice.balance.current)+')</p><button data-act="stat" data-val="'+esc(advice.balance.stat)+'">Focus lowest stat</button>'+
-'<p><b>Max gain in current gym:</b> '+esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+' per full energy bar)</p><button data-act="stat" data-val="'+esc(advice.value.stat)+'">Focus max-gain stat</button><p class="sub">These are separate goal strategies; the current focus remains your choice.</p>');
-if(a)out+=card("Projected seven-day training","<div class='row'><b>"+esc(a.method)+"</b><b class='good'>+"+fmt(a.gain)+" "+esc(cfg.stat)+"</b></div>"+
-"<p>"+cash(a.cost)+" budgeted · "+fmt(a.energy)+" energy trained · "+a.count.xanax+" Xanax</p><p class='sub'>"+esc(a.note)+"</p>");
-out+='<div class="row"><button data-act="tab" data-val="supplies">Open shopping list and price diagnostics</button></div>';
-out+=card("Live snapshot",'<div class="row"><span>Energy</span><b>'+fmt(p.energy)+"/"+fmt(p.maxE)+'</b></div>'+
-'<div class="row"><span>Happy</span><b>'+fmt(p.happy)+"/"+fmt(p.maxH)+'</b></div>'+
-'<div class="row"><span>Drug cooldown</span><b>'+fmt(p.drug/60)+' min</b></div>'+
-'<div class="row"><span>Booster cooldown</span><b>'+fmt(p.booster/60)+' min</b></div>'+
-'<div class="row"><span>Active gym</span><b>'+esc(p.gym.name)+'</b></div>');
-out+=controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");
-return out;
+ const p=loadInput(),a=activePlan(),next=a?.events.find(x=>x.t>=Date.now()/1000);
+ let out='<div class="toolbar"><b>MAX GAINS · '+esc(cfg.stat.toUpperCase())+'</b>'+
+ '<button data-act="refresh"'+(busy?' disabled':'')+'>'+(busy?'Refreshing…':'↻ Refresh data')+'</button></div>'+
+ '<p class="sub">'+(updated?'Last refreshed '+new Date(updated).toLocaleTimeString("en-GB"):
+ 'No API refresh yet')+' · All gains and schedules are estimates.</p>';
+ out+=controls("Training type",cfg.mode,[["training","Regular"],["happy","Happy jump"]],"mode");
+ out+=controls("Target stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");
+ if(!p){
+  out+=card("Live training data required","Refresh to load your current stats, active gym, energy and cooldowns.");
+  if(errs.length)out+=card("API diagnostics",errs.map(x=>'<p>'+esc(x)+'</p>').join(""));
+  return out;
+ }
+ const window24=summary(a,24),window7=summary(a,168),single=trainEstimate(p);
+ const fullE=Math.floor(p.energy/p.cost)*p.cost,barGain=trainEstimate(p,fullE);
+ out+=card("Your training numbers",'<div class="metric-grid">'+
+ '<div><span>Per gym train</span><strong>+'+fmt(single)+'</strong><small>'+p.cost+' E at live happiness</small></div>'+
+ '<div><span>Train current '+fmt(fullE)+' E</span><strong>+'+fmt(barGain)+'</strong><small>'+fmt(p.energy)+'/'+fmt(p.maxE)+' E available</small></div>'+
+ '<div><span>Next 24 hours</span><strong>+'+fmt(window24?.gain??NaN)+'</strong><small>'+fmt(window24?.energy??NaN)+' E · '+cash(window24?.cost)+'</small></div>'+
+ '<div><span>Next 7 days</span><strong>+'+fmt(window7?.gain??NaN)+'</strong><small>'+fmt(window7?.energy??NaN)+' E · '+cash(window7?.cost)+'</small></div>'+
+ '</div><p class="sub">Selected forecast: '+esc(a?.method||"none")+' · Budget '+cash(cfg.budget)+
+ ' · Expected 7-day spending '+cash(window7?.cost)+'. Per-train uses your present happiness; other totals sum future simulated train actions.</p>','hero');
+ const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);
+ if(refillState==="ready"){
+  const prevGain=fullE>0?trainEstimate(p,fullE):0;
+  const afterH=Math.max(0,p.happy-fullE*.5),afterS=p.value+prevGain;
+  const refillGain=gain(Math.floor(p.maxE/p.cost)*p.cost,afterH,afterS,p.dots,p.cost,p.m);
+  out+=card("Priority: daily 30-point refill is READY",'<p class="alert"><b>Best immediate refill sequence:</b> '+
+   (fullE>0?'Train '+fmt(fullE)+' E (≈ +'+fmt(prevGain)+' '+esc(cfg.stat)+'), then ':'')+
+   'use the 30-point energy refill in Torn, and train the new energy (≈ +'+fmt(refillGain)+').</p>'+
+   '<p>Combined immediate estimated gain: <b class="good">+'+fmt(prevGain+refillGain)+'</b> '+esc(cfg.stat)+
+   ' · Cost: 30 points (check your actual point balance).</p>'+
+   '<p class="sub">This is an alternative to taking Xanax now; do not use a refill on a full bar.</p>'+
+   '<button data-act="mark-used">Mark refill used after you spend it</button>');
+ }else out+=card("Daily point refill",'<div class="row"><b>'+
+  (refillState==="used"?"USED TODAY":"UNVERIFIED")+'</b>'+
+  (marked?'<button data-act="clear-refill">Clear manual mark</button>':'')+
+  '</div><p class="sub">'+(refillState==="used"?"Next daily reset 00:00 UTC.":
+  "Torn did not confirm availability. No refill is assumed.")+'</p>');
+ out+=card("Next step · selected forecast",next?
+  '<div class="row"><b>'+esc(next.kind)+'</b><b>'+compactUtc(next.t)+'</b></div>'+
+  '<p>'+esc(next.detail)+'</p><p class="sub">'+eta(next.t)+
+  ' · Check live cooldowns, energy and items before any action.</p>'+
+  '<button data-act="tab" data-val="plan">Open schedule</button>':
+  "No remaining scheduled action in the current forecast. Refresh to recalculate.");
+ out+=recommendation();
+ const advice=statAdvice();
+ if(advice)out+=card("Stat strategy",'<p><b>Balance:</b> '+esc(advice.balance.stat)+
+  ' ('+fmt(advice.balance.current)+')</p><p><b>Largest current full-bar gain:</b> '+
+  esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+')</p>'+
+  '<p class="sub">Maximum gains is your priority; selecting a different stat recalculates every projection.</p>');
+ out+=card("Current Torn snapshot",'<div class="metric-grid">'+
+  '<div><span>Energy</span><strong>'+fmt(p.energy)+'/'+fmt(p.maxE)+'</strong></div>'+
+  '<div><span>Happiness</span><strong>'+fmt(p.happy)+'/'+fmt(p.maxH)+'</strong></div>'+
+  '<div><span>Drug cooldown</span><strong>'+fmt(Math.ceil(p.drug/60))+'m</strong></div>'+
+  '<div><span>Booster cooldown</span><strong>'+fmt(Math.ceil(p.booster/60))+'m</strong></div></div>'+
+  '<p>'+esc(p.gym.name)+' · '+p.dots.toFixed(1)+' '+esc(p.stat)+' gym dots</p>');
+ if(errs.length)out+=card("Data diagnostics",errs.map(x=>'<p class="warn">'+esc(x)+'</p>').join(""));
+ return out;
 }
 function compare(){
  const p=loadInput(),all=lastPlan||[];
@@ -479,7 +518,7 @@ function settings(){return card("Planner settings",
 '<p class="sub">Optional manual unit prices, used only when live market listings cannot cover your basket:</p>'+
 ["points","xanax","ecstasy","lollipop","dvd"].map(k=>'<p><label>'+esc(k)+
 ' price <input data-price="'+k+'" type="number" min="0" value="'+(+cfg.manualPrices?.[k]||0)+'"></label></p>').join("")+
-'<button data-act="save">Save settings</button><p class="sub">Your $10m default budget is editable. Owned points and manual prices are local assumptions, not live Torn balances or guaranteed offers.</p>')}
+'<button data-act="save">Save settings</button><p class="sub">Your configured weekly budget is retained and editable. Owned points and manual prices are local assumptions, not live Torn balances or guaranteed offers.</p>')}
 const labels=[["today","Today"],["compare","Compare"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["settings","Settings"]];
 function draw(){
 if(!opened)return;
