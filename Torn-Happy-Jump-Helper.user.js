@@ -518,6 +518,34 @@ function today(){
  '<div><span>Next 7 days</span><strong>+'+fmt(window7?.gain??NaN)+'</strong><small>'+fmt(window7?.energy??NaN)+' E · '+cash(window7?.cost)+'</small></div>'+
  '</div><p class="sub">Selected forecast: '+esc(a?.method||"none")+' · Budget '+cash(cfg.budget)+
  ' · Expected 7-day spending '+cash(window7?.cost)+'. Per-train uses your present happiness; other totals sum future simulated train actions.</p>','hero');
+const quiet=sleeping(Date.now()/1000);
+ out+=card("Sleep-aware energy management",
+ '<p><b>Quiet hours:</b> '+esc(sleepLabel())+' · '+(quiet?
+ '<span class="warn">Currently sleeping — manual actions are delayed to wake time.</span>':
+ 'All planned manual actions stay outside the sleep window.')+'</p>'+
+ '<div class="metric-grid">'+
+ '<div><span>24h wasted regeneration</span><strong>'+fmt(window24?.lost??NaN)+' E</strong>'+
+ '<small>'+fmt(window24?.sleepLost??NaN)+' E while asleep</small></div>'+
+ '<div><span>7-day wasted regeneration</span><strong>'+fmt(window7?.lost??NaN)+' E</strong>'+
+ '<small>'+fmt(window7?.sleepLost??NaN)+' E while asleep</small></div></div>'+
+ '<p class="sub">To reduce waste, the schedule trains available energy just before bed and when you wake, when compatible with your chosen strategy. Overnight overflow cannot all be prevented.</p>'+
+ '<button data-act="tab" data-val="plan">See sleep-aware schedule</button>');
+ const topGym=gymOpportunities()[0];
+ if(topGym)out+=card("Better confirmed gym for maximum "+esc(cfg.stat),
+ '<p><b>'+esc(topGym.gym.name)+'</b> · +'+topGym.change.toFixed(1)+'% estimated full-bar gains over '+
+ esc(p.gym.name)+'.</p><p>'+esc(topGym.status==="owned"?
+ "Already owned — consider switching before your next train.":
+ "Unlocked but unpurchased — membership "+cash(topGym.gym.cost)+".")+
+ '</p><button data-act="tab" data-val="gyms">Compare verified gyms</button>');
+ const verification=verificationReport();
+ if(verification.newest){
+  const v=verification.newest,obs=v.observed?.[v.stat];
+  out+=card("Rolling training verification",'<p>Last refresh interval: <b>'+fmt(obs)+' '+esc(v.stat)+
+   ' observed</b> · '+(v.expected===null?"forecast unavailable":
+   '+'+fmt(v.expected)+' planned')+'</p>'+
+   '<p class="sub">Measured stat changes vs previously scheduled actions; the helper cannot tell which gameplay actions you actually performed.</p>'+
+   '<button data-act="tab" data-val="progress">See seven-day tracked progress</button>');
+ }
  out+=actualComparison(readGymResult());
  const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);
  if(refillState==="ready"){
@@ -583,7 +611,10 @@ function compare(){
    '<div><span>Single train now</span><strong>+'+fmt(trainEstimate(p))+'</strong><small>'+p.cost+' E at current happiness</small></div>'+
    '<div><span>Next 24 h</span><strong>+'+fmt(d.gain)+'</strong><small>'+fmt(d.energy)+' E · '+cash(d.cost)+'</small></div>'+
    '<div><span>Next 7 days</span><strong>+'+fmt(w.gain)+'</strong><small>'+fmt(w.energy)+' E · '+cash(w.cost)+'</small></div></div>'+
-   '<p class="sub">'+esc(x.note)+'</p><button data-act="choose" data-val="'+esc(x.method)+'">View schedule</button>');
+   '<p class="sub">'+esc(x.note)+
+ ' · Predicted cap overflow: '+fmt(w.lost)+' E across 7 days ('+
+ fmt(w.sleepLost)+' E during sleep).</p>'+
+ '<button data-act="choose" data-val="'+esc(x.method)+'">View schedule</button>');
  }
  return html;
 }
@@ -605,6 +636,11 @@ function plan(){
  '<div><span>Estimated spend</span><strong>'+cash(summaryNow.cost)+'</strong><small>'+
  summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
  '<p class="sub">'+esc(p.note)+' · All actions are manual. Figures include only actions within this window.</p>');
+ html+=card("Regeneration waste · same time window",
+ '<div class="metric-grid"><div><span>Energy lost at cap</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
+ '<div><span>Lost while sleeping</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div>'+
+ '<p class="sub">No Xanax, training or point refills are scheduled between '+esc(sleepLabel())+
+ '. Where possible, the schedule uses energy before bedtime and immediately after waking.</p>');
  if(!summaryNow.events.length)return html+card("No actions within this window",
   "Try the seven-day view. A jump may require more than 24 hours of preparation.");
  let dayKey="",count=0;
