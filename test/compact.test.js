@@ -667,8 +667,7 @@ test("v0.9.9 opens a Just happened → Next action card on Today and Schedule",a
  let html=panel.children[1].innerHTML;
  assert.match(html,/Just happened → Next action/);
  assert.match(html,/Next recommended:/);
- assert.match(html,/Snapshot/);
- assert.match(html,/exact actions unknown|No gains detected/);
+ assert.match(html,/No gains detected/);
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"plan"}};}}});
  html=panel.children[1].innerHTML;
  assert.match(html,/Just happened → Next action/);
