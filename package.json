@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "private": true,
-  "description": "TornPDA read-only Happy Jump planner: owned-supply additional cost clarity, next-action sequence and mobile nav repaint mitigation",
+  "description": "TornPDA read-only gym planner: inferred recent training, three-step action guidance, safe manual confirmations and seven-day schedule overview",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
