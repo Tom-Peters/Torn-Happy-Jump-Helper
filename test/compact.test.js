@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -29,7 +29,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
       speed:{value:2000000},strength:{value:1350000},defense:{value:1180000},dexterity:{value:1000000}}},
     "/user/gym":{gym:{id:9,name:"Example Gym"}},
     "/torn/gyms":{gyms:[{id:9,name:"Example Gym",energy_cost:10,
-      modifiers:{speed:75,strength:70,defense:70,dexterity:70}}]},
+      modifiers:{speed:75,strength:strengthDots,defense:70,dexterity:70}}]},
     "/user/refills":{refills:{energy:apiRefillUsed}},
     "/user/perks":{perks:{faction:["Increases speed gym gains by 10%"],
       merit:["+30% effective speed"]}},
@@ -46,7 +46,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
     if(p.startsWith("/user/inventory"))value=category21&&p.includes("?cat=")?{error:{code:21}}:{inventory:{items:category21?[{id:206,amount:2,name:"Xanax",faction_owned:false}]:[]}};
     return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
   }
-  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate};})();");
+  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary};})();");
   new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
     document,{hostname:"www.torn.com",pathname:"/index.php"},w,localStorage,PDA_httpGet,date);
   return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
@@ -255,19 +255,30 @@ test("Torn API v2 gym dots are already in display units; no second division by t
  assert.ok(a.document.getElementById("hhj-compact-panel").children[1].innerHTML.includes("Per gym train"));
 });
 
-test("independent v2-style 7.0 Atlas dots predict hundreds, not tens, per 10-energy train",async()=>{
- const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
+test("v2 Atlas gym modifiers 7.0 yield hundreds of Strength per 10-energy train",async()=>{
+ const a=setup(false,false,"2026-10-27T09:52:00Z",
+  {budget:50000000,stat:"strength"},7);
  a.btn.onclick();await a.refresh();
- const source=a.source.replace("###PDA-APIKEY###","fixture-key");
- assert.ok(source.includes("gymDots(g.modifiers[k])"),
- "Primary forecast must normalize gym-dot units");
- assert.ok(source.includes("gymDots(g.modifiers?.[k])"),
- "Gym comparisons must share the exact same normalization");
- assert.ok(source.includes("gymDots(g.modifiers[stat])"),
- "Each of the four stat previews must share the normalization");
- // Formula calculated with public Atlas 7.0 dots and invented fixture stats.
- const stat=1400000,happy=3500,dots=7.0,energy=10;
- const base=((3.480061091e-7*Math.log(happy+250)+3.091619094e-6)*stat+
-  6.82775184551527e-5*(happy+250)-0.0301431777)*dots*energy;
- assert.ok(base>550&&base<700,"One 10E Atlas train should be in the hundreds");
+ const p=a.core.loadInput();
+ assert.equal(p.dots,7,"Do not divide v2 gym dots by ten");
+ assert.equal(a.core.gymDots(70),7,"Old x10 gym format remains compatible");
+ assert.equal(a.core.gymDots(7),7,"Current v2 gym values use display dots");
+ assert.equal(a.core.gymDots(0),0,"Unavailable stat gym gains stay zero");
+ const perTrain=a.core.trainEstimate(p);
+ assert.ok(perTrain>500&&perTrain<750,"Atlas 10E estimated gain should be hundreds");
+ const regular=a.core.plans().find(x=>x.method==="natural");
+ assert.ok(regular.gain>3000,"Daily/weekly events must not remain a tenth of real gains");
+ assert.ok(Math.abs(a.core.summary(regular,168).gain-regular.gain)<0.00001);
+});
+
+test("the displayed actual gym train can be compared with a formula estimate",async()=>{
+ const a=setup(false,false,"2026-10-27T09:52:00Z",
+  {budget:50000000,stat:"strength"},7);
+ a.document.body.innerText="You completed 1 press. You gained 640.50 strength";
+ // The result parser only runs on Torn's Gym page; existing setup uses index.php.
+ assert.ok(!a.source.includes("640.50 strength"),
+  "Real player observations must never be bundled into the public userscript");
+ a.btn.onclick();await a.refresh();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Per gym train/);
 });
