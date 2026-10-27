@@ -248,6 +248,16 @@ function showLauncher(visible){
   if(el.style?.setProperty)el.style.setProperty("display","none","important");
   else if(el.style)el.style.cssText+=";display:none!important";
  }
+ if(!visible){
+  const otherLaunchers=document.querySelectorAll?.("button")||[];
+  for(const el of otherLaunchers){
+   if(el===button||ui.contains?.(el))continue;
+   if(el.id==="hhj-launch"||/^HJ\s*[◉⦿]/i.test(String(el.textContent||"").trim())){
+    if(el.style?.setProperty)el.style.setProperty("display","none","important");
+    else if(el.style)el.style.cssText+=";display:none!important";
+   }
+  }
+ }
 }
 const css=document.createElement("style");css.textContent="#hhj-compact-panel button,#hhj-compact-panel select,#hhj-compact-panel input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}#hhj-compact-panel button.on{background:#087e74;border-color:#4be6cf}#hhj-compact-panel button:disabled{opacity:.45}#hhj-compact-panel .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}#hhj-compact-panel .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}#hhj-compact-panel .card{background:#172a40;border:1px solid #426078;border-radius:12px;margin:9px 0;padding:12px}#hhj-compact-panel .hero{border-color:#58decc}#hhj-compact-panel .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}#hhj-compact-panel .choices{justify-content:flex-start;gap:8px}#hhj-compact-panel .choices button{min-width:90px}#hhj-compact-panel .sub{opacity:.75;font-size:12px}#hhj-compact-panel h3{margin:6px 0 12px;font-size:16px}#hhj-compact-panel .good{color:#86f1d7}#hhj-compact-panel .warn{color:#ffd598}";
 css.textContent+=""+
@@ -286,6 +296,21 @@ function mount(){
 }
 function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
 function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
+function statMatrix(){
+ const g=gym(),bar=energy(),h=happy(),statValues=stats(),all=[];
+ if(!g)return [];
+ for(const stat of ST){
+  if(!(statValues[stat]>0)||!(+g.modifiers?.[stat]>0))continue;
+  const inp={gym:g,stat,value:statValues[stat],dots:g.modifiers[stat]/10,cost:g.energy_cost||10,
+  energy:bar.current||0,maxE:bar.maximum||150,regen:bar.interval||120,inc:bar.increment||1,
+  happy:h.current||h.maximum,maxH:h.maximum,drug:cd().drug||0,booster:cd().booster||0,
+  m:bonus(stat),refill:refill(),now:Date.now()/1000};
+  const options=["natural","xanax"].map(method=>simulate(method,inp));
+  const best=options.filter(x=>x.affordable).sort((a,b)=>b.gain-a.gain)[0]||options[0];
+  all.push({stat,perTrain:trainEstimate(inp),daily:summary(best,24),weekly:summary(best,168),method:best.method});
+ }
+ return all;
+}
 function recommendation(){
 const input=loadInput(),regular=(lastPlan||[]).filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable&&x.gain>0)
 .sort((a,b)=>b.gain-a.gain),jumps=(lastPlan||[]).filter(x=>x.method.startsWith("happy")&&x.jumps===1);
@@ -399,7 +424,7 @@ function today(){
  const advice=statAdvice();
  if(advice)out+=card("Stat strategy",'<p><b>Balance:</b> '+esc(advice.balance.stat)+
   ' ('+fmt(advice.balance.current)+')</p><p><b>Largest current full-bar gain:</b> '+
-  esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+')</p>'+
+  esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+') </p>'+
   '<p class="sub">Maximum gains is your priority; selecting a different stat recalculates every projection.</p>');
  out+=card("Current Torn snapshot",'<div class="metric-grid">'+
   '<div><span>Energy</span><strong>'+fmt(p.energy)+'/'+fmt(p.maxE)+'</strong></div>'+
@@ -416,6 +441,13 @@ function compare(){
  let html=controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");
  html+=card("Same-period comparison",'<p>Regular training compares the same 24-hour and seven-day periods. Happy jumps show one prepared jump, not seven days of repeated jumps.</p>'+
  '<p class="sub">Budget '+cash(cfg.budget)+' · '+esc(p.gym.name)+' · '+p.dots.toFixed(1)+' gym dots · Estimates, not observed gains.</p>');
+ html+=card("All four stats — regular training potential",
+ '<p class="sub">What if you focused all gym energy on each stat separately? These forecasts are alternatives, not gains to add together.</p>'+
+ statMatrix().map(x=>'<div class="stat-row"><div class="row"><b>'+esc(x.stat)+
+ '</b><button data-act="stat" data-val="'+esc(x.stat)+'">Focus</button></div>'+
+ '<div class="metric-grid"><div><span>Per train</span><strong>+'+fmt(x.perTrain)+'</strong></div>'+
+ '<div><span>24 hours</span><strong>+'+fmt(x.daily.gain)+'</strong></div>'+
+ '<div><span>7 days</span><strong>+'+fmt(x.weekly.gain)+'</strong><small>'+esc(x.method)+'</small></div></div></div>').join(""));
  for(const x of all){
   const d=summary(x,24),w=summary(x,168),blocked=x.method.startsWith("happy")&&x.jumps===0;
   const name={natural:"Natural energy + refill",xanax:"Xanax + regeneration",
