@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "private": true,
-  "description": "Stable TornPDA HJ launcher with small sleep-aware schedule and energy waste forecasts",
+  "description": "TornPDA mobile-first HJ planner with sleep-aware simulation and rolling real-vs-predicted stats",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
