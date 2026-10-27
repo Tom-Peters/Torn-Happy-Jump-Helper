@@ -58,7 +58,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<55000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.9\.4/);
+  assert.match(src,/@version\s+0\.9\.5/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -69,15 +69,14 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.4");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.5");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh data/);
 });
 test("true Torn refill flag excludes another same-day refill and train-to-refill sequence",async()=>{
   const a=setup(true);
-  a.btn.onclick();
-  await a.refresh();
+  await a.btn.onclick();
   const plans=a.core.plans(),limit=Date.parse("2026-10-27T00:00:00Z")/1000;
   assert.equal(a.core.refillStatus(true,Date.parse("2026-10-26T21:23:00Z")/1000),"used");
   for(const plan of plans){
@@ -137,8 +136,7 @@ test("used refill has no redundant Mark used action; manual override can be clea
 
 test("inventory API error 21 falls back once to unfiltered inventory and retains owned quantities",async()=>{
   const a=setup(false,true);
-  a.btn.onclick();
-  await a.refresh();
+  await a.btn.onclick();
   assert.equal(a.requests.filter(x=>x.includes("/user/inventory?limit=250&offset=0")).length,1,
     "One cached unfiltered inventory fetch should serve all four categories");
   assert.ok(a.requests.some(x=>x.includes("/user/inventory?cat=drug")),
@@ -150,8 +148,7 @@ test("inventory API error 21 falls back once to unfiltered inventory and retains
 
 test("realistic jump options require full kits and never confuse candy with eDVDs",async()=>{
   const a=setup(true,false,"2026-10-27T09:52:00Z",{budget:10000000});
-  a.btn.onclick();
-  await a.refresh();
+  await a.btn.onclick();
   const all=a.core.plans(),candy=all.find(x=>x.method==="happy-candy"),
     dvd=all.find(x=>x.method==="happy");
   assert.equal(all.length,4);
@@ -170,8 +167,7 @@ test("realistic jump options require full kits and never confuse candy with eDVD
 
 test("available refill is scheduled before noon UTC rather than delayed arbitrarily",async()=>{
   const a=setup(false,false,"2026-10-27T06:24:00Z");
-  a.btn.onclick();
-  await a.refresh();
+  await a.btn.onclick();
   const natural=a.core.plans().find(p=>p.method==="natural");
   const refill=natural.events.find(e=>e.kind==="REFILL");
   assert.ok(refill,"An available refill must appear");
@@ -207,7 +203,7 @@ test("full screen is edge to edge and no launcher overlays an open dashboard",()
 });
 test("per-train, 24h and 7-day gains match the actions in each exact period",async()=>{
  const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.match(html,/Per gym train/);
  assert.match(html,/Train current/);
@@ -225,7 +221,7 @@ test("per-train, 24h and 7-day gains match the actions in each exact period",asy
 });
 test("comparison retains all tabs and provides independent forecasts for every stat",async()=>{
  const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"compare"}};}}});
  const html=panel.children[1].innerHTML;
@@ -239,7 +235,7 @@ test("comparison retains all tabs and provides independent forecasts for every s
 });
 test("schedule 24 hours never labels a seven-day total as the shorter window",async()=>{
  const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"plan"}};}}});
  assert.match(panel.children[1].innerHTML,/Totals in this 24-hour window/);
@@ -250,7 +246,7 @@ test("schedule 24 hours never labels a seven-day total as the shorter window",as
 
 test("Torn API v2 gym dots are already in display units; no second division by ten",async()=>{
  const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  // The existing fixture uses a historical API x10 strength value of 70.
  const p=a.core.loadInput();
  assert.ok(p.dots>=7,"Legacy x10 API scale should still normalize to gym dots");
@@ -260,7 +256,7 @@ test("Torn API v2 gym dots are already in display units; no second division by t
 test("v2 Atlas gym modifiers 7.0 yield hundreds of Strength per 10-energy train",async()=>{
  const a=setup(false,false,"2026-10-27T09:52:00Z",
   {budget:50000000,stat:"strength"},7);
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const p=a.core.loadInput();
  assert.equal(p.dots,7,"Do not divide v2 gym dots by ten");
  assert.equal(a.core.gymDots(70),7,"Old x10 gym format remains compatible");
@@ -282,7 +278,7 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.equal(observed.amount,640.5);
  assert.ok(!a.source.includes("640.50 strength"),
   "Observed player data must not be bundled into the public userscript");
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.match(html,/Compare with Torn/);
  assert.match(html,/640.5/);
@@ -290,11 +286,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.9.4 keeps the mobile launcher visible before API work",()=>{
+test("v0.9.5 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.9.4");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.9.5");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -304,7 +300,7 @@ test("sleep schedule suppresses every manual action 22–08 and trains before be
  const from=new Date(2026,9,27,21,30).toISOString();
  const a=setup(false,false,from,{budget:50000000,stat:"strength",sleepEnabled:true,
  sleepStart:"22:00",sleepEnd:"08:00"},7);
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const bed=new Date(2026,9,27,22,0).getTime()/1000;
  const wake=new Date(2026,9,28,8,0).getTime()/1000;
  assert.equal(a.core.sleeping(bed),true);
@@ -320,7 +316,7 @@ test("sleep schedule suppresses every manual action 22–08 and trains before be
 test("disabling sleep settings makes the regular schedule unrestricted",async()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString(),
  {budget:50000000,stat:"strength",sleepEnabled:false},7);
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const bed=new Date(2026,9,27,22,0).getTime()/1000,wake=new Date(2026,9,28,8,0).getTime()/1000;
  assert.equal(a.core.sleeping(bed),false);
  const p=a.core.plans().find(x=>x.method==="xanax");
@@ -342,9 +338,8 @@ test("Settings exposes local 22:00 to 08:00 sleep controls",()=>{
 test("rolling verification starts with a baseline, then records real stat gains after refresh",async()=>{
  const a=setup(false,false,"2026-10-27T09:00:00Z",
   {budget:50000000,stat:"strength",sleepEnabled:true},7);
- a.btn.onclick();
  assert.equal(a.requests.length,0);
- await a.refresh();
+ await a.btn.onclick();
  assert.ok(a.storage.getItem("hhj-compact-v1:rolling-plan"));
  assert.equal(a.storage.getItem("hhj-compact-v1:verification"),null,
   "First refresh must not fabricate prior gains");
@@ -364,7 +359,7 @@ test("rolling verification starts with a baseline, then records real stat gains 
 });
 test("rolling history is cleared without wiping budget or other saved settings",async()=>{
  const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"speed"});
- a.btn.onclick();await a.refresh();a.advance(7200);await a.refresh();
+ await a.btn.onclick();a.advance(7200);await a.refresh();
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
  panel.onclick({target:{closest(){return {dataset:{act:"clearverification"}}}}});
@@ -376,7 +371,7 @@ test("rolling history is cleared without wiping budget or other saved settings",
 test("Progress compares matched observed training with a one-train baseline, not 7-day forecast",async()=>{
  const a=setup(false,false,"2026-10-27T09:00:00Z",
   {budget:50000000,stat:"strength",sleepEnabled:true},7);
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const initial=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
  assert.ok(initial.single.strength>0);
  assert.equal(initial.gymId,9);
@@ -402,7 +397,7 @@ test("Progress compares matched observed training with a one-train baseline, not
 test("multi-stat or book-like gains do not invent a per-train calibration",async()=>{
  const a=setup(false,false,"2026-10-27T09:00:00Z",
   {budget:50000000,stat:"strength"},7);
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const first=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
  a.advance(500);
  a.fixture["/user/battlestats"].battlestats.strength.value+=first.single.strength*1.85;
@@ -420,7 +415,7 @@ test("legacy v0.9.3 observations remain visible but do not claim a matched basel
   expected:29000,observed:{strength:630,defense:0,speed:0,dexterity:0},method:"xanax"}];
  const a=setup(false,false,"2026-10-27T09:00:00Z",
   {budget:50000000,stat:"strength"},7,"/index.php",legacy);
- a.btn.onclick();await a.refresh();
+ await a.btn.onclick();
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
  const html=panel.children[1].innerHTML;
@@ -430,4 +425,51 @@ test("legacy v0.9.3 observations remain visible but do not claim a matched basel
  assert.ok(!html.includes("Last interval: planned +"));
  assert.ok(!html.includes("Observed changes"));
  assert.match(html,/str: 630/);
+});
+
+test("each HJ open refreshes once while initial injection and closing never call Torn",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000});
+ const calls=()=>a.requests.filter(x=>x.includes("/user/bars")).length;
+ assert.equal(calls(),0,"Injecting the script must not call the API");
+ await a.btn.onclick();
+ assert.equal(calls(),1,"First opening must refresh exactly once");
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"close"}};}}});
+ assert.equal(panel.style.display,"none");
+ assert.equal(calls(),1,"Closing must not refresh");
+ a.advance(360);
+ await a.btn.onclick();
+ assert.equal(calls(),2,"Reopening must refresh exactly once");
+ assert.equal(panel.style.display,"block");
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:verification")).length,1,
+ "Reopen should add a real-versus-forecast checkpoint after the elapsed interval");
+});
+test("Progress charts measured gains from actual stored refresh intervals, not projected values",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength"},7);
+ await a.btn.onclick();
+ const initial=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
+ a.advance(3600);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=initial.single.strength;
+ await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Daily strength gains · observed only/);
+ assert.match(html,/Dates without observations are omitted/);
+ assert.match(html,/background:#4bdecb/);
+ assert.match(html,/Observed stat gains · last seven days/);
+ assert.ok(!html.includes("2026-10-26"),"No fabricated unobserved previous-day bar");
+});
+test("reopening preserves last selected tab; refreshed content keeps its scroll position",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000});
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const content=panel.children[1];content.scrollTop=250;
+ panel.onclick({target:{closest(){return {dataset:{act:"close"}};}}});
+ a.advance(400);
+ await a.btn.onclick();
+ assert.match(content.innerHTML,/Observed stat gains/);
+ assert.equal(content.scrollTop,250);
 });
