@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null,seedPartial=null,seedActions=null){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null,seedPartial=null,seedActions=null,seedRecovery=null){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -23,6 +23,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   if(seedVerification)map.set("hhj-compact-v1:verification",JSON.stringify(seedVerification));
   if(typeof seedPartial==="boolean")map.set("hhj-compact-v1:show-partial",JSON.stringify(seedPartial));
   if(seedActions)map.set("hhj-compact-v1:action-notes",JSON.stringify(seedActions));
+  if(seedRecovery)map.set("hhj-compact-v1:recovery",JSON.stringify(seedRecovery));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
     setItem(k,v){map.set(k,String(v));}};
   const fixture={
@@ -50,7 +51,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
     if(p.startsWith("/user/inventory"))value=category21&&p.includes("?cat=")?{error:{code:21}}:{inventory:{items:category21?[{id:206,amount:2,name:"Xanax",faction_owned:false}]:[]}};
     return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
   }
-  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison,sleeping,progressLog};})();");
+  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison,sleeping,progressLog,watchSeen,oldDue,isBusy:()=>busy};})();");
   new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
     document,{hostname:"www.torn.com",pathname},w,localStorage,PDA_httpGet,date);
   return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
@@ -58,9 +59,9 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
-  assert.ok(src.length<57000,"Keep the direct install far below the failed 78 KB preview size");
+  assert.ok(src.length<60000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.10\.3/);
+  assert.match(src,/@version\s+0\.10\.4/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -71,7 +72,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.3");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.4");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -291,7 +292,7 @@ test("v0.10.3 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.10.3");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.4");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -1015,7 +1016,7 @@ test("overdue warning survives on-open refresh yet remains unconfirmed, not reco
  assert.match(html,/25m ago/);
  assert.match(html,/Previous plan; may be done/);
  assert.match(html,/I did it/);
- assert.match(html,/Dismiss/);
+ assert.match(html,/Not sure/);
  assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:watch")).t,first.t);
  assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
 });
@@ -1087,4 +1088,115 @@ test("switching the forecasted training method does not report old strategy as o
  panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"natural"}};}}});
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}};}}});
  assert.ok(!panel.children[1].innerHTML.includes("Past due · unconfirmed"));
+});
+
+
+async function settleRefresh(a){
+ for(let i=0;i<1500&&a.core.isBusy();i++)await Promise.resolve();
+ assert.equal(a.core.isBusy(),false,"API refresh must eventually complete");
+}
+test("unconfirmed prior action offers Missed it, I did it and Not sure without inventing completion",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ a.advance(1500);await a.refresh();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Past due · unconfirmed/);
+ assert.match(html,/Missed it · Replan/);
+ assert.match(html,/I did it/);
+ assert.match(html,/Not sure/);
+ assert.equal(a.storage.getItem("hhj-compact-v1:recovery"),null);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("explicitly missed gym train replans against live remaining energy without faking training",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();a.advance(1500);await a.refresh();
+ const originalGain=a.fixture["/user/battlestats"].battlestats.strength.value;
+ a.fixture["/user/bars"].bars.energy.current=40;
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"watch-missed"}};}}});
+ await settleRefresh(a);
+ const row=JSON.parse(a.storage.getItem("hhj-compact-v1:recovery"));
+ assert.equal(row.pending,false);
+ assert.equal(row.kind,"TRAIN");
+ assert.equal(row.scheduled,Date.parse("2026-10-27T09:00:00Z")/1000);
+ assert.ok(row.g>0&&row.g24>0);
+ assert.equal(typeof row.methodNow,"string");
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+ assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),null);
+ assert.equal(a.storage.getItem("hhj-compact-v1:watch")===null,false);
+ assert.equal(a.fixture["/user/battlestats"].battlestats.strength.value,originalGain);
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Missed · recovery/);
+ assert.match(html,/Replanned/);
+ assert.match(html,/Skipped target/);
+ assert.match(html,/next 24h/);
+ assert.match(html,/New next|Next recommended:/);
+ assert.ok(a.requests.every(u=>u.startsWith("https://api.torn.com/v2/")));
+});
+test("live refresh failure leaves missed action recovery pending, then valid refresh resolves it",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();a.advance(1500);await a.refresh();
+ const goodBars=a.fixture["/user/bars"];
+ a.fixture["/user/bars"]={error:{code:21}};
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"watch-missed"}};}}});
+ await settleRefresh(a);
+ let row=JSON.parse(a.storage.getItem("hhj-compact-v1:recovery"));
+ assert.equal(row.pending,true);
+ assert.match(panel.children[1].innerHTML,/Waiting for live Torn data/);
+ a.fixture["/user/bars"]=goodBars;
+ await a.refresh();
+ row=JSON.parse(a.storage.getItem("hhj-compact-v1:recovery"));
+ assert.equal(row.pending,false);
+ assert.match(panel.children[1].innerHTML,/Replanned/);
+});
+test("clearing missed label does not undo actual Torn status, consume point refill or alter history",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();a.advance(1500);await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"watch-missed"}};}}});
+ await settleRefresh(a);
+ const before=a.fixture["/user/battlestats"].battlestats.strength.value;
+ panel.onclick({target:{closest(){return {dataset:{act:"undo-missed"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:recovery"),"null");
+ assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),null);
+ assert.equal(a.fixture["/user/battlestats"].battlestats.strength.value,before);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("Xanax being on drug cooldown by itself cannot prove a watched Xanax was taken",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{stat:"strength"},7);
+ a.fixture["/user/cooldowns"].cooldowns.drug=20000;
+ await a.btn.onclick();
+ assert.equal(a.core.watchSeen({kind:"XANAX",t:Date.parse("2026-10-27T09:00:00Z")/1000,stat:"strength",method:"xanax"}),false);
+});
+test("overnight due action can still be reviewed after waking, never during sleep",async()=>{
+ const a=setup(false,false,"2026-10-27T22:35:00Z",
+ {budget:50000000,stat:"strength",sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00"},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const watched=JSON.parse(a.storage.getItem("hhj-compact-v1:watch"));
+ assert.ok(watched&&watched.t<=Date.parse("2026-10-27T22:40:00Z")/1000);
+ a.advance(2400);await a.refresh();
+ assert.ok(!a.document.getElementById("hhj-compact-panel").children[1].innerHTML.includes("Past due · unconfirmed"));
+ a.advance(8*3600+25*60);await a.refresh();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Past due · unconfirmed/);
+ assert.match(html,/Missed it · Replan/);
+});
+test("missed recovery remains visible after reinitialization from saved local status",async()=>{
+ const prior={t:Date.parse("2026-10-27T09:25:00Z")/1000,scheduled:Date.parse("2026-10-27T09:00:00Z")/1000,
+ kind:"TRAIN",stat:"strength",method:"xanax",g:7000,pending:false,
+ replanned:Date.parse("2026-10-27T09:26:00Z")/1000,methodNow:"natural",g24:20000};
+ const a=setup(false,false,"2026-10-27T09:30:00Z",{stat:"strength"},7,"/index.php",null,null,null,prior);
+ await a.btn.onclick();
+ assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Missed · recovery/);
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:recovery")).methodNow,"natural");
 });
