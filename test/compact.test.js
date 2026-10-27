@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true){
+function setup(apiRefillUsed=true,category21=false){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -42,7 +42,7 @@ function setup(apiRefillUsed=true){
     const p=url.slice("https://api.torn.com/v2".length);
     let value=fixture[p];
     if(p.startsWith("/market/")&&p.includes("/itemmarket"))value={itemmarket:{listings:[{price:750000,amount:500}]}};
-    if(p.startsWith("/user/inventory"))value={inventory:{items:[]}};
+    if(p.startsWith("/user/inventory"))value=category21&&p.includes("?cat=")?{error:{code:21}}:{inventory:{items:category21?[{id:206,amount:2,name:"Xanax",faction_owned:false}]:[]}};
     return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
   }
   const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate};})();");
@@ -130,4 +130,17 @@ test("used refill has no redundant Mark used action; manual override can be clea
   assert.ok(!p.children[1].innerHTML.includes('data-act="mark-used"'));
   p.onclick({target:{closest(){return {dataset:{act:"clear-refill"}};}}});
   assert.match(p.children[1].innerHTML,/data-act="mark-used"/);
+});
+
+test("inventory API error 21 falls back once to unfiltered inventory and retains owned quantities",async()=>{
+  const a=setup(false,true);
+  a.btn.onclick();
+  await a.refresh();
+  assert.equal(a.requests.filter(x=>x.includes("/user/inventory?limit=250&offset=0")).length,1,
+    "One cached unfiltered inventory fetch should serve all four categories");
+  assert.ok(a.requests.some(x=>x.includes("/user/inventory?cat=drug")),
+    "Retry lowercase category before falling back");
+  const panel=a.document.getElementById("hhj-compact-panel");
+  assert.match(panel.children[1].innerHTML,/category 21; unfiltered fallback used/);
+  assert.match(panel.children[1].innerHTML,/What should I do\?/);
 });
