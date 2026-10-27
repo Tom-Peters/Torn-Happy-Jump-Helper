@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.9.7
+// @version      0.9.8
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -12,7 +12,7 @@
 // @grant        none
 // ==/UserScript==
 (function(){
-"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.7";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
+"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.8";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
 xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Number.isFinite(n)?Math.round(n).toLocaleString("en-US"):"—";const cash=n=>Number.isFinite(n)?"$"+fmt(n):"Price unknown";const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const compactUtc=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Math.floor(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),showPartial=get("show-partial",true),start=Date.now()/1000;const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>refillStatus(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}
@@ -296,21 +296,52 @@ const stat={744:"strength",745:"speed",746:"defense",747:"dexterity"}[x.id];retu
 function checkpoint(st){
 const now=Date.now()/1000;if(!ST.every(k=>Number.isFinite(st[k])&&st[k]>0))return false;if(rolling&&rolling.t<now-30&&now-rolling.t<=7*86400&&rolling.s){
 const delta=Object.fromEntries(ST.map(k=>[k,st[k]-(Number(rolling.s[k])||0)]));const expected=(rolling.events||[]).filter(x=>x.t>=rolling.t&&x.t<=now).reduce((n,x)=>n+(x.g||0),0);const changed=ST.filter(k=>delta[k]>0),stat=changed.length===1?changed[0]:rolling.stat;const single=Number(rolling.single?.[stat]),n=single>0?Math.round(delta[stat]/single):0;const consistent=changed.length===1&&rolling.gymId===gym()?.id&&n>=1&&n<=20&&
-Math.abs(delta[stat]/n-single)/single<=0.12;ledger.push({t:now,from:rolling.t,stat,observed:delta,expected,method:rolling.method,single:single>0?single:null,inferred:consistent?n:null});ledger=ledger.filter(x=>now-x.t<30*86400).slice(-120);put("verification",ledger);}
+Math.abs(delta[stat]/n-single)/single<=0.12;ledger.push({t:now,from:rolling.t,stat,forecastStat:rolling.stat,observed:delta,expected,method:rolling.method,single:single>0?single:null,inferred:consistent?n:null});ledger=ledger.filter(x=>now-x.t<30*86400).slice(-120);put("verification",ledger);}
 rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};return true;}
 function gainsChart(daily){
-const k=cfg.stat,days=Object.keys(daily).sort(),view=days.filter(d=>showPartial||daily[d].covered);let html='<div class="row"><b>Show partial days</b><button data-act="partial">'+
+const k=cfg.stat,days=Object.keys(daily).sort(),view=days.filter(d=>showPartial||daily[d].covered);
+let html='<div class="row"><b>Show partial days</b><button data-act="partial">'+
 (showPartial?"ON · Show all":"OFF · Covered only")+'</button></div>'+
-'<p class="sub">Covered means near-midnight snapshots with no long gaps, not proof of complete gameplay history. Current days and older unverified entries are partial.</p>';if(!days.length)return card("Daily gains · coverage","No measured refresh intervals yet. Open HJ after training."); if(!view.length)return card("Daily gains · coverage",html+"No days meet this filter. Turn on partial days to see recorded changes.");const max=Math.max(1,...view.map(d=>Math.max(0,daily[d].matched,daily[d].predicted)));html+='<p class="sub">Same tracked intervals for both bars · <b style="color:#4bdecb">Observed</b> vs <b style="color:#8aa2fa">Scheduled</b> (hypothetical, not actual actions).</p>';html+=view.map(d=>{const v=daily[d],bar=(n,color)=>'<div style="height:9px;background:#0c2232;border-radius:7px;overflow:hidden;margin:3px 0"><div style="width:'+
-(Math.max(0,n)/max*100).toFixed(1)+'%;height:100%;background:'+color+'"></div></div>';return '<div style="margin:11px 0"><div class="row"><b>'+esc(d.slice(5))+' · '+(v.covered?"Covered":"Partial")+'</b><small>'+v.matchedN+' comparable intervals</small></div>'+
-bar(v.matched,"#4bdecb")+bar(v.predicted,"#8aa2fa")+
-'<div class="row"><small>Observed +'+fmt(v.matched)+'</small><small>Scheduled +'+fmt(v.predicted)+'</small></div></div>';}).join('');return card("7-day "+esc(k)+" · observed vs planned",html);}
+'<p class="sub">Covered means near-complete snapshot coverage, not independently verified gym activity. Today and old records without interval times remain partial.</p>';
+if(!days.length)return card("Daily gains · coverage","No measured refresh intervals yet. Open HJ after training.");
+if(!view.length)return card("Daily gains · coverage",html+"No days meet this filter. Turn on partial days to view recorded changes.");
+const max=Math.max(1,...view.map(d=>Math.max(0,daily[d].real[k],daily[d].matched,daily[d].predicted)));
+const bar=(n,color)=>'<div style="height:9px;background:#0c2232;border-radius:7px;overflow:hidden;margin:3px 0"><div style="width:'+
+(Math.max(0,n)/max*100).toFixed(1)+'%;height:100%;background:'+color+'"></div></div>';
+html+='<p class="sub">Paired bars compare the same refresh intervals only. Recorded-only days have no comparable forecast. Both are partial activity observations.</p>';
+html+=view.map(d=>{const v=daily[d],paired=v.matchedN>0;
+return '<div style="margin:11px 0"><div class="row"><b>'+esc(d.slice(5))+' · '+(v.covered?"Covered":"Partial")+
+'</b><small>'+(paired?v.matchedN+' comparable intervals':'No comparable plan')+'</small></div>'+
+bar(paired?v.matched:v.real[k],"#4bdecb")+
+(paired?bar(v.predicted,"#8aa2fa"):'')+
+'<div class="row"><small>'+(paired?"Observed (matched) +":"Recorded +")+fmt(paired?v.matched:v.real[k])+
+'</small>'+(paired?'<small>Scheduled (matched) +'+fmt(v.predicted)+'</small>':'')+'</div></div>';}).join("");
+return card("7-day "+esc(k)+" · observed vs planned",html);
+}
 function progressLog(){
-const recent=ledger.filter(x=>x.t>=Date.now()/1000-7*86400),daily={},focus=cfg.stat;for(const x of recent){
-const date=day(x.t),row=daily[date]||(daily[date]={n:0,changed:0,real:Object.fromEntries(ST.map(k=>[k,0])),matched:0,predicted:0,matchedN:0,span:0,first:Infinity,last:0,ok:true,covered:false});row.n++;for(const k of ST)row.real[k]+=x.observed?.[k]||0;if(ST.some(k=>(x.observed?.[k]||0)>0))row.changed++;if(x.stat===focus&&Number.isFinite(x.expected)){row.matched+=x.observed?.[focus]||0;row.predicted+=x.expected;row.matchedN++}
-const midnight=Date.parse(date+"T00:00:00Z")/1000;row.first=Math.min(row.first,Number(x.from)||Infinity);row.last=Math.max(row.last,x.t);if(x.from)row.span+=Math.max(0,x.t-x.from);if(!x.from||x.from<midnight||x.t-x.from>7200)row.ok=false;}
+const recent=ledger.filter(x=>x&&Number.isFinite(x.t)&&x.t>=Date.now()/1000-7*86400),daily={},focus=cfg.stat;
+for(const x of recent){
+ const date=day(x.t),row=daily[date]||(daily[date]={n:0,changed:0,real:Object.fromEntries(ST.map(k=>[k,0])),matched:0,predicted:0,matchedN:0,windows:[],ok:true,covered:false});
+ row.n++;for(const k of ST)row.real[k]+=Number(x.observed?.[k])||0;
+ if(ST.some(k=>(Number(x.observed?.[k])||0)>0))row.changed++;
+ if(x.forecastStat===focus&&Number.isFinite(x.expected)){
+ row.matched+=Number(x.observed?.[focus])||0;row.predicted+=x.expected;row.matchedN++;
+ }
+ const midnight=Date.parse(date+"T00:00:00Z")/1000;
+ if(!Number.isFinite(x.from)||x.from<midnight||x.t>midnight+86400||
+ x.t<=x.from||x.t-x.from>7200)row.ok=false;
+ else row.windows.push([x.from,x.t]);
+}
 for(const [date,row] of Object.entries(daily)){
-const midnight=Date.parse(date+"T00:00:00Z")/1000;row.covered=row.ok&&row.first<=midnight+900&&row.last>=midnight+86400-900&&row.span>=23*3600&&row.matchedN>0;}
+ const midnight=Date.parse(date+"T00:00:00Z")/1000,end=midnight+86400;
+ const windows=row.windows.sort((a,b)=>a[0]-b[0]);
+ let last=midnight,span=0,gap=0;
+ for(const [a,b] of windows){if(a>last)gap=Math.max(gap,a-last);
+ if(b>last){span+=b-Math.max(a,last);last=b;}}
+ gap=Math.max(gap,end-last);
+ row.covered=date!==day(Date.now()/1000)&&row.ok&&windows.length>0&&
+ windows[0][0]<=midnight+900&&last>=end-900&&span>=23*3600&&gap<=7200&&row.matchedN>0;
+}
 const latest=recent[recent.length-1],lastGain=[...recent].reverse().find(x=>(x.observed?.[focus]||0)>0);const today=daily[day(Date.now()/1000)],total=today?.real[focus]||0;const gainChecks=today?.changed||0,idle=Math.max(0,(today?.n||0)-gainChecks);const start=recent[0]?.from||recent[0]?.t;let html=recent.length?'<div class="metric-grid">'+
 '<div><span>Recorded today</span><strong>+'+fmt(total)+'</strong><small>'+esc(focus)+' since recorded checkpoints</small></div>'+
 '<div><span>Latest recorded gain</span><strong>'+(lastGain?'+'+fmt(lastGain.observed[focus]):'—')+
