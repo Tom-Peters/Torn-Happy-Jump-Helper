@@ -754,12 +754,14 @@ function settings(){return card("Planner settings",
 const labels=[["today","Today"],["compare","Compare"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["settings","Settings"]];
 function draw(){
 if(!opened)return;
+const rememberedScroll=content.scrollTop||0;
 try{content.innerHTML='<nav class="tabs">'+labels.map(([k,v])=>
 '<button class="'+(k===tab?'on':'')+'" data-act="tab" data-val="'+k+'">'+v+'</button>').join("")+
 '</nav>'+(tab==="today"?today():tab==="compare"?compare():tab==="plan"?plan():
 tab==="supplies"?supplies():tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():settings())+
 '<p class="sub">IamEEKY · Forecast only · No automated Torn actions · v'+VER+'</p>';
 }catch(e){content.innerHTML='<section class="card"><h3>Panel recovery</h3><p>Rendering failed: '+esc(e.message)+'</p><button data-act="refresh">Retry refresh</button></section>';}
+content.scrollTop=rememberedScroll;
 const tabs=content.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");
 if(tabs&&selected)tabs.scrollLeft=Math.max(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);
 }
@@ -769,10 +771,10 @@ const b=event.target.closest("button");if(!b)return;
 const act=b.dataset.act,val=b.dataset.val;
 if(act==="close"){opened=false;ui.style.display="none";showLauncher(true)}
 if(act==="refresh")refresh();
-if(act==="tab"){tab=val;draw()}
+if(act==="tab"){tab=val;content.scrollTop=0;draw()}
 if(act==="stat"){cfg.stat=val;selectedMethod="auto";save()}
 if(act==="mode"){cfg.mode=val;selectedMethod="auto";save()}
-if(act==="choose"){selectedMethod=val;tab="plan";draw()}
+if(act==="choose"){selectedMethod=val;tab="plan";content.scrollTop=0;draw()}
 if(act==="choose-supply"){selectedMethod=val;draw()}
 if(act==="horizon"){cfg.horizon=+val;save()}
 if(act==="mark-used"){put("used-day",day(Date.now()/1000));lastPlan=plans();draw()}
