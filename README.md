@@ -1,3 +1,17 @@
+# v0.8.1 — correct the tenfold Torn API v2 gym-gain error (27 October 2026)
+
+**Update the existing main helper:** [Torn-Happy-Jump-Helper.user.js](Torn-Happy-Jump-Helper.user.js) · [raw userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js). Only one main HJ script should be enabled in TornPDA. Keep injection **END**, update existing source, reload Torn and confirm the header shows **v0.8.1**. Settings/history remain local.
+
+**What was wrong:** Torn API v2 `/torn/gyms` reports `gym.modifiers[stat]` in actual gym-dot units (e.g. Atlas Strength 7.0). The previous compact helper incorrectly divided that value by 10 again. Every per-train gain, 24h gain, 7d gain, all-stat comparison and suggested gym improvements could consequently be approximately **10× too small**. A recent Android screenshot confirmed an estimated +61 Strength for 10 energy where Torn actually awarded +609.75 Strength for a real train. **No private player values are embedded in this repository or its tests.**
+
+**Fix:** All relevant calculations and UI share `gymDots(raw)`: current v2 values between 0 and 10 are used directly; historical API-style values greater than 10 are converted to dots by division by 10, so old mock fixtures are compatible. Current API v2 gym values are not divided twice. The base per-train estimate applies the community gym formula; future 24h/7d numbers are recalculated from the corrected action-by-action simulation, including growing stats, diminishing happiness, energy and item costs.
+
+**New in-page verification:** While on Torn's Gym page, if a result saying `You gained ... strength/defense/speed/dexterity` remains visible, Today shows the observed training gain beside an independent model estimate with percentage difference. This is **read-only, not persisted**, and is not a precision calibration: current stats/happiness may have changed since that train. Bonus descriptions, active books, effects and formula noise can explain remaining differences.
+
+**Validation:** 18/18 focused tests passed with a TornPDA-like simulated environment, covering API-v2 dots 7.0 versus older ×10 70, independent stat calculations, 24h/7d sums, full-screen UI, API refresh, item costs, daily refill semantics and a detected Gym result. The full GitHub Actions suite and live on-device v0.8.1 behaviour are **not yet verified**.
+
+---
+
 # Happy Jump Helper v0.8.0 — full-screen maximum-gains planner (27 October 2026)
 
 **Install/update:** [Main TornPDA userscript](Torn-Happy-Jump-Helper.user.js) · [Raw install source](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js). Keep only the main script enabled. Disable previous duplicate, Enhanced, Advanced or Companion scripts. Use TornPDA injection **END**, reload Torn, and verify **v0.8.0** in the header. Settings, gym access confirmations, refill marks and historical snapshots remain in local storage (do not clear local data). The script reads Torn data only after pressing **Refresh data**.
