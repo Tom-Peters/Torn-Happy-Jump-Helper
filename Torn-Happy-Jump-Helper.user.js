@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.9.5
+// @version      0.9.6
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.5";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.6";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -634,26 +634,35 @@ return card("Daily "+esc(k)+" gains · observed only",
  '<p class="sub">Current focus: '+esc(k)+'. Change your focus stat in Today or Compare to view another chart.</p>');
 }
 function progressLog(){
-const recent=ledger.filter(x=>x.t>=Date.now()/1000-7*86400),daily={};
+const recent=ledger.filter(x=>x.t>=Date.now()/1000-7*86400),daily={},focus=cfg.stat;
 for(const x of recent){
- const date=day(x.t),row=daily[date]||(daily[date]={n:0,real:Object.fromEntries(ST.map(k=>[k,0]))});
+ const date=day(x.t),row=daily[date]||(daily[date]={n:0,changed:0,real:Object.fromEntries(ST.map(k=>[k,0]))});
  row.n++;for(const k of ST)row.real[k]+=x.observed?.[k]||0;
+ if(ST.some(k=>(x.observed?.[k]||0)>0))row.changed++;
 }
-const latest=recent[recent.length-1];
-let html=latest?'<p><b>Latest measured change:</b> +'+fmt(latest.observed?.[latest.stat])+
- ' '+esc(latest.stat)+'</p>'+
- (latest.inferred?'<p><b>Estimated per train:</b> +'+fmt(latest.single)+
- ' · observed ≈ +'+fmt(latest.observed[latest.stat]/latest.inferred)+
- ' ('+latest.inferred+' standard trains inferred)</p>':
- '<p class="sub">No reliable per-train match for this interval. A new baseline, another gym, multiple stats or special bonuses may explain it.</p>')+
- (!latest.single&&gym()&&stats()[latest.stat]>0?
- '<p class="sub">Current single-train reference (not an interval match): +'+fmt(sessionGain(gym(),latest.stat,
- gym().energy_cost||10,happy().current??happy().maximum??0,stats()))+' '+esc(latest.stat)+'.</p>':'')+
- '<p class="sub">The previous full schedule forecast is not a like-for-like prediction of your actual actions. Train count is inferred from gains, not verified.</p>':
- '<p>Refresh now to establish a baseline, then again after training to measure the real change.</p>';
-html+='<p class="sub">Daily totals below include only intervals observed between refreshes (assigned to the refresh date, UTC); gaps are not filled with estimates.</p>'+
+const latest=recent[recent.length-1],lastGain=[...recent].reverse().find(x=>(x.observed?.[focus]||0)>0);
+const today=daily[day(Date.now()/1000)],total=today?.real[focus]||0;
+const gainChecks=today?.changed||0,idle=Math.max(0,(today?.n||0)-gainChecks);
+const start=recent[0]?.from||recent[0]?.t;
+let html=recent.length?'<div class="metric-grid">'+
+ '<div><span>Recorded today</span><strong>+'+fmt(total)+'</strong><small>'+esc(focus)+' since recorded checkpoints</small></div>'+
+ '<div><span>Latest recorded gain</span><strong>'+(lastGain?'+'+fmt(lastGain.observed[focus]):'—')+
+ '</strong><small>'+esc(focus)+' · '+(lastGain?compactUtc(lastGain.t):'None recorded')+'</small></div></div>'+
+ (latest&&!(latest.observed?.[focus]>0)?'<p class="sub">Latest refresh: no new '+esc(focus)+
+ ' gain. Your last recorded gain is shown above.</p>':'')+
+ '<p class="sub">'+gainChecks+' checks with stat increases · '+idle+
+ ' checks without a new stat increase today. These are <b>checks, not individual gym trains</b>.</p>'+
+ (lastGain?.inferred?'<p>Latest matching interval: estimated +'+fmt(lastGain.single)+
+ ' per train, +'+fmt(lastGain.observed[focus]/lastGain.inferred)+
+ ' observed per inferred train ('+lastGain.inferred+' inferred).</p>':
+ '<p class="sub">No reliable individual-train comparison yet. Current stat changes can include several actions or bonuses.</p>')+
+ '<p class="sub">Partial coverage: refresh-to-refresh differences only. Training before the first baseline or during untracked gaps may be missing. '+
+ (start?'Earliest stored checkpoint: '+compactUtc(start)+'. ':'')+
+ 'Torn activity logs may therefore show more trains than this chart.</p>':
+ '<p>Open HJ to set a baseline, then reopen after training to record stat changes.</p>';
+html+='<p class="sub">Daily totals use UTC refresh dates. Days without a recorded change are not assumed to have zero activity.</p>'+
  Object.entries(daily).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,x])=>
- '<div class="row"><b>'+esc(date)+'</b><small>'+x.n+' intervals · '+
+ '<div class="row"><b>'+esc(date)+'</b><small>'+x.changed+' gain checks / '+x.n+' total · '+
  ST.map(k=>k.slice(0,3)+': '+fmt(x.real[k])).join(' · ')+'</small></div>').join('');
 return gainsChart(daily)+card("Observed stat gains · last seven days",html+
  '<button data-act="clearverification">Clear rolling history</button>');
