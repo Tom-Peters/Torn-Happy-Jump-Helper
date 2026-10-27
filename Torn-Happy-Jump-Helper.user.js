@@ -258,7 +258,11 @@ if(row.id===id&&!row.faction_owned)inv[name]=(inv[name]||0)+(+row.amount||0);
 updated=Date.now();const st=stats();
 if(Object.values(st).some(x=>x>0)){const today=day(Date.now()/1000),last=history[history.length-1];
 if(!last||last.d!==today){history.push({d:today,s:st});history=history.slice(-90);put("history",history)}}
-try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}busy=false;draw();
+let validStats=null;
+try{validStats=snapshotVerification()}catch(e){errs.push("Verification: "+String(e.message).slice(0,60))}
+try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}
+if(validStats){try{beginRolling(validStats)}catch(e){errs.push("Rolling forecast: "+String(e.message).slice(0,60))}}
+busy=false;draw();
 }
 function save(){put("settings",cfg);try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}draw()}
 const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed!important;z-index:2147483647!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;background:#091622;color:#f4f8fb;font:14px/1.5 system-ui;overflow:hidden;box-sizing:border-box;border:0!important;box-shadow:none!important";
@@ -327,6 +331,51 @@ function mount(){
 }
 function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
 function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
+
+function snapshotVerification(now=Date.now()/1000){
+ const st=stats();
+ if(!ST.every(k=>st[k]>0))return false;
+ if(rolling&&Number.isFinite(rolling.t)&&rolling.t<now-30&&rolling.s){
+  const elapsed=now-rolling.t,canCompare=elapsed<=7*86400;
+  const observed=Object.fromEntries(ST.map(k=>[k,st[k]-(Number(rolling.s[k])||0)]));
+  const events=canCompare?(rolling.events||[]).filter(x=>x.t>=rolling.t&&x.t<=now):[];
+  const estimate=canCompare&&Array.isArray(rolling.events)?
+   events.reduce((n,x)=>n+(Number(x.g)||0),0):null;
+  const trained=events.reduce((n,x)=>n+(Number(x.q)||0),0);
+  const interval={from:rolling.t,to:now,stat:rolling.stat,method:rolling.method,
+   observed,expected:estimate,energy:trained,gym:rolling.gym||null};
+  ledger.push(interval);
+  ledger=ledger.filter(x=>x&&Number.isFinite(x.to)&&now-x.to<30*86400).slice(-180);
+  put("verification",ledger);
+ }
+ return st;
+}
+function beginRolling(st){
+ const plan=activePlan(),now=Date.now()/1000;
+ rolling={t:now,s:st,stat:cfg.stat,method:plan?.method||"none",
+ gym:gym()?.name||null,events:(plan?.events||[]).filter(x=>x.kind==="TRAIN")
+ .map(x=>({t:x.t,q:x.q,g:x.g}))};
+ put("rolling-plan",rolling);
+}
+function verificationReport(){
+ const recent=ledger.filter(x=>x.to>=Date.now()/1000-7*86400);
+ const focus=cfg.stat,good=recent.filter(x=>x.stat===focus&&x.expected!==null&&x.expected!==undefined);
+ return {recent,focus,forecast:good.reduce((n,x)=>n+x.expected,0),
+ observed:good.reduce((n,x)=>n+(x.observed?.[focus]||0),0),comparisons:good.length,
+ newest:recent[recent.length-1]||null};
+}
+function dailyVerification(){
+ const map={};
+ for(const sample of ledger.filter(x=>x.to>=Date.now()/1000-7*86400)){
+  const date=day(sample.to),row=map[date]||(map[date]={date,n:0,stats:Object.fromEntries(ST.map(k=>[k,0])),expected:0,focusCount:0});
+  row.n++;
+  for(const k of ST)row.stats[k]+=sample.observed?.[k]||0;
+  if(sample.stat===cfg.stat&&sample.expected!==null){
+   row.expected+=sample.expected;row.focusCount++;
+  }
+ }
+ return Object.values(map).sort((a,b)=>b.date.localeCompare(a.date));
+}
 function readGymResult(){
  if(!/\/gym\.php$/.test(location.pathname||""))return null;
  const root=document.querySelector?.("#gymroot")||document.body;
