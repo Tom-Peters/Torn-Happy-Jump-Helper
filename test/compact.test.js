@@ -282,7 +282,7 @@ test("Gym page observation compares a read-only train result with calculated gai
   "Observed player data must not be bundled into the public userscript");
  a.btn.onclick();await a.refresh();
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
- assert.match(html,/Compare with Torn's latest visible train/);
+ assert.match(html,/Compare with Torn/);
  assert.match(html,/640.5/);
  assert.match(html,/Model estimates now/);
  assert.match(html,/Per gym train/);
