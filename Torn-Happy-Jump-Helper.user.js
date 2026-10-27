@@ -663,26 +663,56 @@ return "<p><b>"+esc(x.name||"Book #"+x.id)+"</b> · "+(stat?
 }
 function progress(){
  const st=stats(),regular=(lastPlan||[]).filter(x=>!x.method.startsWith("happy")&&x.affordable)
-  .sort((a,b)=>b.gain-a.gain)[0],first=history[0],last=history[history.length-1];
- return card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+
- card("Observed changes",first&&last&&first!==last?
- ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(last.s[k]-first.s[k])+"</b></div>").join(""):
- "Refresh on another day for observed differences. Estimates are not recorded as actual gains.")+
- card("Long-term targets · regular training only",regular?projection(st[cfg.stat],regular.gain).map(x=>
- "<div class='row'><b>"+fmt(x.goal)+"</b><span>"+(x.weeks===null?"Outside model":x.weeks+" weeks")+"</span></div>").join("")+
- "<p class='sub'>Assumes repeating regular weekly training. One-time Happy jumps are never silently repeated.</p>":
- "No budget-feasible repeating plan available.")+
- '<button data-act="clearhistory">Clear local history</button>';
+  .sort((a,b)=>b.gain-a.gain)[0],v=verificationReport(),daily=dailyVerification();
+ let out=card("Rolling verification · last seven days",
+ '<p>Forecasts are captured at each successful refresh, then compared against real stat changes at the next refresh. This checks how your planned strategy compares with what actually happened, <b>not</b> whether you followed every suggested action.</p>'+
+ '<div class="metric-grid"><div><span>Observed '+esc(cfg.stat)+'</span><strong>'+
+ (v.comparisons?fmt(v.observed):"—")+'</strong><small>Matched refresh intervals only</small></div>'+
+ '<div><span>Scheduled estimate</span><strong>'+(v.comparisons?fmt(v.forecast):"—")+
+ '</strong><small>Same observed intervals</small></div>'+
+ '<div><span>Verified intervals</span><strong>'+v.comparisons+'</strong><small>'+
+ v.recent.length+' total refresh comparisons</small></div></div>'+
+ '<p class="sub">If you train differently, use a book, miss a dose or change gyms, actual and predicted gains will diverge. Keep refreshing while the dashboard is open to improve coverage.</p>'+
+ '<button data-act="refresh">↻ Verify with current Torn stats</button>');
+ out+=card("Daily observed gains · past seven days",
+ daily.length?daily.map(row=>'<div class="stat-row"><div class="row"><b>'+esc(row.date)+
+ '</b><span class="sub">'+row.n+' observed intervals</span></div>'+
+ '<div class="metric-grid">'+ST.map(k=>'<div><span>'+esc(k)+'</span><strong>'+
+ (row.stats[k]>=0?"+":"")+fmt(row.stats[k])+'</strong></div>').join("")+'</div>'+
+ (row.focusCount?'<p class="sub">Planned '+esc(cfg.stat)+' on '+row.focusCount+
+ ' matching intervals: +'+fmt(row.expected)+'. Intervals crossing midnight are attributed to their ending day.</p>':'')+
+ '</div>').join(""):
+ '<p>No daily observations yet. Refresh once now, then again after training to begin the rolling ledger.</p>');
+ out+=card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+
+ "</span><b>"+fmt(st[k])+"</b></div>").join(""));
+ out+=card("Forward plan · regular training only",regular?projection(st[cfg.stat],regular.gain).map(x=>
+ "<div class='row'><b>"+fmt(x.goal)+"</b><span>"+(x.weeks===null?"Outside model":x.weeks+" weeks")+
+ "</span></div>").join("")+
+ "<p class='sub'>Repeatable regular scenario; not a guaranteed multi-year prediction.</p>":
+ "No budget-feasible repeating plan.");
+ out+='<div class="row"><button data-act="clearverification">Clear rolling verification</button>'+
+ '<button data-act="clearhistory">Clear legacy daily history</button></div>';
+ return out;
 }
 function settings(){return card("Planner settings",
-'<label>Weekly budget <input id="hhj-budget" type="number" min="0" value="'+cfg.budget+'"></label>'+
-'<p><label><input id="hhj-refills" type="checkbox"'+(cfg.refills?" checked":"")+'> Compare daily points refills</label></p>'+
-'<p><label>Manual extra gym bonus % <input id="hhj-gymbonus" type="number" min="0" max="200" value="'+cfg.gymBonus+'"></label></p>'+
-'<p><label>Points already owned <input id="hhj-points" type="number" min="0" value="'+(+cfg.ownedPoints||0)+'"></label></p>'+
-'<p class="sub">Optional manual unit prices, used only when live market listings cannot cover your basket:</p>'+
-["points","xanax","ecstasy","lollipop","dvd"].map(k=>'<p><label>'+esc(k)+
-' price <input data-price="'+k+'" type="number" min="0" value="'+(+cfg.manualPrices?.[k]||0)+'"></label></p>').join("")+
-'<button data-act="save">Save settings</button><p class="sub">Your configured weekly budget is retained and editable. Owned points and manual prices are local assumptions, not live Torn balances or guaranteed offers.</p>')}
+ '<p><label>Weekly Torn budget <input id="hhj-budget" type="number" min="0" value="'+cfg.budget+'"></label></p>'+
+ '<p><label><input id="hhj-refills" type="checkbox"'+(cfg.refills?" checked":"")+'> Include daily point refills</label></p>'+
+ '<p><label><input id="hhj-autoverify" type="checkbox"'+(cfg.autoVerify?" checked":"")+
+ '> Rolling verification while dashboard is open (every 15 minutes)</label></p>'+
+ '<h3>Sleep and wake schedule</h3>'+
+ '<p><label><input id="hhj-sleepenabled" type="checkbox"'+(cfg.sleepEnabled?" checked":"")+
+ '> Respect quiet hours: no planned manual actions while asleep</label></p>'+
+ '<div class="row"><label>Bedtime <input id="hhj-sleepstart" type="time" value="'+esc(cfg.sleepStart||"22:00")+
+ '"></label><label>Wake time <input id="hhj-sleepend" type="time" value="'+esc(cfg.sleepEnd||"08:00")+
+ '"></label></div>'+
+ '<p class="sub">Defaults: 22:00–08:00 in your device’s time zone. Train spare energy shortly before bed and on waking to limit regeneration waste. A ten-hour uninterrupted sleep will still cause some unavoidable energy-cap loss.</p>'+
+ '<p><label>Manual extra gym bonus % <input id="hhj-gymbonus" type="number" min="0" max="200" value="'+cfg.gymBonus+'"></label></p>'+
+ '<p><label>Points already owned <input id="hhj-points" type="number" min="0" value="'+(+cfg.ownedPoints||0)+'"></label></p>'+
+ '<p class="sub">Optional manual per-item prices; used only when live market supply is insufficient:</p>'+
+ ["points","xanax","ecstasy","lollipop","dvd"].map(k=>'<p><label>'+esc(k)+
+ ' price <input data-price="'+k+'" type="number" min="0" value="'+(+cfg.manualPrices?.[k]||0)+'"></label></p>').join("")+
+ '<button data-act="save">Save settings and recalculate</button>'+
+ '<p class="sub">Existing $50m budget, selected stat and history are preserved. Forecast checks are kept locally on this device.</p>')}
 const labels=[["today","Today"],["compare","Compare"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["settings","Settings"]];
 function draw(){
 if(!opened)return;
@@ -710,17 +740,28 @@ if(act==="horizon"){cfg.horizon=+val;save()}
 if(act==="mark-used"){put("used-day",day(Date.now()/1000));lastPlan=plans();draw()}
 if(act==="clear-refill"){put("used-day",null);lastPlan=plans();draw()}
 if(act==="clearhistory"){history=[];put("history",[]);draw()}
+if(act==="clearverification"){ledger=[];rolling=null;put("verification",[]);put("rolling-plan",null);draw()}
 if(act==="gym-owned"||act==="gym-buy"){const id=+content.querySelector("#hhj-gymlist")?.value;
 if(id&&/\/gym\.php$/.test(location.pathname||"")){verified[id]=act==="gym-owned"?"owned":"buy";put("gyms",verified);draw()}}
 if(act==="save"){
 cfg.budget=Math.max(0,+content.querySelector("#hhj-budget")?.value||0);
 cfg.refills=!!content.querySelector("#hhj-refills")?.checked;
+cfg.autoVerify=!!content.querySelector("#hhj-autoverify")?.checked;
+cfg.sleepEnabled=!!content.querySelector("#hhj-sleepenabled")?.checked;
+const startTime=content.querySelector("#hhj-sleepstart")?.value||"22:00";
+const endTime=content.querySelector("#hhj-sleepend")?.value||"08:00";
+cfg.sleepStart=clockMinutes(startTime,-1)>=0?startTime:"22:00";
+cfg.sleepEnd=clockMinutes(endTime,-1)>=0?endTime:"08:00";
+if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;
 cfg.gymBonus=Math.min(200,Math.max(0,+content.querySelector("#hhj-gymbonus")?.value||0));
 cfg.ownedPoints=Math.max(0,+content.querySelector("#hhj-points")?.value||0);
 cfg.manualPrices=Object.fromEntries(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
 [k,Math.max(0,+content.querySelector('[data-price="'+k+'"]')?.value||0)]));save()}
 });
 mount();document.addEventListener?.("DOMContentLoaded",mount,{once:true});
-window.setInterval(()=>{mount();},5000);
+window.setInterval(()=>{
+ mount();
+ if(opened&&cfg.autoVerify&&tab!=="settings"&&!busy&&updated&&Date.now()-updated>=15*60*1000)refresh();
+},5000);
 if(typeof window!=="undefined"){window.__TornHappyJumpLoaded=VER;window.__TornHappyJumpStage={version:VER,phase:"mounted"};}
 })();
