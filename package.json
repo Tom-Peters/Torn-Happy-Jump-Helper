@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "private": true,
-  "description": "TornPDA read-only gym planner: inferred recent training, three-step action guidance, safe manual confirmations and seven-day schedule overview",
+  "description": "Read-only TornPDA gym planner with highlighted recently overdue actions, safe confirmations and seven-day schedule",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
