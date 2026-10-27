@@ -519,16 +519,18 @@ function today(){
  '</div><p class="sub">Selected forecast: '+esc(a?.method||"none")+' · Budget '+cash(cfg.budget)+
  ' · Expected 7-day spending '+cash(window7?.cost)+'. Per-train uses your present happiness; other totals sum future simulated train actions.</p>','hero');
 const quiet=sleeping(Date.now()/1000);
+ const beforeBed=a?.events?.find(x=>x.t>=Date.now()/1000&&x.kind==="TRAIN"&&x.detail.includes("before sleep"));
  out+=card("Sleep-aware energy management",
  '<p><b>Quiet hours:</b> '+esc(sleepLabel())+' · '+(quiet?
  '<span class="warn">Currently sleeping — manual actions are delayed to wake time.</span>':
  'All planned manual actions stay outside the sleep window.')+'</p>'+
  '<div class="metric-grid">'+
- '<div><span>24h wasted regeneration</span><strong>'+fmt(window24?.lost??NaN)+' E</strong>'+
+ '<div><span>Predicted 24h regen lost</span><strong>'+fmt(window24?.lost??NaN)+' E</strong>'+
  '<small>'+fmt(window24?.sleepLost??NaN)+' E while asleep</small></div>'+
- '<div><span>7-day wasted regeneration</span><strong>'+fmt(window7?.lost??NaN)+' E</strong>'+
+ '<div><span>Predicted 7-day regen lost</span><strong>'+fmt(window7?.lost??NaN)+' E</strong>'+
  '<small>'+fmt(window7?.sleepLost??NaN)+' E while asleep</small></div></div>'+
  '<p class="sub">To reduce waste, the schedule trains available energy just before bed and when you wake, when compatible with your chosen strategy. Overnight overflow cannot all be prevented.</p>'+
+ (beforeBed?'<p><b>Next pre-bed train:</b> '+compactUtc(beforeBed.t)+' · '+fmt(beforeBed.q)+' E</p>':'')+
  '<button data-act="tab" data-val="plan">See sleep-aware schedule</button>');
  const topGym=gymOpportunities()[0];
  if(topGym)out+=card("Better confirmed gym for maximum "+esc(cfg.stat),
@@ -637,8 +639,8 @@ function plan(){
  summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
  '<p class="sub">'+esc(p.note)+' · All actions are manual. Figures include only actions within this window.</p>');
  html+=card("Regeneration waste · same time window",
- '<div class="metric-grid"><div><span>Energy lost at cap</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
- '<div><span>Lost while sleeping</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div>'+
+ '<div class="metric-grid"><div><span>Predicted energy lost at cap</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
+ '<div><span>Predicted loss during sleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div>'+
  '<p class="sub">No Xanax, training or point refills are scheduled between '+esc(sleepLabel())+
  '. Where possible, the schedule uses energy before bedtime and immediately after waking.</p>');
  if(!summaryNow.events.length)return html+card("No actions within this window",
