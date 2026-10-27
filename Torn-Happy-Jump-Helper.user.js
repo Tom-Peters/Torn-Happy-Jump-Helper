@@ -340,6 +340,7 @@ const now=Date.now()/1000;if(!ST.every(k=>Number.isFinite(st[k])&&st[k]>0))retur
 const delta=Object.fromEntries(ST.map(k=>[k,st[k]-(Number(rolling.s[k])||0)]));const expected=(rolling.events||[]).filter(x=>x.t>=rolling.t&&x.t<=now).reduce((n,x)=>n+(x.g||0),0);const changed=ST.filter(k=>delta[k]>0),stat=changed.length===1?changed[0]:rolling.stat;const single=Number(rolling.single?.[stat]),n=single>0?Math.round(delta[stat]/single):0;const consistent=changed.length===1&&rolling.gymId===gym()?.id&&n>=1&&n<=20&&
 Math.abs(delta[stat]/n-single)/single<=0.12;ledger.push({t:now,from:rolling.t,stat,forecastStat:rolling.stat,observed:delta,expected,method:rolling.method,single:single>0?single:null,inferred:consistent?n:null});ledger=ledger.filter(x=>now-x.t<30*86400).slice(-120);put("verification",ledger);}
 rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};return true;}
+let lastActionTap=0;
 function dueAction(p,t){return (p?.events||[]).find(e=>e.t>=t-600&&e.t<=t+600&&!sleeping(e.t)&&!actionNotes.some(n=>n.scheduled===e.t&&n.kind===e.kind&&n.method===p.method))}
 function actionFlow(p){
 const now=Date.now()/1000,obs=[...ledger].reverse().find(x=>ST.some(k=>(x.observed?.[k]||0)>0)),last=actionNotes[actionNotes.length-1],queue=(p?.events||[]).filter(e=>e.t>=now&&!sleeping(e.t)),next=queue[0],after=queue[1],third=queue[2],due=dueAction(p,now);
@@ -462,7 +463,7 @@ if(act==="clearverification"){ledger=[];rolling=null;put("verification",[]);put(
 if(act==="partial"){showPartial=!showPartial;put("show-partial",showPartial);draw()}
 if(act==="undo-note"){actionNotes.pop();put("action-notes",actionNotes);draw()}
 if(act==="note-done"){const p=activePlan(),now=Date.now()/1000,ev=dueAction(p,now);
-if(ev){
+if(ev&&now-lastActionTap>=2){lastActionTap=now;
 actionNotes.push({t:now,kind:ev.kind,stat:cfg.stat,scheduled:ev.t,method:p.method});
 actionNotes=actionNotes.filter(x=>now-x.t<14*86400).slice(-60);put("action-notes",actionNotes);
 refresh();}}
