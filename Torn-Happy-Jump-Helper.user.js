@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.9.1
+// @version      0.9.2
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.1";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.2";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -29,7 +29,7 @@ const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"
 const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
-const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{}};
+const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};
 let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";
@@ -38,6 +38,17 @@ const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gy
 const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));
 const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};
 const cd=()=>data.cooldowns?.cooldowns||{};
+function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}
+function mins(v,back){return validClock(v)?Number(v.slice(0,2))*60+Number(v.slice(3)):back}
+function sleeping(t){
+ if(!cfg.sleepEnabled)return false;
+ const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);
+ if(a===b)return false;
+ const d=new Date(t*1000),m=d.getHours()*60+d.getMinutes();
+ return a<b?m>=a&&m<b:m>=a||m<b;
+}
+function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" local":"Disabled"}
+
 // Torn API v2 gyms report modifiers as displayed dots (Atlas Strength: 7.0).
 // Older API fixtures/resources may express the same multiplier as 70.
 // Accept either form without silently dividing current v2 data by 10.
@@ -106,8 +117,8 @@ m:bonus(k),refill:refill(),now:Date.now()/1000};
 }
 function simulate(method,input,hours=168){
 const p=input,now=Math.ceil(p.now/60)*60,until=now+3600*hours,cap=p.maxE;
-let e=p.energy,h=p.happy,stat=p.value,nextDrug=now+p.drug,spent=0,gainTotal=0,trainedE=0,regenLost=0,drugCount=0,jumps=0;
-const events=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);
+let e=p.energy,h=p.happy,stat=p.value,nextDrug=now+p.drug,spent=0,gainTotal=0,trainedE=0,regenLost=0,sleepLost=0,drugCount=0,jumps=0;
+const events=[],losses=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);
 const kitOk=!method.startsWith("happy")||jumpKit(method).available;
 let firstRefill=p.refill!=="ready",yday="",refilled=false,bank=0,stack=0,boosterCD=p.booster,cost=0,available=true;
 const add=(t,kind,detail,q=0,g=0,spent=0)=>events.push({t,kind,detail,q,g,spent});
@@ -117,13 +128,17 @@ const use=(name,n)=>{const old=bookCost(name,count[name]);count[name]+=n;const n
 const train=(t,label)=>{const used=Math.floor(e/p.cost)*p.cost;if(!used)return;
 const g=gain(used,h,stat,p.dots,p.cost,p.m);e-=used;h=Math.max(0,h-used*.5);stat+=g;gainTotal+=g;trainedE+=used;add(t,"TRAIN",label+" · "+used+" E · +"+fmt(g)+" "+p.stat,used,g)};
 for(let t=now;t<until;t+=60){
+const asleep=sleeping(t),preBed=!asleep&&sleeping(t+60),wake=t>now&&!asleep&&sleeping(t-60);
 const d=day(t);
 if(d!==yday){yday=d;refilled=d===day0?firstRefill:false}
 if(t>now){bank+=60;boosterCD=Math.max(0,boosterCD-60);
-while(bank>=p.regen){bank-=p.regen;if(e<cap)e=Math.min(cap,e+p.inc);else regenLost+=p.inc}
+while(bank>=p.regen){bank-=p.regen;if(e<cap)e=Math.min(cap,e+p.inc);else {regenLost+=p.inc;if(asleep)sleepLost+=p.inc;losses.push({t,q:p.inc,asleep})}}
 }
 if(t%900===0){h=h>p.maxH?p.maxH:Math.min(p.maxH,h+5)}
+if(asleep)continue;
 if(method==="natural"||method==="xanax"){
+if(preBed&&e>=p.cost)train(t,"Train before bed to reduce overnight regeneration waste");
+if(wake&&e>=p.cost)train(t,"Train after waking to free energy capacity");
 if(method==="xanax"&&t>=nextDrug&&e<=750&&afford("xanax")){const paid=use("xanax",1);drugCount++;e=Math.min(1000,e+250);h+=75;
 nextDrug=t+7*3600;add(t,"XANAX","Take Xanax manually; estimated +250 E",250,0,paid);train(t,"Train after Xanax")}
 else if(e>=cap)train(t,"Train naturally regenerated energy");
@@ -134,6 +149,7 @@ add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,res
 }
 }else if(method==="happy"||method==="happy-candy"){
 if(jumps>0||!kitOk)continue;
+if(stack===0&&(preBed||wake)&&e>=p.cost)train(t,preBed?"Train before bed":"Train after waking");
 if(stack===0&&t>=nextDrug&&e>=p.cost)train(t,"Train current energy immediately before starting Xanax stack");
 if(stack<4&&t>=nextDrug&&e<=760){const paid=use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
 nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250,0,paid)}
@@ -146,7 +162,7 @@ train(t,"Happy-jump gym training");
 }
 }
 }
-return {method,events,gain:gainTotal,cost,energy:trainedE,lost:regenLost,drugs:drugCount,jumps,count,
+return {method,events,losses,gain:gainTotal,cost,energy:trainedE,lost:regenLost,sleepLost,drugs:drugCount,jumps,count,
 start:now,end:until,affordable:cost<=cfg.budget&&Number.isFinite(cost),
 note:method.startsWith("happy")?"Single prepared Happy jump only; not a reliable repeated weekly forecast":
 "Assumes every manual action happens on time and future Xanax cooldowns are 7 hours"};
@@ -155,8 +171,8 @@ function plans(){const p=loadInput();if(!p)return [];return ["natural","xanax","
 function summary(p,hours=168,now=null){
  if(!p)return null;
  const start=now??p.start,end=start+hours*3600;
- const events=p.events.filter(x=>x.t>=start&&x.t<end);
- return {hours,events,gain:events.reduce((v,x)=>v+(x.g||0),0),
+ const events=p.events.filter(x=>x.t>=start&&x.t<end),losses=(p.losses||[]).filter(x=>x.t>=start&&x.t<end);
+ return {hours,events,lost:losses.reduce((n,x)=>n+x.q,0),sleepLost:losses.filter(x=>x.asleep).reduce((n,x)=>n+x.q,0),gain:events.reduce((v,x)=>v+(x.g||0),0),
  energy:events.filter(x=>x.kind==="TRAIN").reduce((v,x)=>v+(x.q||0),0),
  cost:events.reduce((v,x)=>v+(x.spent||0),0),
  trains:events.filter(x=>x.kind==="TRAIN").length,
@@ -423,7 +439,7 @@ function today(){
   return out;
  }
  const window24=summary(a,24),window7=summary(a,168),single=trainEstimate(p);
- const fullE=Math.floor(p.energy/p.cost)*p.cost,barGain=trainEstimate(p,fullE);
+ const fullE=Math.floor(p.energy/p.cost)*p.cost,barGain=trainEstimate(p,fullE),isAsleep=sleeping(Date.now()/1000);
  out+=card("Your training numbers",'<div class="metric-grid">'+
  '<div><span>Per gym train</span><strong>+'+fmt(single)+'</strong><small>'+p.cost+' E at live happiness</small></div>'+
  '<div><span>Train current '+fmt(fullE)+' E</span><strong>+'+fmt(barGain)+'</strong><small>'+fmt(p.energy)+'/'+fmt(p.maxE)+' E available</small></div>'+
@@ -432,12 +448,17 @@ function today(){
  '</div><p class="sub">Selected forecast: '+esc(a?.method||"none")+' · Budget '+cash(cfg.budget)+
  ' · Expected 7-day spending '+cash(window7?.cost)+'. Per-train uses your present happiness; other totals sum future simulated train actions.</p>','hero');
  out+=actualComparison(readGymResult());
+ out+=card("Sleep-aware schedule",
+ '<p><b>'+esc(sleepLabel())+'</b> · '+(isAsleep?"Manual actions postponed until wake time.":"No manual actions during your sleep window.")+'</p>'+
+ '<div class="metric-grid"><div><span>Predicted 24h energy waste</span><strong>'+fmt(window24?.lost??0)+' E</strong><small>'+fmt(window24?.sleepLost??0)+' E overnight</small></div>'+
+ '<div><span>Predicted 7-day energy waste</span><strong>'+fmt(window7?.lost??0)+' E</strong><small>'+fmt(window7?.sleepLost??0)+' E overnight</small></div></div>'+
+ '<p class="sub">Uses spare energy before bed and on waking when possible. Sleep-time cap overflow cannot always be avoided.</p>');
  const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);
  if(refillState==="ready"){
   const prevGain=fullE>0?trainEstimate(p,fullE):0;
   const afterH=Math.max(0,p.happy-fullE*.5),afterS=p.value+prevGain;
   const refillGain=gain(Math.floor(p.maxE/p.cost)*p.cost,afterH,afterS,p.dots,p.cost,p.m);
-  out+=card(cfg.mode==="happy"?"Refill available — protect your jump timing":"Priority: daily 30-point refill is READY",'<p class="alert"><b>Best immediate refill sequence:</b> '+
+  out+=card(isAsleep?"Refill ready — postpone until awake":cfg.mode==="happy"?"Refill available — protect your jump timing":"Priority: daily 30-point refill is READY",'<p class="alert"><b>Best immediate refill sequence:</b> '+
    (fullE>0?'Train '+fmt(fullE)+' E (≈ +'+fmt(prevGain)+' '+esc(cfg.stat)+'), then ':'')+
    'use the 30-point energy refill in Torn, and train the new energy (≈ +'+fmt(refillGain)+').</p>'+
    '<p>Combined immediate estimated gain: <b class="good">+'+fmt(prevGain+refillGain)+'</b> '+esc(cfg.stat)+
@@ -518,6 +539,9 @@ function plan(){
  '<div><span>Estimated spend</span><strong>'+cash(summaryNow.cost)+'</strong><small>'+
  summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
  '<p class="sub">'+esc(p.note)+' · All actions are manual. Figures include only actions within this window.</p>');
+ html+=card("Predicted energy lost at cap",'<div class="metric-grid"><div><span>Total overflow</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
+ '<div><span>While asleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div><p class="sub">Quiet hours: '+esc(sleepLabel())+
+ '. Forecast totals match the selected period.</p>');
  if(!summaryNow.events.length)return html+card("No actions within this window",
   "Try the seven-day view. A jump may require more than 24 hours of preparation.");
  let dayKey="",count=0;
@@ -583,7 +607,12 @@ function progress(){
 function settings(){return card("Planner settings",
 '<label>Weekly budget <input id="hhj-budget" type="number" min="0" value="'+cfg.budget+'"></label>'+
 '<p><label><input id="hhj-refills" type="checkbox"'+(cfg.refills?" checked":"")+'> Compare daily points refills</label></p>'+
-'<p><label>Manual extra gym bonus % <input id="hhj-gymbonus" type="number" min="0" max="200" value="'+cfg.gymBonus+'"></label></p>'+
+'<h3>Sleep schedule</h3>'+
+ '<p><label><input id="hhj-sleepenabled" type="checkbox"'+(cfg.sleepEnabled?' checked':'')+'> Avoid manual actions during sleep</label></p>'+
+ '<div class="row"><label>Bedtime <input id="hhj-sleepstart" type="time" value="'+esc(cfg.sleepStart||"22:00")+
+ '"></label><label>Wake <input id="hhj-sleepend" type="time" value="'+esc(cfg.sleepEnd||"08:00")+'"></label></div>'+
+ '<p class="sub">Device local time · Default 22:00–08:00 · The schedule trains spare energy before bed and on waking.</p>'+
+ '<p><label>Manual extra gym bonus % <input id="hhj-gymbonus" type="number" min="0" max="200" value="'+cfg.gymBonus+'"></label></p>'+
 '<p><label>Points already owned <input id="hhj-points" type="number" min="0" value="'+(+cfg.ownedPoints||0)+'"></label></p>'+
 '<p class="sub">Optional manual unit prices, used only when live market listings cannot cover your basket:</p>'+
 ["points","xanax","ecstasy","lollipop","dvd"].map(k=>'<p><label>'+esc(k)+
@@ -621,6 +650,11 @@ if(id&&/\/gym\.php$/.test(location.pathname||"")){verified[id]=act==="gym-owned"
 if(act==="save"){
 cfg.budget=Math.max(0,+content.querySelector("#hhj-budget")?.value||0);
 cfg.refills=!!content.querySelector("#hhj-refills")?.checked;
+cfg.sleepEnabled=!!content.querySelector("#hhj-sleepenabled")?.checked;
+const bed=content.querySelector("#hhj-sleepstart")?.value,wake=content.querySelector("#hhj-sleepend")?.value;
+cfg.sleepStart=validClock(bed)?bed:"22:00";
+cfg.sleepEnd=validClock(wake)?wake:"08:00";
+if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;
 cfg.gymBonus=Math.min(200,Math.max(0,+content.querySelector("#hhj-gymbonus")?.value||0));
 cfg.ownedPoints=Math.max(0,+content.querySelector("#hhj-points")?.value||0);
 cfg.manualPrices=Object.fromEntries(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
