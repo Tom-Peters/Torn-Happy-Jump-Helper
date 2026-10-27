@@ -71,7 +71,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.2");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.3");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -287,11 +287,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.10.2 keeps the mobile launcher visible before API work",()=>{
+test("v0.10.3 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.10.2");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.3");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -983,4 +983,15 @@ test("an overdue action beyond ten minutes cannot be confirmed as if just comple
  a.advance(11*60);
  panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
  assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+
+test("recently overdue action is visibly flagged without claiming it was completed",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ a.advance(180);
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/OVERDUE 3m/);
+ assert.match(html,/Confirm TRAIN/);
+ assert.match(html,/Self-reported only/);
 });
