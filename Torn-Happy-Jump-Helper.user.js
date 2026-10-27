@@ -633,6 +633,9 @@ let html=latest?'<p><b>Latest measured change:</b> +'+fmt(latest.observed?.[late
  ' · observed ≈ +'+fmt(latest.observed[latest.stat]/latest.inferred)+
  ' ('+latest.inferred+' standard trains inferred)</p>':
  '<p class="sub">No reliable per-train match for this interval. A new baseline, another gym, multiple stats or special bonuses may explain it.</p>')+
+ (!latest.single&&gym()&&stats()[latest.stat]>0?
+ '<p class="sub">Current single-train reference (not an interval match): +'+fmt(sessionGain(gym(),latest.stat,
+ gym().energy_cost||10,happy().current??happy().maximum??0,stats()))+' '+esc(latest.stat)+'.</p>':'')+
  '<p class="sub">The previous full schedule forecast is not a like-for-like prediction of your actual actions. Train count is inferred from gains, not verified.</p>':
  '<p>Refresh now to establish a baseline, then again after training to measure the real change.</p>';
 html+='<p class="sub">Daily totals below include only intervals observed between refreshes (assigned to the refresh date, UTC); gaps are not filled with estimates.</p>'+
