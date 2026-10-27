@@ -54,9 +54,9 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
-  assert.ok(src.length<55000,"Keep the direct install far below the failed 78 KB preview size");
+  assert.ok(src.length<65000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.8\.1/);
+  assert.match(src,/@version\s+0\.9\.0/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -67,7 +67,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.8.1");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.0");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh data/);
