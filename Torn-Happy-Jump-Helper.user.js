@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.7.5
+// @version      0.8.0
 // @description  Compact CSP-safe TornPDA gym, Happy jump and book planner (read only)
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.5";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.8.0";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -102,10 +102,10 @@ let e=p.energy,h=p.happy,stat=p.value,nextDrug=now+p.drug,spent=0,gainTotal=0,tr
 const events=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);
 const kitOk=!method.startsWith("happy")||jumpKit(method).available;
 let firstRefill=p.refill!=="ready",yday="",refilled=false,bank=0,stack=0,boosterCD=p.booster,cost=0,available=true;
-const add=(t,kind,detail,q=0,g=0)=>events.push({t,kind,detail,q,g});
+const add=(t,kind,detail,q=0,g=0,spent=0)=>events.push({t,kind,detail,q,g,spent});
 const bookCost=(name,n)=>basket(name,n,owned(name));
 const afford=(name,num=1)=>{const newTotal=bookCost(name,count[name]+num),old=bookCost(name,count[name]);return Number.isFinite(newTotal)&&cost+newTotal-old<=cfg.budget};
-const use=(name,n)=>{const old=bookCost(name,count[name]);count[name]+=n;const next=bookCost(name,count[name]);cost+=next-old;};
+const use=(name,n)=>{const old=bookCost(name,count[name]);count[name]+=n;const next=bookCost(name,count[name]);const paid=next-old;cost+=paid;return paid;};
 const train=(t,label)=>{const used=Math.floor(e/p.cost)*p.cost;if(!used)return;
 const g=gain(used,h,stat,p.dots,p.cost,p.m);e-=used;h=Math.max(0,h-used*.5);stat+=g;gainTotal+=g;trainedE+=used;add(t,"TRAIN",label+" · "+used+" E · +"+fmt(g)+" "+p.stat,used,g)};
 for(let t=now;t<until;t+=60){
@@ -116,24 +116,24 @@ while(bank>=p.regen){bank-=p.regen;if(e<cap)e=Math.min(cap,e+p.inc);else regenLo
 }
 if(t%900===0){h=h>p.maxH?p.maxH:Math.min(p.maxH,h+5)}
 if(method==="natural"||method==="xanax"){
-if(method==="xanax"&&t>=nextDrug&&e<=750&&afford("xanax")){use("xanax",1);drugCount++;e=Math.min(1000,e+250);h+=75;
-nextDrug=t+7*3600;add(t,"XANAX","Take Xanax manually; estimated +250 E",250);train(t,"Train after Xanax")}
+if(method==="xanax"&&t>=nextDrug&&e<=750&&afford("xanax")){const paid=use("xanax",1);drugCount++;e=Math.min(1000,e+250);h+=75;
+nextDrug=t+7*3600;add(t,"XANAX","Take Xanax manually; estimated +250 E",250,0,paid);train(t,"Train after Xanax")}
 else if(e>=cap)train(t,"Train naturally regenerated energy");
 if(cfg.refills&&!refilled&&e<cap&&afford("points",30) ){
 if(e>=p.cost)train(t,"Train before available daily point refill");
-const restored=cap-e;use("points",30);refilled=true;e=cap;
-add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,restored);train(t,"Train refilled energy");
+const restored=cap-e,paid=use("points",30);refilled=true;e=cap;
+add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,restored,0,paid);train(t,"Train refilled energy");
 }
 }else if(method==="happy"||method==="happy-candy"){
 if(jumps>0||!kitOk)continue;
 if(stack===0&&t>=nextDrug&&e>=p.cost)train(t,"Train current energy immediately before starting Xanax stack");
-if(stack<4&&t>=nextDrug&&e<=760){use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
-nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250)}
+if(stack<4&&t>=nextDrug&&e<=760){const paid=use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
+nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250,0,paid)}
 if(stack===4&&t>=nextDrug&&boosterCD===0&&t%900===60){
 const candy=method==="happy-candy";
-if(candy)use("lollipop",48);else use("dvd",4);
-use("ecstasy",1);h=Math.min(99999,2*(h+(candy?48*25:4*2500)));boosterCD=24*3600;jumps++;
-add(t,"JUMP","Use "+(candy?"48 lollipops":"four Erotic DVDs")+" consecutively, then Ecstasy; train before the next 15-minute happiness reset · estimated Happy "+fmt(h));
+const paidBoost=candy?use("lollipop",48):use("dvd",4);
+const paidEcstasy=use("ecstasy",1);h=Math.min(99999,2*(h+(candy?48*25:4*2500)));boosterCD=24*3600;jumps++;
+add(t,"JUMP","Use "+(candy?"48 lollipops":"four Erotic DVDs")+" consecutively, then Ecstasy; train before the next 15-minute happiness reset · estimated Happy "+fmt(h),0,0,paidBoost+paidEcstasy);
 train(t,"Happy-jump gym training");
 }
 }
@@ -144,6 +144,20 @@ note:method.startsWith("happy")?"Single prepared Happy jump only; not a reliable
 "Assumes every manual action happens on time and future Xanax cooldowns are 7 hours"};
 }
 function plans(){const p=loadInput();if(!p)return [];return ["natural","xanax","happy-candy","happy"].map(k=>simulate(k,p));}
+function summary(p,hours=168,now=null){
+ if(!p)return null;
+ const start=now??p.start,end=start+hours*3600;
+ const events=p.events.filter(x=>x.t>=start&&x.t<end);
+ return {hours,events,gain:events.reduce((v,x)=>v+(x.g||0),0),
+ energy:events.filter(x=>x.kind==="TRAIN").reduce((v,x)=>v+(x.q||0),0),
+ cost:events.reduce((v,x)=>v+(x.spent||0),0),
+ trains:events.filter(x=>x.kind==="TRAIN").length,
+ refills:events.filter(x=>x.kind==="REFILL").length,
+ xanax:events.filter(x=>x.kind==="XANAX").length,
+ jumps:events.filter(x=>x.kind==="JUMP").length};
+}
+function trainEstimate(p,e=p.cost){return gain(Math.floor(e/p.cost)*p.cost,p.happy,p.value,p.dots,p.cost,p.m)}
+
 function activePlan(){
 const list=lastPlan||[];if(!list.length)return null;
 if(selectedMethod!=="auto")return list.find(x=>x.method===selectedMethod)||list[0];
