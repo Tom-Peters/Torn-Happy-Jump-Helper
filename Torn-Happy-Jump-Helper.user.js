@@ -17,13 +17,17 @@ xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Number.isFinite(n)?Math.round(n).toLocaleString("en-US"):"—";const cash=n=>Number.isFinite(n)?"$"+fmt(n):"Price unknown";const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const compactUtc=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Math.floor(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),showPartial=get("show-partial",true),actionNotes=get("action-notes",[]),start=Date.now()/1000;const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>refillStatus(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}
 function mins(v,back){return validClock(v)?Number(v.slice(0,2))*60+Number(v.slice(3)):back}
+let ukYear=0,ukStart=0,ukEnd=0;
 function sleeping(t){
 if(!cfg.sleepEnabled)return false;
 const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;
-let m;try{
- const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/London",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(t*1000)).split(":");
- m=(Number(parts[0])%24)*60+Number(parts[1]);
-}catch(_){const d=new Date(t*1000);m=d.getHours()*60+d.getMinutes();}
+const d=new Date(t*1000),y=d.getUTCFullYear();
+if(y!==ukYear){
+ ukYear=y;
+ const sunday=month=>{const last=new Date(Date.UTC(y,month+1,0));return last.getUTCDate()-last.getUTCDay()};
+ ukStart=Date.UTC(y,2,sunday(2),1)/1000;ukEnd=Date.UTC(y,9,sunday(9),1)/1000;
+}
+const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;
 return a<b?m>=a&&m<b:m>=a||m<b;
 }
 function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" local":"Disabled"}
@@ -178,7 +182,7 @@ return card("Latest visible gym session",'<p><b>'+esc(desc)+'</b></p>'+
 '<div><span>Model '+(n>1?"equivalent total":"per train")+'</span><strong>+'+dec(expected)+'</strong><small>'+n+' × '+(g.energy_cost||10)+' E assumed</small></div>'+
 '<div><span>Difference</span><strong>'+(diff===null?"Not comparable":(diff>=0?"+":"")+diff.toFixed(1)+"%")+
 '</strong><small>At current stats and happiness</small></div></div>'+
-'<p class="sub">A boosted session can resemble multiple normal trains. Inferred counts are not confirmed actions.</p>');
+'<p class="sub">Boosted sessions can resemble several trains. Counts are inferred.</p>');
 }
 function recommendation(){
 const input=loadInput(),regular=(lastPlan||[]).filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable&&x.gain>0)
@@ -289,7 +293,7 @@ fmt(summaryNow.energy)+' E</strong><small>'+summaryNow.trains+' train actions</s
 '<div><span>Estimated spend</span><strong>'+cash(summaryNow.cost)+'</strong><small>'+
 summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
 '<p class="sub">'+esc(p.note)+' · Manual actions only; totals match this period.</p>');html+=card("Predicted energy lost at cap",'<div class="metric-grid"><div><span>Total overflow</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
-'<div><span>While asleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div><p class="sub">Quiet hours: '+esc(sleepLabel())+
+'<div><span>While asleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div><p class="sub">Quiet: '+esc(sleepLabel())+
 '. Forecast totals match the selected period.</p>');if(!summaryNow.events.length)return html+card("No actions within this window","Try the seven-day view. A jump may require more than 24 hours of preparation.");let dayKey="",count=0;for(const ev of summaryNow.events){
 if(count++>=120)break;const date=day(ev.t);if(date!==dayKey){dayKey=date;html+='<h3 class="day-header">'+date+' UTC</h3>'}
 html+='<div class="timeline-row"><span>'+compactUtc(ev.t)+'</span><b>'+esc(ev.kind)+
@@ -303,13 +307,13 @@ card("Gym unavailable","Refresh first.");const baseline=g?sessionGain(g,k,e,h,b)
 .filter(x=>Number.isFinite(x.change)&&x.change>0.1).sort((a,b)=>b.change-a.change);html+=card("Better verified gyms",eligible.length?eligible.map(x=>"<p><b>"+esc(x.gym.name)+"</b> · <b>+"+
 x.change.toFixed(1)+"% estimated gains</b> per same energy · "+(verified[x.gym.id]==="buy"?
 "Unlocked but not purchased ("+cash(x.gym.cost)+")":"Owned; switch manually")+"</p>").join(""):
-"No better eligible, confirmed-access gym for this stat. Locked and unseen gyms are excluded.");if(/\/gym\.php$/.test(location.pathname||"")&&all.length){
+"No better verified gym. Unseen/locked gyms are excluded.");if(/\/gym\.php$/.test(location.pathname||"")&&all.length){
 const visibleText=String(document.body?.innerText||"").replace(String(ui.innerText||""),"");const visible=all.filter(x=>String(x.name||"").length>3&&
 visibleText.toLowerCase().includes(x.name.toLowerCase())&&!verified[x.id]);html+=card("Confirm a gym shown on this page",visible.length?
 '<p class="sub">Confirm only gyms you can currently access in Torn. Page text alone does not prove gym access.</p><select id="hhj-gymlist">'+
 visible.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join("")+
 '</select><button data-act="gym-owned">Owned</button><button data-act="gym-buy">Unlocked, not purchased</button>':
-"No unconfirmed gyms were detected from this page. Do not confirm locked gyms.");}else html+=card("Verify gym access","Open Torn’s Gym page and confirm memberships that are shown as available. This helper will not recommend unseen/locked gyms.");return html;}
+"No other verifiable gyms on this page.");}else html+=card("Verify gym access","Confirm gym access in Torn; unseen/locked gyms are excluded.");return html;}
 function perks(){
 const rows=perkRows(),books=data.books||[];return card("Training effects",rows.length?rows.map(x=>"<p><b>"+esc(x.type)+"</b> · "+esc(x.description)+"</p>").join(""):"No relevant perks loaded.")+
 card("Gym books and future use",!Array.isArray(data.books)?"Book inventory unavailable; no ownership assumed.":books.filter(x=>x.id>=744&&x.id<=787&&x.amount>0).map(x=>{
