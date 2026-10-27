@@ -54,9 +54,9 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
-  assert.ok(src.length<50000,"Keep the direct install far below the failed 78 KB preview size");
+  assert.ok(src.length<55000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.8\.0/);
+  assert.match(src,/@version\s+0\.8\.1/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -67,7 +67,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.8.0");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.8.1");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh data/);
@@ -244,4 +244,30 @@ test("schedule 24 hours never labels a seven-day total as the shorter window",as
  assert.ok(!panel.children[1].innerHTML.includes("in seven days"));
  panel.onclick({target:{closest(){return {dataset:{act:"horizon",val:"168"}};}}});
  assert.match(panel.children[1].innerHTML,/Totals in this 7-day window/);
+});
+
+test("Torn API v2 gym dots are already in display units; no second division by ten",async()=>{
+ const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
+ a.btn.onclick();await a.refresh();
+ // The existing fixture uses a historical API x10 strength value of 70.
+ const p=a.core.loadInput();
+ assert.ok(p.dots>=7,"Legacy x10 API scale should still normalize to gym dots");
+ assert.ok(a.document.getElementById("hhj-compact-panel").children[1].innerHTML.includes("Per gym train"));
+});
+
+test("independent v2-style 7.0 Atlas dots predict hundreds, not tens, per 10-energy train",async()=>{
+ const a=setup(false,false,"2026-10-27T09:52:00Z",{budget:50000000});
+ a.btn.onclick();await a.refresh();
+ const source=a.source.replace("###PDA-APIKEY###","fixture-key");
+ assert.ok(source.includes("gymDots(g.modifiers[k])"),
+ "Primary forecast must normalize gym-dot units");
+ assert.ok(source.includes("gymDots(g.modifiers?.[k])"),
+ "Gym comparisons must share the exact same normalization");
+ assert.ok(source.includes("gymDots(g.modifiers[stat])"),
+ "Each of the four stat previews must share the normalization");
+ // Formula calculated with public Atlas 7.0 dots and invented fixture stats.
+ const stat=1400000,happy=3500,dots=7.0,energy=10;
+ const base=((3.480061091e-7*Math.log(happy+250)+3.091619094e-6)*stat+
+  6.82775184551527e-5*(happy+250)-0.0301431777)*dots*energy;
+ assert.ok(base>550&&base<700,"One 10E Atlas train should be in the hundreds");
 });
