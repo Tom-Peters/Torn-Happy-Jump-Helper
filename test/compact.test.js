@@ -808,7 +808,7 @@ test("UK 22:00-08:00 quiet hours use Europe/London independent of WebView timezo
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.ok(!html.includes("Next recommended: TRAIN · 27 Oct, 22:59"),
  "Do not show a sleeping-hours action as the next recommendation");
- assert.match(html,/Quiet hours: 22:00–08:00 local/);
+ assert.match(html,/Quiet hours: 22:00–08:00 UK time/);
 });
 test("UK daylight saving BST shifts quiet-hour boundaries relative to UTC",async()=>{
  const a=setup(false,false,"2026-06-27T18:00:00Z",
