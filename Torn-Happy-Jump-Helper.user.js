@@ -122,7 +122,7 @@ add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,res
 }
 }else if(method==="happy"||method==="happy-candy"){
 if(jumps>0||!kitOk)continue;
-if(stack===0&&t===now&&e>=p.cost)train(t,"Train current energy before Xanax stacking");
+if(stack===0&&t>=nextDrug&&e>=p.cost)train(t,"Train current energy immediately before starting Xanax stack");
 if(stack<4&&t>=nextDrug&&e<=760){use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
 nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250)}
 if(stack===4&&t>=nextDrug&&boosterCD===0&&t%900===60){
