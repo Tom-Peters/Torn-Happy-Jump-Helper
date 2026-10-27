@@ -46,7 +46,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
     if(p.startsWith("/user/inventory"))value=category21&&p.includes("?cat=")?{error:{code:21}}:{inventory:{items:category21?[{id:206,amount:2,name:"Xanax",faction_owned:false}]:[]}};
     return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
   }
-  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison};})();");
+  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison,sleeping};})();");
   new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
     document,{hostname:"www.torn.com",pathname},w,localStorage,PDA_httpGet,date);
   return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
@@ -56,7 +56,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<55000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.9\.1/);
+  assert.match(src,/@version\s+0\.9\.2/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -67,7 +67,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.1");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.2");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh data/);
@@ -176,7 +176,7 @@ test("available refill is scheduled before noon UTC rather than delayed arbitrar
   assert.ok(refill.t<Date.parse("2026-10-27T12:00:00Z")/1000,
     "Do not postpone a ready refill until noon UTC");
   const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
-  assert.match(html,/Priority: daily 30-point refill is READY/);
+  assert.match(html,/Refill ready — postpone until awake/);
   assert.match(html,/Next step · selected forecast/);
 });
 test("open modal sits above launcher and shows saved budget and lower-cost alternatives",async()=>{
@@ -286,4 +286,53 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/640.5/);
  assert.match(html,/Model estimates now/);
  assert.match(html,/Per gym train/);
+});
+
+test("v0.9.2 keeps the mobile launcher visible before API work",()=>{
+ const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
+ assert.ok(a.btn);
+ assert.equal(a.requests.length,0);
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.9.2");
+ a.btn.onclick();
+ assert.ok(a.btn.style.cssText.includes("display:none!important"));
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Refresh data/);
+});
+test("sleep schedule suppresses every manual action 22–08 and trains before bed and on waking",async()=>{
+ const from=new Date(2026,9,27,21,30).toISOString();
+ const a=setup(false,false,from,{budget:50000000,stat:"strength",sleepEnabled:true,
+ sleepStart:"22:00",sleepEnd:"08:00"},7);
+ a.btn.onclick();await a.refresh();
+ const bed=new Date(2026,9,27,22,0).getTime()/1000;
+ const wake=new Date(2026,9,28,8,0).getTime()/1000;
+ assert.equal(a.core.sleeping(bed),true);
+ assert.equal(a.core.sleeping(wake),false);
+ for(const p of a.core.plans())assert.ok(!p.events.some(e=>e.t>=bed&&e.t<wake),
+  "No gym, drug, booster or refill instructions during sleep");
+ const plan=a.core.plans().find(p=>p.method==="natural");
+ assert.ok(plan.events.some(e=>e.kind==="TRAIN"&&e.t<bed&&e.detail.includes("before bed")));
+ assert.ok(plan.events.some(e=>e.kind==="TRAIN"&&e.t>=wake&&e.detail.includes("after waking")));
+ const day=a.core.summary(plan,24);
+ assert.ok(day.lost>0&&day.sleepLost>0&&day.sleepLost<=day.lost);
+});
+test("disabling sleep settings makes the regular schedule unrestricted",async()=>{
+ const a=setup(false,false,new Date(2026,9,27,21,30).toISOString(),
+ {budget:50000000,stat:"strength",sleepEnabled:false},7);
+ a.btn.onclick();await a.refresh();
+ const bed=new Date(2026,9,27,22,0).getTime()/1000,wake=new Date(2026,9,28,8,0).getTime()/1000;
+ assert.equal(a.core.sleeping(bed),false);
+ const p=a.core.plans().find(x=>x.method==="xanax");
+ assert.ok(p.events.some(x=>x.t>=bed&&x.t<wake));
+ assert.equal(a.core.summary(p,24).sleepLost,0);
+});
+test("Settings exposes local 22:00 to 08:00 sleep controls",()=>{
+ const a=setup();a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"settings"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/id="hhj-sleepenabled"/);
+ assert.match(html,/id="hhj-sleepstart"/);
+ assert.match(html,/value="22:00"/);
+ assert.match(html,/id="hhj-sleepend"/);
+ assert.match(html,/value="08:00"/);
 });
