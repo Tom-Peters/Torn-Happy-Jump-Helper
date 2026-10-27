@@ -696,7 +696,7 @@ content.scrollTop=scroll;
 const tabs=content.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");
 if(tabs&&selected)tabs.scrollLeft=Math.max(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);
 }
-button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";showLauncher(!opened);if(opened){draw();refresh()}});
+button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";showLauncher(!opened);if(opened){draw();return refresh()}});
 ui.addEventListener("click",event=>{
 const b=event.target.closest("button");if(!b)return;
 const act=b.dataset.act,val=b.dataset.val;
