@@ -30,7 +30,7 @@ const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
 const CFG={budget:10000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{}};
-let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod=cfg.mode==="happy"?"happy-candy":"auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
+let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";
 const refill=()=>refillStatus(data.refills?.refills?.energy);
@@ -159,9 +159,14 @@ function summary(p,hours=168,now=null){
 function trainEstimate(p,e=p.cost){return gain(Math.floor(e/p.cost)*p.cost,p.happy,p.value,p.dots,p.cost,p.m)}
 
 function activePlan(){
-const list=lastPlan||[];if(!list.length)return null;
-if(selectedMethod!=="auto")return list.find(x=>x.method===selectedMethod)||list[0];
-return list.filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable).sort((a,b)=>b.gain-a.gain)[0]||list[0];
+ const list=lastPlan||[];if(!list.length)return null;
+ if(selectedMethod!=="auto"){
+  const choice=list.find(x=>x.method===selectedMethod);
+  if(choice)return choice;
+ }
+ const feasible=list.filter(x=>x.affordable&&(!x.method.startsWith("happy")||x.jumps>0));
+ const choices=feasible.filter(x=>cfg.mode==="happy"?x.method.startsWith("happy"):!x.method.startsWith("happy"));
+ return choices.sort((a,b)=>b.gain-a.gain)[0]||feasible.find(x=>x.method==="natural")||list[0];
 }
 function projection(s,g){return [50000000,100000000,200000000,1000000000].map(goal=>{
 let value=s,weeks=0;while(value<goal&&weeks<5200){value+=Math.max(0,g*(1+Math.max(0,value-s)*0.00000002));weeks++}
@@ -366,27 +371,57 @@ out+=card("Live snapshot",'<div class="row"><span>Energy</span><b>'+fmt(p.energy
 out+=controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");
 return out;
 }
-function compare(){const list=lastPlan||plans();return '<h3>Compare scenarios</h3><p class="sub">Weekly natural/Xanax projections versus ONE prepared Happy jump (not an equivalent weekly-repeat forecast). Market prices can be incomplete.</p>'+
-list.map(x=>card(x.method.toUpperCase(),x.method.startsWith("happy")&&!x.jumps?
-'<p class="warn">Not fully affordable or priced. See the Supplies tab for the complete kit.</p>':
-'<div class="row"><b>+'+fmt(x.gain)+" "+esc(cfg.stat)+'</b><b>'+cash(x.cost)+
-'</b></div><p class="sub">'+esc(x.note)+'</p><p class="sub">Energy '+fmt(x.energy)+' · Xanax '+x.count.xanax+
-' · jumps '+x.jumps+'</p><button data-act="choose" data-val="'+x.method+'">View this method</button>')).join("")}
-function plan(){
-const p=activePlan(),h=+cfg.horizon||24;if(!p)return card("No plan","Refresh live data first.");
-if(p.method.startsWith("happy")&&p.jumps===0){
-const kit=jumpKit(p.method);
-return card("Happy jump cannot be scheduled",'<p>Complete supplies are not within your budget or are missing verified market prices.</p>'+
-'<p>Required kit purchases: '+(Number.isFinite(kit.total)?cash(kit.total):"Price unavailable")+
-'; budget: '+cash(cfg.budget)+'.</p><button data-act="tab" data-val="supplies">See item requirements</button>');
+function compare(){
+ const p=loadInput(),all=lastPlan||[];
+ if(!p)return card("Missing training data","Refresh Torn data to calculate gains.");
+ let html=controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");
+ html+=card("Same-period comparison",'<p>Regular training compares the same 24-hour and seven-day periods. Happy jumps show one prepared jump, not seven days of repeated jumps.</p>'+
+ '<p class="sub">Budget '+cash(cfg.budget)+' · '+esc(p.gym.name)+' · '+p.dots.toFixed(1)+' gym dots · Estimates, not observed gains.</p>');
+ for(const x of all){
+  const d=summary(x,24),w=summary(x,168),blocked=x.method.startsWith("happy")&&x.jumps===0;
+  const name={natural:"Natural energy + refill",xanax:"Xanax + regeneration",
+    "happy-candy":"Candy Happy jump",happy:"eDVD Happy jump"}[x.method];
+  html+=card(name,blocked?
+   '<p class="warn">Jump not forecast: required supplies are unpriced or above budget.</p><button data-act="tab" data-val="supplies">View kit</button>':
+   '<div class="metric-grid">'+
+   '<div><span>Single train now</span><strong>+'+fmt(trainEstimate(p))+'</strong><small>'+p.cost+' E at current happiness</small></div>'+
+   '<div><span>Next 24 h</span><strong>+'+fmt(d.gain)+'</strong><small>'+fmt(d.energy)+' E · '+cash(d.cost)+'</small></div>'+
+   '<div><span>Next 7 days</span><strong>+'+fmt(w.gain)+'</strong><small>'+fmt(w.energy)+' E · '+cash(w.cost)+'</small></div></div>'+
+   '<p class="sub">'+esc(x.note)+'</p><button data-act="choose" data-val="'+esc(x.method)+'">View schedule</button>');
+ }
+ return html;
 }
-const until=Date.now()/1000+h*3600,events=p.events.filter(x=>x.t>=Date.now()/1000&&x.t<until);
-return controls("Time window",String(h),[["24","Next 24h"],["168","7 days"]],"horizon")+
-card("Forecast details","<b>+"+fmt(p.gain)+" "+esc(cfg.stat)+"</b> · "+cash(p.cost)+" in seven days"+
-"<p class='sub'>"+esc(p.note)+"</p>")+
-(events.length?events.slice(0,80).map(x=>card(utc(x.t),"["+x.kind+"] "+esc(x.detail))).join(""):
-card("No actions","No remaining actions in this window."))+
-(events.length>80?"<p class='sub'>Showing first 80 of "+events.length+" actions.</p>":"");
+function plan(){
+ const p=activePlan(),hours=+cfg.horizon===168?168:24;
+ let html=controls("Time window",String(hours),[["24","24 hours"],["168","7 days"]],"horizon");
+ if(!p)return html+card("No forecast","Refresh your current Torn data first.");
+ if(p.method.startsWith("happy")&&p.jumps===0){
+  const kit=jumpKit(p.method);
+  return html+card("Jump cannot be scheduled",'<p>Item prices missing or the complete kit exceeds your budget.</p><p>Kit: '+
+   (Number.isFinite(kit.total)?cash(kit.total):"Price unavailable")+' · Weekly budget: '+cash(cfg.budget)+
+   '</p><button data-act="tab" data-val="supplies">See supplies</button>');
+ }
+ const summaryNow=summary(p,hours,Date.now()/1000);
+ html+=card("Totals in this "+(hours===24?"24-hour":"7-day")+" window",
+ '<div class="metric-grid"><div><span>Stat gain</span><strong>+'+fmt(summaryNow.gain)+
+ '</strong><small>'+esc(cfg.stat)+'</small></div><div><span>Energy trained</span><strong>'+
+ fmt(summaryNow.energy)+' E</strong><small>'+summaryNow.trains+' train actions</small></div>'+
+ '<div><span>Estimated spend</span><strong>'+cash(summaryNow.cost)+'</strong><small>'+
+ summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
+ '<p class="sub">'+esc(p.note)+' · All actions are manual. Figures include only actions within this window.</p>');
+ if(!summaryNow.events.length)return html+card("No actions within this window",
+  "Try the seven-day view. A jump may require more than 24 hours of preparation.");
+ let dayKey="",count=0;
+ for(const ev of summaryNow.events){
+  if(count++>=120)break;
+  const date=day(ev.t);
+  if(date!==dayKey){dayKey=date;html+='<h3 class="day-header">'+date+' UTC</h3>'}
+  html+='<div class="timeline-row"><span>'+compactUtc(ev.t)+'</span><b>'+esc(ev.kind)+
+   '</b><span>'+esc(ev.detail)+'</span>'+(ev.spent?'<small>'+cash(ev.spent)+' estimated cost</small>':'')+'</div>';
+ }
+ if(summaryNow.events.length>120)html+='<p class="sub">Showing 120 of '+summaryNow.events.length+
+ ' planned actions. The totals above include every action.</p>';
+ return html;
 }
 function gyms(){
 const g=gym(),all=data.gyms?.gyms||[],k=cfg.stat,b=stats(),e=energy().maximum||150,h=happy().maximum||5000;
@@ -424,15 +459,17 @@ return "<p><b>"+esc(x.name||"Book #"+x.id)+"</b> · "+(stat?
 }).join("")||"Book inventory unavailable or no books returned.");
 }
 function progress(){
-const st=stats(),a=activePlan(),first=history[0],last=history[history.length-1];
-return card("Base battle stats",ST.map(k=>"<div class='row'><span>"+k+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+
-card("Observed changes",first&&last&&first!==last?
-ST.map(k=>"<div class='row'><span>"+k+"</span><b>+"+fmt(last.s[k]-first.s[k])+"</b></div>").join(""):
-"Refresh on a later day to see actual changes. Stored locally only.")+
-card("Long-term estimates",a?projection(st[cfg.stat],a.gain).map(x=>
-"<div class='row'><b>"+fmt(x.goal)+"</b><span>"+(x.weeks===null?"Outside model":x.weeks+" weeks")+"</span></div>").join(""):
-"Refresh for targets.")+
-'<button data-act="clearhistory">Clear local history</button>';
+ const st=stats(),regular=(lastPlan||[]).filter(x=>!x.method.startsWith("happy")&&x.affordable)
+  .sort((a,b)=>b.gain-a.gain)[0],first=history[0],last=history[history.length-1];
+ return card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+
+ card("Observed changes",first&&last&&first!==last?
+ ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(last.s[k]-first.s[k])+"</b></div>").join(""):
+ "Refresh on another day for observed differences. Estimates are not recorded as actual gains.")+
+ card("Long-term targets · regular training only",regular?projection(st[cfg.stat],regular.gain).map(x=>
+ "<div class='row'><b>"+fmt(x.goal)+"</b><span>"+(x.weeks===null?"Outside model":x.weeks+" weeks")+"</span></div>").join("")+
+ "<p class='sub'>Assumes repeating regular weekly training. One-time Happy jumps are never silently repeated.</p>":
+ "No budget-feasible repeating plan available.")+
+ '<button data-act="clearhistory">Clear local history</button>';
 }
 function settings(){return card("Planner settings",
 '<label>Weekly budget <input id="hhj-budget" type="number" min="0" value="'+cfg.budget+'"></label>'+
@@ -463,7 +500,7 @@ if(act==="close"){opened=false;ui.style.display="none";showLauncher(true)}
 if(act==="refresh")refresh();
 if(act==="tab"){tab=val;draw()}
 if(act==="stat"){cfg.stat=val;selectedMethod="auto";save()}
-if(act==="mode"){cfg.mode=val;selectedMethod=val==="happy"?"happy-candy":"auto";save()}
+if(act==="mode"){cfg.mode=val;selectedMethod="auto";save()}
 if(act==="choose"){selectedMethod=val;tab="plan";draw()}
 if(act==="choose-supply"){selectedMethod=val;draw()}
 if(act==="horizon"){cfg.horizon=+val;save()}
