@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.8.1
+// @version      0.9.0
 // @description  Compact CSP-safe TornPDA gym, Happy jump and book planner (read only)
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.8.1";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.0";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -29,8 +29,8 @@ const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"
 const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
-const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{}};
-let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
+const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};
+let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";
 const refill=()=>refillStatus(data.refills?.refills?.energy);
@@ -38,6 +38,23 @@ const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gy
 const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));
 const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};
 const cd=()=>data.cooldowns?.cooldowns||{};
+
+function clockMinutes(raw,fallback){
+ if(typeof raw!=="string"||!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(raw))return fallback;
+ return Number(raw.slice(0,2))*60+Number(raw.slice(3,5));
+}
+function sleeping(t){
+ if(!cfg.sleepEnabled)return false;
+ const start=clockMinutes(cfg.sleepStart,1320),end=clockMinutes(cfg.sleepEnd,480);
+ if(start===end)return false;
+ const date=new Date(t*1000),minutes=date.getHours()*60+date.getMinutes();
+ return start<end?minutes>=start&&minutes<end:minutes>=start||minutes<end;
+}
+function localClock(t){return new Date(t*1000).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});}
+function sleepLabel(){
+ return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" device time":"Disabled";
+}
+
 // Torn API v2 gyms report modifiers as displayed dots (Atlas Strength: 7.0).
 // Older API fixtures/resources may express the same multiplier as 70.
 // Accept either form without silently dividing current v2 data by 10.
@@ -106,8 +123,8 @@ m:bonus(k),refill:refill(),now:Date.now()/1000};
 }
 function simulate(method,input,hours=168){
 const p=input,now=Math.ceil(p.now/60)*60,until=now+3600*hours,cap=p.maxE;
-let e=p.energy,h=p.happy,stat=p.value,nextDrug=now+p.drug,spent=0,gainTotal=0,trainedE=0,regenLost=0,drugCount=0,jumps=0;
-const events=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);
+let e=p.energy,h=p.happy,stat=p.value,nextDrug=now+p.drug,spent=0,gainTotal=0,trainedE=0,regenLost=0,drugCount=0,jumps=0,sleepLoss=0;
+const events=[],losses=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);
 const kitOk=!method.startsWith("happy")||jumpKit(method).available;
 let firstRefill=p.refill!=="ready",yday="",refilled=false,bank=0,stack=0,boosterCD=p.booster,cost=0,available=true;
 const add=(t,kind,detail,q=0,g=0,spent=0)=>events.push({t,kind,detail,q,g,spent});
@@ -117,13 +134,17 @@ const use=(name,n)=>{const old=bookCost(name,count[name]);count[name]+=n;const n
 const train=(t,label)=>{const used=Math.floor(e/p.cost)*p.cost;if(!used)return;
 const g=gain(used,h,stat,p.dots,p.cost,p.m);e-=used;h=Math.max(0,h-used*.5);stat+=g;gainTotal+=g;trainedE+=used;add(t,"TRAIN",label+" · "+used+" E · +"+fmt(g)+" "+p.stat,used,g)};
 for(let t=now;t<until;t+=60){
+const isSleeping=sleeping(t),bedtime=!isSleeping&&sleeping(t+60),waking=t>now&&!isSleeping&&sleeping(t-60);
 const d=day(t);
 if(d!==yday){yday=d;refilled=d===day0?firstRefill:false}
 if(t>now){bank+=60;boosterCD=Math.max(0,boosterCD-60);
-while(bank>=p.regen){bank-=p.regen;if(e<cap)e=Math.min(cap,e+p.inc);else regenLost+=p.inc}
+while(bank>=p.regen){bank-=p.regen;if(e<cap)e=Math.min(cap,e+p.inc);else {regenLost+=p.inc;if(isSleeping)sleepLoss+=p.inc;losses.push({t,e:p.inc,sleep:isSleeping})}}
 }
 if(t%900===0){h=h>p.maxH?p.maxH:Math.min(p.maxH,h+5)}
+if(isSleeping)continue;
 if(method==="natural"||method==="xanax"){
+ if(bedtime&&e>=p.cost)train(t,"Use available energy before sleep ("+sleepLabel()+")");
+ if(waking&&e>=p.cost)train(t,"Train on waking before energy regeneration is wasted");
 if(method==="xanax"&&t>=nextDrug&&e<=750&&afford("xanax")){const paid=use("xanax",1);drugCount++;e=Math.min(1000,e+250);h+=75;
 nextDrug=t+7*3600;add(t,"XANAX","Take Xanax manually; estimated +250 E",250,0,paid);train(t,"Train after Xanax")}
 else if(e>=cap)train(t,"Train naturally regenerated energy");
@@ -134,6 +155,7 @@ add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,res
 }
 }else if(method==="happy"||method==="happy-candy"){
 if(jumps>0||!kitOk)continue;
+if((bedtime||waking)&&stack===0&&e>=p.cost)train(t,bedtime?"Train available energy before sleep":"Train on waking");
 if(stack===0&&t>=nextDrug&&e>=p.cost)train(t,"Train current energy immediately before starting Xanax stack");
 if(stack<4&&t>=nextDrug&&e<=760){const paid=use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
 nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250,0,paid)}
@@ -146,7 +168,7 @@ train(t,"Happy-jump gym training");
 }
 }
 }
-return {method,events,gain:gainTotal,cost,energy:trainedE,lost:regenLost,drugs:drugCount,jumps,count,
+return {method,events,losses,gain:gainTotal,cost,energy:trainedE,lost:regenLost,sleepLost:sleepLoss,drugs:drugCount,jumps,count,
 start:now,end:until,affordable:cost<=cfg.budget&&Number.isFinite(cost),
 note:method.startsWith("happy")?"Single prepared Happy jump only; not a reliable repeated weekly forecast":
 "Assumes every manual action happens on time and future Xanax cooldowns are 7 hours"};
@@ -156,7 +178,8 @@ function summary(p,hours=168,now=null){
  if(!p)return null;
  const start=now??p.start,end=start+hours*3600;
  const events=p.events.filter(x=>x.t>=start&&x.t<end);
- return {hours,events,gain:events.reduce((v,x)=>v+(x.g||0),0),
+ const losses=(p.losses||[]).filter(x=>x.t>=start&&x.t<end);
+ return {hours,events,lost:losses.reduce((n,x)=>n+x.e,0),sleepLost:losses.filter(x=>x.sleep).reduce((n,x)=>n+x.e,0),gain:events.reduce((v,x)=>v+(x.g||0),0),
  energy:events.filter(x=>x.kind==="TRAIN").reduce((v,x)=>v+(x.q||0),0),
  cost:events.reduce((v,x)=>v+(x.spent||0),0),
  trains:events.filter(x=>x.kind==="TRAIN").length,
