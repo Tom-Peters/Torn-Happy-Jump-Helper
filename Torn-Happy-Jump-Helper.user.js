@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.9.3
+// @version      0.9.4
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.3";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.4";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -256,7 +256,12 @@ try{checkpointed=checkpoint(st)}catch(e){errs.push("Verification: "+String(e.mes
 try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}
 if(checkpointed&&rolling){
  const p=activePlan();rolling.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));
- rolling.method=p?.method||"none";put("rolling-plan",rolling);
+ rolling.method=p?.method||"none";
+ const g=gym(),h=happy();
+ rolling.gymId=g?.id??null;
+ rolling.single=g?Object.fromEntries(ST.map(k=>[k,
+  sessionGain(g,k,g.energy_cost||10,h.current??h.maximum??0,st)])):null;
+ put("rolling-plan",rolling);
 }
 busy=false;draw();
 }
@@ -604,7 +609,12 @@ if(!ST.every(k=>Number.isFinite(st[k])&&st[k]>0))return false;
 if(rolling&&rolling.t<now-30&&now-rolling.t<=7*86400&&rolling.s){
  const delta=Object.fromEntries(ST.map(k=>[k,st[k]-(Number(rolling.s[k])||0)]));
  const expected=(rolling.events||[]).filter(x=>x.t>=rolling.t&&x.t<=now).reduce((n,x)=>n+(x.g||0),0);
- ledger.push({t:now,stat:rolling.stat,observed:delta,expected,method:rolling.method});
+ const changed=ST.filter(k=>delta[k]>0),stat=changed.length===1?changed[0]:rolling.stat;
+ const single=Number(rolling.single?.[stat]),n=single>0?Math.round(delta[stat]/single):0;
+ const consistent=changed.length===1&&rolling.gymId===gym()?.id&&n>=1&&n<=20&&
+ Math.abs(delta[stat]/n-single)/single<=0.12;
+ ledger.push({t:now,from:rolling.t,stat,observed:delta,expected,method:rolling.method,
+  single:single>0?single:null,inferred:consistent?n:null});
  ledger=ledger.filter(x=>now-x.t<30*86400).slice(-120);put("verification",ledger);
 }
 rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};
@@ -614,27 +624,28 @@ function progressLog(){
 const recent=ledger.filter(x=>x.t>=Date.now()/1000-7*86400),daily={};
 for(const x of recent){
  const date=day(x.t),row=daily[date]||(daily[date]={n:0,real:Object.fromEntries(ST.map(k=>[k,0]))});
- row.n++;for(const k of ST)row.real[k]+=x.observed[k]||0;
+ row.n++;for(const k of ST)row.real[k]+=x.observed?.[k]||0;
 }
-let html=recent.length?'<p class="sub">Actual stat changes between refreshes versus scheduled gains; they can differ if you take different actions.</p>'+
+const latest=recent[recent.length-1];
+let html=latest?'<p><b>Latest measured change:</b> +'+fmt(latest.observed?.[latest.stat])+
+ ' '+esc(latest.stat)+'</p>'+
+ (latest.inferred?'<p><b>Estimated per train:</b> +'+fmt(latest.single)+
+ ' · observed ≈ +'+fmt(latest.observed[latest.stat]/latest.inferred)+
+ ' ('+latest.inferred+' standard trains inferred)</p>':
+ '<p class="sub">No reliable per-train match for this interval. A new baseline, another gym, multiple stats or special bonuses may explain it.</p>')+
+ '<p class="sub">The previous full schedule forecast is not a like-for-like prediction of your actual actions. Train count is inferred from gains, not verified.</p>':
+ '<p>Refresh now to establish a baseline, then again after training to measure the real change.</p>';
+html+='<p class="sub">Daily totals below include only intervals observed between refreshes (assigned to the refresh date, UTC); gaps are not filled with estimates.</p>'+
  Object.entries(daily).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,x])=>
- '<div class="row"><b>'+esc(date)+'</b><small>'+x.n+' checks · '+
- ST.map(k=>k.slice(0,3)+': '+fmt(x.real[k])).join(' · ')+'</small></div>').join('')+
- '<p class="sub">Last interval: planned +'+fmt(recent[recent.length-1].expected)+' '+
- esc(recent[recent.length-1].stat)+', observed +'+
- fmt(recent[recent.length-1].observed[recent[recent.length-1].stat])+
- '. This does not verify which actions you took.</p>':
- 'Refresh now to establish a baseline, then refresh after training to compare real changes with the earlier plan.';
-return card("Rolling verification · seven days",html+
+ '<div class="row"><b>'+esc(date)+'</b><small>'+x.n+' intervals · '+
+ ST.map(k=>k.slice(0,3)+': '+fmt(x.real[k])).join(' · ')+'</small></div>').join('');
+return card("Observed stat gains · last seven days",html+
  '<button data-act="clearverification">Clear rolling history</button>');
 }
 function progress(){
  const st=stats(),regular=(lastPlan||[]).filter(x=>!x.method.startsWith("happy")&&x.affordable)
-  .sort((a,b)=>b.gain-a.gain)[0],first=history[0],last=history[history.length-1];
+  .sort((a,b)=>b.gain-a.gain)[0];
  return progressLog()+card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+
- card("Observed changes",first&&last&&first!==last?
- ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(last.s[k]-first.s[k])+"</b></div>").join(""):
- "Refresh on another day for observed differences. Estimates are not recorded as actual gains.")+
  card("Long-term targets · regular training only",regular?projection(st[cfg.stat],regular.gain).map(x=>
  "<div class='row'><b>"+fmt(x.goal)+"</b><span>"+(x.weeks===null?"Outside model":x.weeks+" weeks")+"</span></div>").join("")+
  "<p class='sub'>Assumes repeating regular weekly training. One-time Happy jumps are never silently repeated.</p>":
