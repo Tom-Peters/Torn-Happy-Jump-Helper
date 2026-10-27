@@ -966,7 +966,7 @@ test("recently due action is the one visibly offered for confirmation, not a lat
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}};}}});
  const html=panel.children[1].innerHTML;
  assert.match(html,/Next recommended:.*TRAIN/);
- assert.match(html,/I completed this in Torn/);
+ assert.match(html,/Confirm TRAIN ·/);
  panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
  const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes"));
  assert.equal(notes[0].kind,"TRAIN");
