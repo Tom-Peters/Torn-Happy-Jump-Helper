@@ -304,6 +304,32 @@ function mount(){
 }
 function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
 function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
+function readGymResult(){
+ if(!/\/gym\.php$/.test(location.pathname||""))return null;
+ const root=document.querySelector?.("#gymroot")||document.body;
+ const visible=String(root?.innerText||"");
+ const pattern=/\bYou gained\s+([\d,.]+)\s+(strength|defense|speed|dexterity)\b/gi;
+ let found=null,match;
+ while((match=pattern.exec(visible)))found=match;
+ if(!found)return null;
+ const amount=Number(found[1].replace(/,/g,""));
+ return Number.isFinite(amount)&&amount>0?{stat:found[2].toLowerCase(),amount}:null;
+}
+function actualComparison(observed){
+ if(!observed)return "";
+ const g=gym(),st=stats(),bar=happy(),s=observed.stat;
+ if(!g||!(st[s]>0)||!(gymDots(g.modifiers?.[s])>0))return "";
+ const predicted=gain(g.energy_cost||10,bar.current??bar.maximum??0,st[s],gymDots(g.modifiers[s]),g.energy_cost||10,bonus(s));
+ const diff=predicted>0?100*(observed.amount/predicted-1):null;
+ const dec=x=>Number(x).toLocaleString("en-GB",{maximumFractionDigits:2,minimumFractionDigits:0});
+ return card("Compare with Torn's latest visible train",
+ '<p class="sub">Training result detected on the current Gym page. This is an observed result, not an API forecast.</p>'+
+ '<div class="metric-grid"><div><span>Torn awarded</span><strong>+'+dec(observed.amount)+'</strong><small>'+esc(s)+'</small></div>'+
+ '<div><span>Model estimates now</span><strong>+'+dec(predicted)+'</strong><small>'+fmt(g.energy_cost||10)+' energy</small></div>'+
+ '<div><span>Observed vs model</span><strong>'+(diff===null?"—":(diff>=0?"+":"")+diff.toFixed(1)+"%")+
+ '</strong><small>Perks, timing, happiness and randomness affect differences</small></div></div>'+
+ '<p class="sub">The forecast uses current stats/happiness, which may already have changed since that train. Do not treat one result as an exact calibration.</p>');
+}
 function statMatrix(){
  const g=gym(),bar=energy(),h=happy(),statValues=stats(),all=[];
  if(!g)return [];
@@ -405,6 +431,7 @@ function today(){
  '<div><span>Next 7 days</span><strong>+'+fmt(window7?.gain??NaN)+'</strong><small>'+fmt(window7?.energy??NaN)+' E · '+cash(window7?.cost)+'</small></div>'+
  '</div><p class="sub">Selected forecast: '+esc(a?.method||"none")+' · Budget '+cash(cfg.budget)+
  ' · Expected 7-day spending '+cash(window7?.cost)+'. Per-train uses your present happiness; other totals sum future simulated train actions.</p>','hero');
+ out+=actualComparison(readGymResult());
  const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);
  if(refillState==="ready"){
   const prevGain=fullE>0?trainEstimate(p,fullE):0;
