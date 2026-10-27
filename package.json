@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "private": true,
-  "description": "Full-screen TornPDA training forecasts with corrected API v2 gym dots and observed gym-gain comparison",
+  "description": "Full-screen read-only TornPDA trainer: rolling stat verification, local sleep-aware schedules, lost energy and verified gym optimisation",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
