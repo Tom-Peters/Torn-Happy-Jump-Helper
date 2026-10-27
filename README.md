@@ -1,3 +1,20 @@
+# Happy Jump Helper v0.7.3 — repaired core (27 October 2026)
+
+**Recommended current installation:** one self-contained, read-only userscript, [Torn-Happy-Jump-Helper.user.js](Torn-Happy-Jump-Helper.user.js). This release keeps the v0.7.1 floating HJ launcher architecture that worked in Android TornPDA, rather than the separate large Advanced Preview. An immutable [v0.7.1 recovery userscript](Torn-Happy-Jump-Helper-v0.7.1-backup.user.js) is also retained.
+
+- **Today** now explains the best affordable seven-day regular training option versus **one** prepared Happy jump; these are clearly labeled as different periods, not directly comparable weekly returns. It offers one-tap access to the relevant manual plan.
+- **Supplies** shows per-method quantities, owned items, missing quantities, estimated market expenditure and missing-price diagnostics instead of pretending items are free. Settings include editable **$10m default budget**, manually owned points and optional manual fallback prices.
+- **Stat choice** suggests both the lowest current stat to balance and the largest immediate gym-session gain to maximize output. The final training focus remains manually selectable.
+- **Gym upgrades** compare estimated gains for the selected stat, check conservative specialist eligibility, and recommend only gyms previously confirmed available or owned. The visible Gym page, not the full API catalogue, supplies new confirmation candidates. Confirm only gyms genuinely unlocked in Torn.
+- **Inventory API error 21:** retry category casing, then fetch the unfiltered inventory once with bounded pagination and filter by relevant item IDs; if that also fails, mark the source unavailable. Book ownership is never inferred from failed queries.
+- **Recovery:** rendering errors show a retry panel instead of silently blanking the dashboard. The HJ floating button is still created immediately without an API request; no eval, remote script loader, or gameplay mutation.
+
+**Install/update in TornPDA:** Keep one main Torn Happy Jump Helper script enabled, update its source to [the raw v0.7.3 script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js), set injection to **END**, and reload Torn. Disable earlier Advanced Preview, Enhanced Preview and the optional v0.9.2 Advanced Companion while testing this consolidated experience to avoid overlapping panels. Do **not** clear local storage or delete existing settings/history. Verify that the dashboard says **v0.7.3**, then press **Refresh Torn data**. If startup fails on the device, disable v0.7.3 and install the separate [v0.7.1 recovery script](Torn-Happy-Jump-Helper-v0.7.1-backup.user.js) (also injection END); it has independent metadata and will not auto-update to v0.7.3.
+
+**Verification boundary:** JavaScript syntax, boot-without-API, API category-21 recovery, priced-supply math, refill semantics, gym filtering and on-demand rendering were exercised with fixtures. On-device TornPDA behavior and actual market costs remain unverified. This release **does not claim** the v0.6 full multi-jump weekly optimizer has been restored; Happy jump is modeled conservatively as a single prepared session. No real API keys, imported inventory, or personal stats are committed.
+
+---
+
 ## v0.9.2 — Advanced button not visible on Android (CURRENT)
 
 A user with **stable compact HJ v0.7.1 working** could not find the **Advanced** action after installing the first companion. The companion v0.9.0 appended the action as a *fourth element at the end of the full-width title/version/close header*; on a narrow TornPDA screen that could be clipped by the panel's `overflow:hidden`. **This is a probable layout failure, not yet a proven cause of the user's device report.**
