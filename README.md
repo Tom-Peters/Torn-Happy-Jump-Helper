@@ -1,50 +1,52 @@
-# Torn Happy Jump Helper — v0.9.4
+# Torn Happy Jump Helper — v0.9.5
 
-**Current main test release: v0.9.4 · Author: IamEEKY**
+**Current incremental Android release: v0.9.5 · Author: IamEEKY**
 
-**[Update the main TornPDA userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
+[**Install or update the main TornPDA Happy Jump Helper userscript**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)
 
-The main launcher, full-screen mobile dashboard and sleeping-hours planner retain the designs confirmed working on Android in v0.9.3.
+The **v0.9.4 launcher, full-screen interface and read-only planning** were confirmed working on Android. v0.9.5 retains the same launcher mount and UI architecture and adds two requested improvements.
 
-## v0.9.4 — make rolling verification meaningful
+## What changed
 
-The phone-confirmed v0.9.3 Progress screenshot showed a genuine **one-train Strength increase**, but displayed it beside the simulator's entire **hypothetical interval schedule**, which was not a like-for-like comparison. The old once-per-day snapshot card also showed zero for "Observed changes" despite a successful rolling observation.
+### Every time you open HJ, refresh current Torn data
 
-**Fixed:**
+- Tapping **HJ ◉ to open the full-screen dashboard** immediately launches one Torn API refresh cycle, including current stats, gym, energy, happiness, cooldowns, prices and inventory.
+- The UI can initially show **Refreshing…** while updated data is retrieved. Opening a second time after closing starts another refresh.
+- Injection/page load **does not fetch data** until the HJ button is pressed. Simply closing HJ does not fetch data.
+- Manual **Refresh data** still works, and requests are guarded against overlap while one refresh is already in progress. There is no 15-minute background polling.
+- The refresh also captures a rolling verification checkpoint if a previous stat baseline exists. Re-rendering keeps the selected tab and scroll position.
 
-- **Progress → Observed stat gains · last seven days** becomes the source of truth for measured stat changes. The obsolete once-per-day zero-value "Observed changes" card has been removed.
-- Every successful live refresh continues storing observed changes for all four stats, grouped by the **UTC date the refresh ended**. Missing intervals and the period before the first baseline are not invented as zero gains.
-- At a successful refresh the helper captures the current gym ID and estimated **gain for a single normal gym train** for each stat, alongside the regular forecast.
-- After the next refresh, when **exactly one stat has increased**, the gym hasn't changed, and the measured increase is within **12% per inferred train** of the saved standard-train estimate, Progress can show the **inferred number of normal trains** and the estimated/observed gain per train. The inferred count is never presented as confirmed gameplay data.
-- Unusual gains, multiple changing stats, changed gyms and missing historical baselines are labelled **not reliably comparable**. They do not generate a misleading calibration score.
-- Existing v0.9.3 ledger entries remain readable. Where their old baseline lacks single-train data, the UI may show a clearly labelled **current single-train reference**; this is **not** a matched historical estimate.
-- The simulator's unverified full-interval theoretical gains are no longer placed next to one observed train as though they should match.
+### Observed daily gains chart in Progress
 
-This is an observation and plausibility check, not proof of which gym actions, bonuses, books or Xanax were used. Your stored observations remain local. The bounded 30-day/120-entry rolling ledger, seven-day Progress view and manual **Clear rolling history** action are unchanged.
+- **Progress → Daily [focused stat] gains · observed only** displays local day-by-day bars using only observed stat changes from the rolling ledger.
+- Uses the current stat selection (Strength, Defense, Speed or Dexterity). Select a different focus stat in Today or Compare to see another series.
+- No synthetic missing-day bars and no seven-day forecast disguised as observed data.
+- Existing daily totals and cautious per-train estimate below the chart are unchanged.
 
-## What remains working
+## Still included
 
-- Floating **HJ ◉** launcher, edge-to-edge full-screen UI and eight tabs.
-- **10pm–8am local** default sleep preference, editable in Settings.
-- Sleep-aware manual schedule and predicted capped energy waste.
-- Correct Torn v2 gym dots, verified per-train model and current gym result comparison.
-- Read-only seven-day training strategies, refill checks, costs, and **Torn $50 million weekly budget**.
+- Accurate Torn API v2 gym dots and observed one-train comparison.
+- Maximum-gain read-only regular and Happy jump forecasts with full per-train/24-hour/seven-day breakdowns.
+- Default **Torn $50,000,000 weekly budget**, local manual market prices, refills and shopping estimates.
+- Sleep-aware training (local **22:00–08:00** default), estimated nighttime energy-cap waste and safe waking/bedtime scheduling.
+- Eight tabs, full-screen Android interface, on-device rolling verification history and existing saved settings.
+- No gym switching, drug-taking or other gameplay actions are automated. Advanced gym ranking is deferred.
 
-## Install / rollback
+## Install and fallback
 
-1. In TornPDA keep exactly **one** enabled main HJ script; disable duplicate/Advanced/Companion variants.
-2. Update the existing script with the [current raw v0.9.4 source](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js), injection **END**.
-3. Reload Torn and check that the floating button launches a full-screen panel marked **v0.9.4**.
-4. Refresh live data, train in Torn, refresh again, and inspect the **Progress** tab. The existing v0.9.3 observation history will still be displayed.
+1. Update your **single enabled main** Torn Happy Jump Helper script from the current raw file linked above, with injection set to **END**.
+2. Disable other Advanced/Preview/Companion/duplicate HJ scripts, and reload Torn.
+3. Press HJ ◉ and confirm **v0.9.5**. The button should open the dashboard and start refreshing automatically.
+4. To check charts, open **Progress** after collecting at least two successful stat snapshots across real play sessions.
 
-If this update fails on Android, disable it and use the independently installable **[v0.9.3 confirmed-working recovery script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.9.3-known-good.user.js)**. Do not clear local storage.
+If HJ disappears on this version, restore the independently installable [**phone-verified v0.9.4 rollback**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.9.4-known-good.user.js) and disable v0.9.5. Preserve device storage and your existing data.
 
-## Tests and remaining limitations
+## Testing and limits
 
-**27/27 focused mock TornPDA regression tests passed**, including immediate HJ launcher boot, the full-screen panel, gym-unit scale, sleep hours, refill handling, budget, unchanged legacy observations, synthetic one-train matching, and deliberate rejection of ambiguous multi-stat comparisons. The main file remains approximately **53 KB**.
+**30/30 targeted userscript regression tests passed**, including immediate launcher creation, auto-refresh once per opening, no refresh on closing or injection, second refresh on reopening, correct per-train estimates, safe refills, time-window summaries, sleep windows, local verification and charts of genuinely observed stat data.
 
-Android behaviour of v0.9.4 and the GitHub Actions full suite are **not yet independently verified**. Automatic 15-minute checks and expanded verified-gym ranking are still deferred to separate, small releases. Estimated seven-day training gains depend on realistic future activity, cooldowns and available resources; rolling verification should not be used as a score of adherence.
+The v0.9.5 file is approximately **54 KB**, compared with approximately 53 KB for phone-confirmed v0.9.4. **Live Android behavior of v0.9.5 and full GitHub Actions status remain unverified.** Size alone has not been established as the cause of earlier launcher failures.
 
-No private API keys, personal training records or financial data are committed. Read-only, manual actions only. MIT · IamEEKY.
+The script never commits real Torn API keys, personal stat records, inventory or account funds to GitHub. Observed stat data is saved locally on the device and used for display and forecast comparisons only.
 
-[Historical release notes](docs/legacy-release-notes.md)
+MIT · IamEEKY · [Historical release notes](docs/legacy-release-notes.md)
