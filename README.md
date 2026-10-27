@@ -1,3 +1,26 @@
+# Happy Jump Helper v0.8.0 — full-screen maximum-gains planner (27 October 2026)
+
+**Install/update:** [Main TornPDA userscript](Torn-Happy-Jump-Helper.user.js) · [Raw install source](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js). Keep only the main script enabled. Disable previous duplicate, Enhanced, Advanced or Companion scripts. Use TornPDA injection **END**, reload Torn, and verify **v0.8.0** in the header. Settings, gym access confirmations, refill marks and historical snapshots remain in local storage (do not clear local data). The script reads Torn data only after pressing **Refresh data**.
+
+## What has changed in v0.8.0
+
+- **True full-page mobile workspace:** the panel fills the Torn browser's entire page viewport, no inset/max-width modal. The original Today, Compare, Schedule, Supplies, Gyms, Perks & books, Progress and Settings tabs are retained and scroll independently. Dense data now uses responsive grids and an action timeline.
+- **Floating HJ no longer sits over the panel:** the full-viewport overlay is above the launcher, ordinary launcher visibility is toggled, and visible stale/duplicate HJ buttons outside the panel are suppressed while open. Users should still disable duplicate installed scripts.
+- **Real calculation units:** one **gym train** means exactly the current gym's energy-per-train at the currently observed Happiness and stat level; **current-energy train** uses only the available energy rounded down to whole gym trains; **next 24 hours** and **next seven days** sum *the train events actually simulated in each window*, including their energy expenditures and item costs. The Schedule tab's heading, dates, stat gains and cost now all match the active 24h or 7d horizon. No fabricated daily/weekly conversion of a single Happy jump.
+- **Per-stat comparison:** Compare shows independent what-if forecasts for each of Strength, Defense, Speed and Dexterity (per train, 24h, 7d), plus four separate strategy cards. These are **alternative exclusive focus scenarios** and must never be added together.
+- **Maximum gains within budget:** regular mode selects the affordable high-gain regular strategy, Happy jump mode selects the affordable high-gain single preparation. Manual method selections are honoured. The maximum-gain stat suggestion has a one-tap focus action.
+- **Daily point refill:** a ready 30-point energy refill is highlighted with train-current-energy → refill → train guidance. In Happy-jump mode, the UI cautions against spending it prematurely during a stack. The previous arbitrary midday hold is not used.
+- **Budget:** Torn **$50,000,000 per seven days** is the default for new installs, preserving the user's saved weekly budget if present. Costs are estimated from itemmarket/pointsmarket listings and locally recorded owned items, with missing prices made explicit.
+- **Progress:** real snapshots remain distinct from modelled forecasts. Multi-year goals are based on regular repeatable training, never one Happy jump repeated every week without evidence.
+
+## Model boundaries
+
+The gym estimate uses a community formula (including gym dots, current Happiness, energy-per-train, base battle stat and relevant gym perks). Actual gains vary, and the game may change mechanics. Overdoses, unexpected attendance, trading availability, event bonuses and specialised high-stat formulas are not exhaustively modelled. Planned drugs, booster use, training and refills are **manual user actions only**. Do not store real Torn API keys or imported player records in this public repository.
+
+**Checks completed:** 15/15 existing/updated compact userscript tests exercised with mocked TornPDA/DOM and Torn API data, plus a separate 18-condition boot/refresh/forecast simulation while developing. Full GitHub Actions suite and live phone injection are **not yet confirmed**; preserve the [independent v0.7.1 rollback](Torn-Happy-Jump-Helper-v0.7.1-backup.user.js) if you need it.
+
+---
+
 # v0.7.5 — Android screenshot fixes (27 October 2026)
 
 **Current stable candidate:** [Torn-Happy-Jump-Helper.user.js](Torn-Happy-Jump-Helper.user.js), source [raw link](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js). Update the existing **main HJ** userscript in TornPDA, use injection **END**, and reload Torn. Keep only the main helper enabled; disable the older Advanced Companion, Enhanced Preview, Advanced Preview, and any duplicated HJ main scripts. Preserve local storage. The dashboard should say **v0.7.5**.
