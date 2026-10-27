@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.9.2
+// @version      0.9.3
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.2";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.3";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -30,7 +30,7 @@ const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
 const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};
-let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
+let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";
 const refill=()=>refillStatus(data.refills?.refills?.energy);
@@ -251,7 +251,14 @@ if(row.id===id&&!row.faction_owned)inv[name]=(inv[name]||0)+(+row.amount||0);
 updated=Date.now();const st=stats();
 if(Object.values(st).some(x=>x>0)){const today=day(Date.now()/1000),last=history[history.length-1];
 if(!last||last.d!==today){history.push({d:today,s:st});history=history.slice(-90);put("history",history)}}
-try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}busy=false;draw();
+let checkpointed=false;
+try{checkpointed=checkpoint(st)}catch(e){errs.push("Verification: "+String(e.message).slice(0,70))}
+try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}
+if(checkpointed&&rolling){
+ const p=activePlan();rolling.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));
+ rolling.method=p?.method||"none";put("rolling-plan",rolling);
+}
+busy=false;draw();
 }
 function save(){put("settings",cfg);try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}draw()}
 const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed!important;z-index:2147483647!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;background:#091622;color:#f4f8fb;font:14px/1.5 system-ui;overflow:hidden;box-sizing:border-box;border:0!important;box-shadow:none!important";
@@ -591,10 +598,40 @@ return "<p><b>"+esc(x.name||"Book #"+x.id)+"</b> · "+(stat?
 ". <span class='sub'>Used copies can remain visible: usability unverified.</span></p>"
 }).join("")||"Book inventory unavailable or no books returned.");
 }
+function checkpoint(st){
+const now=Date.now()/1000;
+if(!ST.every(k=>Number.isFinite(st[k])&&st[k]>0))return false;
+if(rolling&&rolling.t<now-30&&now-rolling.t<=7*86400&&rolling.s){
+ const delta=Object.fromEntries(ST.map(k=>[k,st[k]-(Number(rolling.s[k])||0)]));
+ const expected=(rolling.events||[]).filter(x=>x.t>=rolling.t&&x.t<=now).reduce((n,x)=>n+(x.g||0),0);
+ ledger.push({t:now,stat:rolling.stat,observed:delta,expected,method:rolling.method});
+ ledger=ledger.filter(x=>now-x.t<30*86400).slice(-120);put("verification",ledger);
+}
+rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};
+return true;
+}
+function progressLog(){
+const recent=ledger.filter(x=>x.t>=Date.now()/1000-7*86400),daily={};
+for(const x of recent){
+ const date=day(x.t),row=daily[date]||(daily[date]={n:0,real:Object.fromEntries(ST.map(k=>[k,0]))});
+ row.n++;for(const k of ST)row.real[k]+=x.observed[k]||0;
+}
+let html=recent.length?'<p class="sub">Actual stat changes between refreshes versus scheduled gains; they can differ if you take different actions.</p>'+
+ Object.entries(daily).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,x])=>
+ '<div class="row"><b>'+esc(date)+'</b><small>'+x.n+' checks · '+
+ ST.map(k=>k.slice(0,3)+': '+fmt(x.real[k])).join(' · ')+'</small></div>').join('')+
+ '<p class="sub">Last interval: planned +'+fmt(recent[recent.length-1].expected)+' '+
+ esc(recent[recent.length-1].stat)+', observed +'+
+ fmt(recent[recent.length-1].observed[recent[recent.length-1].stat])+
+ '. This does not verify which actions you took.</p>':
+ 'Refresh now to establish a baseline, then refresh after training to compare real changes with the earlier plan.';
+return card("Rolling verification · seven days",html+
+ '<button data-act="clearverification">Clear rolling history</button>');
+}
 function progress(){
  const st=stats(),regular=(lastPlan||[]).filter(x=>!x.method.startsWith("happy")&&x.affordable)
   .sort((a,b)=>b.gain-a.gain)[0],first=history[0],last=history[history.length-1];
- return card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+
+ return progressLog()+card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+
  card("Observed changes",first&&last&&first!==last?
  ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(last.s[k]-first.s[k])+"</b></div>").join(""):
  "Refresh on another day for observed differences. Estimates are not recorded as actual gains.")+
@@ -645,6 +682,7 @@ if(act==="horizon"){cfg.horizon=+val;save()}
 if(act==="mark-used"){put("used-day",day(Date.now()/1000));lastPlan=plans();draw()}
 if(act==="clear-refill"){put("used-day",null);lastPlan=plans();draw()}
 if(act==="clearhistory"){history=[];put("history",[]);draw()}
+if(act==="clearverification"){ledger=[];rolling=null;put("verification",[]);put("rolling-plan",null);draw()}
 if(act==="gym-owned"||act==="gym-buy"){const id=+content.querySelector("#hhj-gymlist")?.value;
 if(id&&/\/gym\.php$/.test(location.pathname||"")){verified[id]=act==="gym-owned"?"owned":"buy";put("gyms",verified);draw()}}
 if(act==="save"){
