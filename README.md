@@ -1,3 +1,25 @@
+# Happy Jump Helper v0.7.4 — training decisions that account for cost (27 October 2026)
+
+**Recommended TornPDA install:** use just [Torn-Happy-Jump-Helper.user.js](Torn-Happy-Jump-Helper.user.js) from this repo. Update its source to [the raw current file](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js), injection **END**, then reload Torn. Disable the old Advanced Companion, Enhanced and Advanced previews to avoid duplicate panels. Preserve stored settings and data. Look for floating **HJ ◉** and dashboard **v0.7.4**.
+
+## What this release actually changes
+
+- **Today** offers a real decision: best budget-feasible regular seven-day training versus **one** budget candy jump or **one** Erotic-DVD jump, with concrete projected gains, purchase cost, and buttons to the relevant action schedule. Do not compare a single jump with seven days as equal time periods.
+- **Two separate Happy jump models:** baseline four Xanax + 48 lollipops + Ecstasy (24-hour booster cooldown) and premium four Xanax + four Erotic DVDs + Ecstasy. The model trains residual energy before stacking, waits for a projected drug cooldown and quarter-hour happiness reset, and never schedules partially funded kits. Timing, overdoses, booster perks and bonus effects remain estimates; verify actual Torn cooldowns manually. The 10-star Adult Novelties perk and 5+ eDVD option are **not yet simulated**.
+- **Supplies** exposes owned quantities, missing quantities, available market prices, full cost for each preparation kit, editable budget (default **Torn $10m** for new installs), manually owned points and fallback prices. Market gaps do **not** mean supplies are free.
+- **Stat choice** can optimize for your lowest stat (balance) or the highest forecast gain per energy bar in the selected gym.
+- **Gym suggestions** include specialist eligibility, estimated gain improvement, and confirmed-owned versus confirmed-unpurchased membership. A gym must be **manually confirmed visible and unlocked** on Torn's Gym page before this planner will recommend it.
+- **Inventory error 21** safely retries category casing and then an unfiltered bounded inventory read. Failed inventory reads surface an error rather than making false ownership claims. Incomplete rendering shows a recovery message instead of a silent empty panel.
+- **API use:** on-demand GET requests only. No automated gameplay. No account-specific details or actual keys are included in the public repository.
+
+## Rollback and verification
+
+The proven mobile launcher from v0.7.1 is preserved in [the independent rollback script](Torn-Happy-Jump-Helper-v0.7.1-backup.user.js). If the new script does not start on your Android TornPDA, disable it, enable that rollback (injection END), and reload without clearing local storage. The rollback deliberately has distinct metadata and no auto-update link.
+
+The updated core was verified in a JavaScript runtime using mock DOM, realistic API fixture responses, full inventory-error-21 refreshes, purchases/owned items, point refill semantics, blocked kit costs, two simulated jump types and on-demand panel rendering. **Live Android TornPDA validation has not yet happened**; GitHub Actions status is not confirmed. Do not mistake model outputs for actual training logs or guaranteed market offers.
+
+---
+
 # Happy Jump Helper v0.7.3 — repaired core (27 October 2026)
 
 **Recommended current installation:** one self-contained, read-only userscript, [Torn-Happy-Jump-Helper.user.js](Torn-Happy-Jump-Helper.user.js). This release keeps the v0.7.1 floating HJ launcher architecture that worked in Android TornPDA, rather than the separate large Advanced Preview. An immutable [v0.7.1 recovery userscript](Torn-Happy-Jump-Helper-v0.7.1-backup.user.js) is also retained.
