@@ -1200,3 +1200,49 @@ test("missed recovery remains visible after reinitialization from saved local st
  assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Missed · recovery/);
  assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:recovery")).methodNow,"natural");
 });
+
+test("recovery recommends a higher-gain eligible strategy without silently overriding a manual choice",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"natural"}};}}});
+ await a.refresh();
+ a.advance(1500);await a.refresh();
+ assert.match(panel.children[1].innerHTML,/Past due · unconfirmed/);
+ panel.onclick({target:{closest(){return {dataset:{act:"watch-missed"}};}}});
+ await settleRefresh(a);
+ let html=panel.children[1].innerHTML;
+ assert.match(html,/Higher-gain route:/);
+ assert.match(html,/xanax · 7d/);
+ assert.match(html,/data-act="choose" data-val="xanax">Switch plan/);
+ assert.match(html,/Replanned.*natural/);
+ panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"xanax"}};}}});
+ html=panel.children[1].innerHTML;
+ assert.match(html,/Totals in this 24-hour window/);
+ assert.ok(!html.includes("Higher-gain route:"),"After switching, selected strategy is already the higher-gain route");
+});
+test("automatic maximum-gain plan does not prompt an unnecessary strategy switch after a miss",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();a.advance(1500);await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"watch-missed"}};}}});
+ await settleRefresh(a);
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Missed · recovery/);
+ assert.ok(!html.includes("Higher-gain route:"),"Auto mode already chose maximum feasible 7-day gains");
+});
+test("Not sure dismisses the overdue prompt without logging a missed action",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();a.advance(1500);await a.refresh();
+ a.document.getElementById("hhj-compact-panel").onclick({target:{closest(){return {dataset:{act:"watch-skip"}};}}});
+ await settleRefresh(a);
+ assert.equal(a.storage.getItem("hhj-compact-v1:recovery"),null);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+ assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),null);
+});
