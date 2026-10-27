@@ -70,7 +70,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.equal(a.window.__TornHappyJumpLoaded,"0.8.0");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
-  assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh Torn data/);
+  assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh data/);
 });
 test("true Torn refill flag excludes another same-day refill and train-to-refill sequence",async()=>{
   const a=setup(true);
@@ -147,7 +147,7 @@ test("inventory API error 21 falls back once to unfiltered inventory and retains
 });
 
 test("realistic jump options require full kits and never confuse candy with eDVDs",async()=>{
-  const a=setup(true);
+  const a=setup(true,false,"2026-10-27T09:52:00Z",{budget:10000000});
   a.btn.onclick();
   await a.refresh();
   const all=a.core.plans(),candy=all.find(x=>x.method==="happy-candy"),
