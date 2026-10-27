@@ -60,7 +60,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<57000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.10\.1/);
+  assert.match(src,/@version\s+0\.10\.2/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -71,7 +71,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.1");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.2");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -177,7 +177,7 @@ test("available refill is scheduled before noon UTC rather than delayed arbitrar
     "Do not postpone a ready refill until noon UTC");
   const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
   assert.match(html,/Refill ready — postpone until awake/);
-  assert.match(html,/Next step · selected forecast/);
+  assert.match(html,/Just happened → Next action/);
 });
 test("open modal sits above launcher and shows saved budget and lower-cost alternatives",async()=>{
   const a=setup(false,false,"2026-10-27T06:24:00Z",{budget:50000000});
@@ -287,11 +287,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.10.1 keeps the mobile launcher visible before API work",()=>{
+test("v0.10.2 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.10.1");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.2");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -408,7 +408,7 @@ test("multi-stat or book-like gains do not invent a per-train calibration",async
  assert.equal(sample.inferred,null);
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
- assert.match(panel.children[1].innerHTML,/No reliable individual-train comparison/);
+ assert.match(panel.children[1].innerHTML,/No safe train count/);
  assert.ok(!panel.children[1].innerHTML.includes("Estimated per train"));
 });
 test("legacy v0.9.3 observations remain visible but do not claim a matched baseline",async()=>{
@@ -421,7 +421,7 @@ test("legacy v0.9.3 observations remain visible but do not claim a matched basel
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
  const html=panel.children[1].innerHTML;
  assert.match(html,/Observed stat gains/);
- assert.match(html,/No reliable individual-train comparison/);
+ assert.match(html,/No safe train count/);
  assert.match(html,/Partial coverage/);
  assert.ok(!html.includes("Last interval: planned +"));
  assert.ok(!html.includes("Observed changes"));
@@ -667,7 +667,7 @@ test("v0.10.0 opens a Just happened → Next action card on Today and Schedule",
  let html=panel.children[1].innerHTML;
  assert.match(html,/Just happened → Next action/);
  assert.match(html,/Next recommended:/);
- assert.match(html,/No gains detected/);
+ assert.match(html,/No gains yet/);
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"plan"}};}}});
  html=panel.children[1].innerHTML;
  assert.match(html,/Just happened → Next action/);
@@ -686,7 +686,7 @@ test("last snapshot gain is surfaced but never asserted as a precisely identifie
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.match(html,/Detected:/);
  assert.match(html,/strength/);
- assert.match(html,/Snapshot interval change/);
+ assert.match(html,/Snapshot interval/);
  assert.match(html,/Just happened → Next action/);
  assert.match(html,/Next recommended:/);
 });
@@ -721,7 +721,7 @@ test("distant hypothetical actions cannot be marked completed before they are du
  await a.btn.onclick();
  const panel=a.document.getElementById("hhj-compact-panel");
  const html=panel.children[1].innerHTML;
- assert.match(html,/Record completion when due/);
+ assert.match(html,/Confirm when due/);
  assert.ok(!html.includes('data-act="note-done"'));
  panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
  assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
@@ -734,7 +734,7 @@ test("self-reported action notes from a previous session display without claimin
  await a.btn.onclick();
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.match(html,/You marked done:.*TRAIN/);
- assert.match(html,/Self-reported, not verified/);
+ assert.match(html,/Self-reported/);
  assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes")).length,1);
 });
 
@@ -871,4 +871,86 @@ test("tabs avoid the negative sticky margin that can cause overlapping WebView n
  assert.match(css,/\.tabs\{margin:0 -14px 14px/);
  assert.match(css,/isolation:isolate;transform:translateZ\(0\)/);
  assert.ok(!css.includes(".tabs{margin:-12px -14px 14px"));
+});
+
+test("three-step flow follows train, refill, train without fabricating completion",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000,refills:true},7);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"natural"}};}}});
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Next recommended:.*TRAIN/);
+ assert.match(html,/Then:.*REFILL/);
+ assert.match(html,/After:.*TRAIN/);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("rolling seven-day overview sums the exact events shown in the forecast",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",horizon:168},7);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"plan"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/7-day action overview/);
+ assert.match(html,/Planned only/);
+ const active=a.core.plans().filter(x=>x.affordable&&!x.method.startsWith("happy")).sort((x,y)=>y.gain-x.gain)[0];
+ const seven=a.core.summary(active,168);
+ const rows={};
+ for(const e of seven.events){const d=new Date(e.t*1000).toISOString().slice(0,10);
+ (rows[d]??=[]).push(e);}
+ for(const [d,es] of Object.entries(rows)){
+  assert.ok(html.includes(d),"day grouping missing "+d);
+  const trains=es.filter(x=>x.kind==="TRAIN").length;
+  const en=es.filter(x=>x.kind==="TRAIN").reduce((n,e)=>n+e.q,0);
+  assert.ok(html.includes(trains+" trains · "+en.toLocaleString("en-US")+" E"),
+   "Daily planned energy must equal that day's training actions");
+ }
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("a recently due train can be self-reported for ten minutes after its scheduled time",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength"},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ a.advance(100);
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
+ const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes"));
+ assert.equal(notes.length,1);
+ assert.ok(notes[0].scheduled<Date.parse("2026-10-27T09:01:40Z")/1000);
+ assert.equal(typeof notes[0].scheduled,"number");
+});
+test("two immediate taps cannot confirm two separate simulated actions",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000},7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ for(let i=0;i<3;i++)panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes")).length,1);
+});
+test("matched positive stat changes are labelled likely training, but no manual notes are invented",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength"},7);
+ await a.btn.onclick();
+ const initial=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
+ a.advance(500);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=initial.single.strength;
+ await a.refresh();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Likely training: 1 train\(s\) inferred/);
+ assert.match(html,/Detected:/);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("24-hour schedule stays focused while seven-day overview is available via horizon toggle",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",horizon:24},7);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"plan"}};}}});
+ assert.ok(!panel.children[1].innerHTML.includes("7-day action overview"));
+ panel.onclick({target:{closest(){return {dataset:{act:"horizon",val:"168"}};}}});
+ assert.match(panel.children[1].innerHTML,/7-day action overview/);
 });
