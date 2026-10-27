@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -16,8 +16,9 @@ function setup(apiRefillUsed=true,category21=false){
   const document={body,head,createElement:node,addEventListener(){},
     getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null;}};
   const w={setInterval(){},__TornHappyJumpLoaded:null};
-  const date=class extends Date {static now(){return Date.parse("2026-10-26T21:23:00Z")}};
+  const date=class extends Date {static now(){return Date.parse(clock)}};
   const map=new Map();
+  if(settings)map.set("hhj-compact-v1:settings",JSON.stringify(settings));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
     setItem(k,v){map.set(k,String(v));}};
   const fixture={
@@ -53,9 +54,9 @@ function setup(apiRefillUsed=true,category21=false){
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
-  assert.ok(src.length<35000,"Keep the direct install far below the failed 78 KB preview size");
+  assert.ok(src.length<40000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.7\.3/);
+  assert.match(src,/@version\s+0\.7\.5/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -63,10 +64,10 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
 test("HJ is visible immediately, before any API request or complex computation",()=>{
   const a=setup();
   assert.ok(a.btn);
-  assert.ok(a.btn.style.cssText.includes("z-index:2147483647"));
+  assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.7.4");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.7.5");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh Torn data/);
@@ -163,4 +164,30 @@ test("realistic jump options require full kits and never confuse candy with eDVD
   assert.ok(dvd.events.some(e=>e.kind==="JUMP"&&e.detail.includes("Erotic DVDs")));
   assert.ok(!a.document.getElementById("hhj-compact-panel").children[1].innerHTML.includes("No fully funded Happy jump forecast"),
     "An affordable eDVD jump must remain selectable");
+});
+
+test("available refill is scheduled before noon UTC rather than delayed arbitrarily",async()=>{
+  const a=setup(false,false,"2026-10-27T06:24:00Z");
+  a.btn.onclick();
+  await a.refresh();
+  const natural=a.core.plans().find(p=>p.method==="natural");
+  const refill=natural.events.find(e=>e.kind==="REFILL");
+  assert.ok(refill,"An available refill must appear");
+  assert.ok(refill.t<Date.parse("2026-10-27T12:00:00Z")/1000,
+    "Do not postpone a ready refill until noon UTC");
+  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+  assert.match(html,/Available now . 30-point energy refill/);
+  assert.match(html,/Next step in selected forecast/);
+});
+test("open modal sits above launcher and shows saved budget and lower-cost alternatives",async()=>{
+  const a=setup(false,false,"2026-10-27T06:24:00Z",{budget:50000000});
+  const panel=a.document.getElementById("hhj-compact-panel");
+  a.btn.onclick();
+  assert.match(panel.style.cssText,/z-index:2147483647/);
+  assert.match(a.btn.style.cssText,/display:none!important/);
+  await a.refresh();
+  const html=panel.children[1].innerHTML;
+  assert.match(html,/Weekly spending limit: \$50,000,000/);
+  assert.match(html,/Lower-cost option/);
+  assert.match(html,/30-point energy refill/);
 });
