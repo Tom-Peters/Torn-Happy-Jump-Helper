@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "private": true,
-  "description": "CSP-safe TornPDA gym planner: seven-day regular training, priced candy and eDVD Happy jumps",
+  "description": "Read-only TornPDA Happy Jump adviser with immediately available refills, cost comparisons and mobile overlay recovery",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
