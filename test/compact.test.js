@@ -16,7 +16,8 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   const document={body,head,createElement:node,addEventListener(){},
     getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null;}};
   const w={setInterval(){},__TornHappyJumpLoaded:null};
-  const date=class extends Date {static now(){return Date.parse(clock)}};
+  let nowMs=Date.parse(clock);
+  const date=class extends Date {static now(){return nowMs}};
   const map=new Map();
   if(settings)map.set("hhj-compact-v1:settings",JSON.stringify(settings));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
@@ -46,17 +47,17 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
     if(p.startsWith("/user/inventory"))value=category21&&p.includes("?cat=")?{error:{code:21}}:{inventory:{items:category21?[{id:206,amount:2,name:"Xanax",faction_owned:false}]:[]}};
     return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
   }
-  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison,sleeping};})();");
+  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison,sleeping,progressLog};})();");
   new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
     document,{hostname:"www.torn.com",pathname},w,localStorage,PDA_httpGet,date);
   return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
-    core:w.__HJTEST,refresh:()=>w.__HJTEST.refresh()};
+    core:w.__HJTEST,refresh:()=>w.__HJTEST.refresh(),fixture,advance:(secs)=>{nowMs+=1000*secs;}};
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<55000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.9\.2/);
+  assert.match(src,/@version\s+0\.9\.3/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -67,7 +68,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.2");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.3");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh data/);
@@ -288,11 +289,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.9.2 keeps the mobile launcher visible before API work",()=>{
+test("v0.9.3 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.9.2");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.9.3");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -335,4 +336,38 @@ test("Settings exposes local 22:00 to 08:00 sleep controls",()=>{
  assert.match(html,/value="22:00"/);
  assert.match(html,/id="hhj-sleepend"/);
  assert.match(html,/value="08:00"/);
+});
+
+test("rolling verification starts with a baseline, then records real stat gains after refresh",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength",sleepEnabled:true},7);
+ a.btn.onclick();
+ assert.equal(a.requests.length,0);
+ await a.refresh();
+ assert.ok(a.storage.getItem("hhj-compact-v1:rolling-plan"));
+ assert.equal(a.storage.getItem("hhj-compact-v1:verification"),null,
+  "First refresh must not fabricate prior gains");
+ a.advance(3600);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=610.45;
+ await a.refresh();
+ const records=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"));
+ assert.equal(records.length,1);
+ assert.ok(Math.abs(records[0].observed.strength-610.45)<.01);
+ assert.equal(records[0].stat,"strength");
+ assert.ok(Number.isFinite(records[0].expected));
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ assert.match(panel.children[1].innerHTML,/Rolling verification/);
+ assert.match(panel.children[1].innerHTML,/seven days/);
+ assert.match(panel.children[1].innerHTML,/Clear rolling history/);
+});
+test("rolling history is cleared without wiping budget or other saved settings",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"speed"});
+ a.btn.onclick();await a.refresh();a.advance(7200);await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ panel.onclick({target:{closest(){return {dataset:{act:"clearverification"}}}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:verification"),"[]");
+ assert.equal(a.storage.getItem("hhj-compact-v1:rolling-plan"),"null");
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:settings")).budget,50000000);
 });
