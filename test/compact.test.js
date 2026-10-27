@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null,seedPartial=null){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -21,6 +21,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   const map=new Map();
   if(settings)map.set("hhj-compact-v1:settings",JSON.stringify(settings));
   if(seedVerification)map.set("hhj-compact-v1:verification",JSON.stringify(seedVerification));
+  if(typeof seedPartial==="boolean")map.set("hhj-compact-v1:show-partial",JSON.stringify(seedPartial));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
     setItem(k,v){map.set(k,String(v));}};
   const fixture={
@@ -58,7 +59,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<57000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.9\.7/);
+  assert.match(src,/@version\s+0\.9\.8/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -69,7 +70,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.7");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.8");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -285,11 +286,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.9.7 keeps the mobile launcher visible before API work",()=>{
+test("v0.9.8 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.9.7");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.9.8");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -455,7 +456,7 @@ test("Progress charts measured gains from actual stored refresh intervals, not p
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
  const html=panel.children[1].innerHTML;
  assert.match(html,/7-day strength · observed vs planned/);
- assert.match(html,/Same tracked intervals for both bars/);
+ assert.match(html,/Paired bars compare the same refresh intervals only/);
  assert.match(html,/background:#4bdecb/);
  assert.match(html,/background:#8aa2fa/);
  assert.match(html,/Partial/);
@@ -539,9 +540,9 @@ test("partial-day toggle hides incomplete days but preserves their recorded hist
 test("same-window actual/planned excludes unrelated focused-stat forecasts",async()=>{
  const fake=[
  {t:Date.parse("2026-10-27T10:00:00Z")/1000,from:Date.parse("2026-10-27T09:00:00Z")/1000,
-  stat:"strength",expected:900,observed:{strength:610,defense:0,speed:0,dexterity:0}},
+  stat:"strength",forecastStat:"strength",expected:900,observed:{strength:610,defense:0,speed:0,dexterity:0}},
  {t:Date.parse("2026-10-27T12:00:00Z")/1000,from:Date.parse("2026-10-27T10:00:00Z")/1000,
-  stat:"speed",expected:4000,observed:{strength:310,defense:0,speed:4000,dexterity:0}}
+  stat:"speed",forecastStat:"speed",expected:4000,observed:{strength:310,defense:0,speed:4000,dexterity:0}}
  ];
  const a=setup(false,false,"2026-10-27T13:00:00Z",{budget:50000000,stat:"strength"},7,"/index.php",fake);
  await a.btn.onclick();
@@ -549,11 +550,11 @@ test("same-window actual/planned excludes unrelated focused-stat forecasts",asyn
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
  const html=panel.children[1].innerHTML;
  assert.match(html,/1 comparable intervals/);
- assert.match(html,/Observed \+610/);
- assert.match(html,/Scheduled \+900/);
+ assert.match(html,/Observed \(matched\) \+610/);
+ assert.match(html,/Scheduled \(matched\) \+900/);
  assert.match(html,/Partial/);
  assert.match(html,/str: 920/);
- assert.ok(!html.includes("Scheduled +4,900"),
+ assert.ok(!html.includes("Scheduled (matched) +4,900"),
  "Forecasts for another focus stat must not be combined with strength forecasts");
 });
 test("a near-full UTC day with continuous tracked intervals qualifies as covered, absent days do not",async()=>{
@@ -561,7 +562,7 @@ test("a near-full UTC day with continuous tracked intervals qualifies as covered
  let prior=midnight+300;
  for(let i=0;i<12;i++){
   const t=i===11?midnight+86400-300:midnight+300+(i+1)*7200;
-  segments.push({t,from:prior,stat:"strength",expected:100,
+  segments.push({t,from:prior,stat:"strength",forecastStat:"strength",expected:100,
    observed:{strength:105,defense:0,speed:0,dexterity:0}});
   prior=t;
  }
@@ -577,4 +578,83 @@ test("a near-full UTC day with continuous tracked intervals qualifies as covered
  assert.match(html,/10-26 · Covered/);
  assert.match(html,/OFF · Covered only/);
  assert.ok(!html.includes("10-27 · Partial"));
+});
+
+test("coverage toggle persists across a fresh userscript installation and never deletes checkpoint history",async()=>{
+ const seed=[{t:Date.parse("2026-10-26T09:30:00Z")/1000,
+ from:Date.parse("2026-10-26T09:00:00Z")/1000,stat:"strength",forecastStat:"strength",
+ expected:120,observed:{strength:115,speed:0,defense:0,dexterity:0}}];
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{stat:"strength"},7,"/index.php",seed);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ assert.match(panel.children[1].innerHTML,/ON · Show all/);
+ panel.onclick({target:{closest(){return {dataset:{act:"partial"}}}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:show-partial"),"false");
+ const originalHistory=a.storage.getItem("hhj-compact-v1:verification");
+ assert.match(panel.children[1].innerHTML,/OFF · Covered only/);
+ const b=setup(false,false,"2026-10-27T09:00:00Z",{stat:"strength"},7,"/index.php",seed,false);
+ await b.btn.onclick();
+ const p=b.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ assert.match(p.children[1].innerHTML,/OFF · Covered only/);
+ assert.match(p.children[1].innerHTML,/No days meet this filter/);
+ assert.equal(a.storage.getItem("hhj-compact-v1:verification"),originalHistory);
+ p.onclick({target:{closest(){return {dataset:{act:"partial"}}}}});
+ assert.equal(b.storage.getItem("hhj-compact-v1:show-partial"),"true");
+ assert.match(p.children[1].innerHTML,/10-26 · Partial/);
+});
+test("changed stat cannot relabel a previous strength forecast as a speed forecast",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength"},7);
+ await a.btn.onclick();
+ a.advance(3600);
+ a.fixture["/user/battlestats"].battlestats.speed.value+=490;
+ await a.refresh();
+ const record=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"))[0];
+ assert.equal(record.stat,"speed","Inferred trained stat comes from observed change");
+ assert.equal(record.forecastStat,"strength","Stored forecast retains the originally selected focus");
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ let html=panel.children[1].innerHTML;
+ assert.match(html,/1 comparable intervals/);
+ assert.match(html,/Observed \(matched\) \+0/);
+ assert.ok(!html.includes("Scheduled (matched) +0"),"Forecast should be nonzero if training was scheduled");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}}}}});
+ panel.onclick({target:{closest(){return {dataset:{act:"stat",val:"speed"}}}}});
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ html=panel.children[1].innerHTML;
+ assert.match(html,/No comparable plan/);
+ assert.match(html,/Recorded \+490/);
+ assert.ok(!html.includes("Scheduled (matched)"),"No mismatched strength forecast can display as a speed forecast");
+});
+test("legacy intervals without forecast focus keep observed totals but suppress invented paired comparisons",async()=>{
+ const old=[{t:Date.parse("2026-10-26T11:00:00Z")/1000,
+ from:Date.parse("2026-10-26T10:30:00Z")/1000,stat:"strength",expected:29000,
+ observed:{strength:611,defense:0,speed:0,dexterity:0}}];
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{stat:"strength"},7,"/index.php",old);
+ await a.btn.onclick();const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ const html=p.children[1].innerHTML;
+ assert.match(html,/10-26 · Partial/);
+ assert.match(html,/No comparable plan/);
+ assert.match(html,/Recorded \+611/);
+ assert.ok(!html.includes("Scheduled (matched) +29,000"));
+ assert.match(html,/str: 611/);
+});
+test("overlapping duplicate checkpoints cannot manufacture covered days",async()=>{
+ const day=Date.parse("2026-10-26T00:00:00Z")/1000,entries=[];
+ for(let i=0;i<16;i++)entries.push({t:day+2*3600,from:day+300,stat:"strength",
+ forecastStat:"strength",expected:30,observed:{strength:40,defense:0,speed:0,dexterity:0}});
+ entries.push({t:day+86400-300,from:day+86400-3900,stat:"strength",
+ forecastStat:"strength",expected:45,observed:{strength:45,defense:0,speed:0,dexterity:0}});
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {stat:"strength"},7,"/index.php",entries);
+ await a.btn.onclick();const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ let html=p.children[1].innerHTML;
+ assert.match(html,/10-26 · Partial/);
+ p.onclick({target:{closest(){return {dataset:{act:"partial"}}}}});
+ html=p.children[1].innerHTML;
+ assert.match(html,/No days meet this filter/);
 });
