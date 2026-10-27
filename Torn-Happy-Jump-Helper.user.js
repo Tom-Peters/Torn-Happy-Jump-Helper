@@ -26,7 +26,7 @@ const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
 const CFG={budget:10000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{}};
-let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod=cfg.mode==="happy"?"happy":"auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
+let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod=cfg.mode==="happy"?"happy-candy":"auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";
 const refill=()=>refillStatus(data.refills?.refills?.energy);
@@ -308,11 +308,19 @@ out+=controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)])
 return out;
 }
 function compare(){const list=lastPlan||plans();return '<h3>Compare scenarios</h3><p class="sub">Weekly natural/Xanax projections versus ONE prepared Happy jump (not an equivalent weekly-repeat forecast). Market prices can be incomplete.</p>'+
-list.map(x=>card(x.method.toUpperCase(),'<div class="row"><b>+'+fmt(x.gain)+" "+esc(cfg.stat)+'</b><b>'+cash(x.cost)+
+list.map(x=>card(x.method.toUpperCase(),x.method.startsWith("happy")&&!x.jumps?
+'<p class="warn">Not fully affordable or priced. See the Supplies tab for the complete kit.</p>':
+'<div class="row"><b>+'+fmt(x.gain)+" "+esc(cfg.stat)+'</b><b>'+cash(x.cost)+
 '</b></div><p class="sub">'+esc(x.note)+'</p><p class="sub">Energy '+fmt(x.energy)+' · Xanax '+x.count.xanax+
 ' · jumps '+x.jumps+'</p><button data-act="choose" data-val="'+x.method+'">View this method</button>')).join("")}
 function plan(){
 const p=activePlan(),h=+cfg.horizon||24;if(!p)return card("No plan","Refresh live data first.");
+if(p.method.startsWith("happy")&&p.jumps===0){
+const kit=jumpKit(p.method);
+return card("Happy jump cannot be scheduled",'<p>Complete supplies are not within your budget or are missing verified market prices.</p>'+
+'<p>Required kit purchases: '+(Number.isFinite(kit.total)?cash(kit.total):"Price unavailable")+
+'; budget: '+cash(cfg.budget)+'.</p><button data-act="tab" data-val="supplies">See item requirements</button>');
+}
 const until=Date.now()/1000+h*3600,events=p.events.filter(x=>x.t>=Date.now()/1000&&x.t<until);
 return controls("Time window",String(h),[["24","Next 24h"],["168","7 days"]],"horizon")+
 card("Forecast details","<b>+"+fmt(p.gain)+" "+esc(cfg.stat)+"</b> · "+cash(p.cost)+" in seven days"+
@@ -396,7 +404,7 @@ if(act==="close"){opened=false;ui.style.display="none";showLauncher(true)}
 if(act==="refresh")refresh();
 if(act==="tab"){tab=val;draw()}
 if(act==="stat"){cfg.stat=val;selectedMethod="auto";save()}
-if(act==="mode"){cfg.mode=val;selectedMethod=val==="happy"?"happy":"auto";save()}
+if(act==="mode"){cfg.mode=val;selectedMethod=val==="happy"?"happy-candy":"auto";save()}
 if(act==="choose"){selectedMethod=val;tab="plan";draw()}
 if(act==="choose-supply"){selectedMethod=val;draw()}
 if(act==="horizon"){cfg.horizon=+val;save()}
