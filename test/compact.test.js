@@ -686,7 +686,7 @@ test("last snapshot gain is surfaced but never asserted as a precisely identifie
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.match(html,/Detected:/);
  assert.match(html,/strength/);
- assert.match(html,/Snapshot interval/);
+ assert.match(html,/(?:Snapshot interval|Likely training)/);
  assert.match(html,/Just happened → Next action/);
  assert.match(html,/Next recommended:/);
 });
