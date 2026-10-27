@@ -1,55 +1,42 @@
-# Torn Happy Jump Helper — v0.10.0
+# Torn Happy Jump Helper — v0.10.1
 
-**Current Android test release: v0.10.0 · Author: IamEEKY**
+**Current Android test release: v0.10.1 · Author: IamEEKY**
 
-[**Install or update the main TornPDA HJ userscript**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)
+[**Install/update the main TornPDA Happy Jump Helper**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)
 
-v0.9.9's floating HJ button, full-screen dashboard, eight tabs, on-open refresh and next-action panel were confirmed loading on Android. v0.10.0 preserves that launcher and corrects two display/schedule problems revealed by screenshots.
+This is a narrow UI update on top of **v0.10.0**, which was confirmed opening on Android. It does **not** change the underlying training formula, the budget, the Xanax/point inventory deductions, UK sleep hours or the working launcher.
 
-## Fixed: a multi-train session is not one normal train
+## Clarification from the real Android screenshots
 
-**Latest visible gym session** now reads a gym result on the Torn Gym page and:
+- The configured sleep schedule was **23:00–08:00 UK time**, chosen by the player. At 22:19 UK time, training before bedtime is an appropriate recommendation. The default for new installations remains 22:00–08:00 until changed in Settings.
+- The projected **Torn $0 spending** is correct when sufficient Xanax and points are already owned. The simulation estimates **additional purchases**, not the replacement value of existing inventory. Do not treat the items as free.
 
-- Extracts an **explicit repetition count** only when the gym result actually says how many repetitions you completed.
-- When no count is present, compares the total gain to the current **one-train** estimate. If it is close to a whole-number multiple (within 12% per inferred train, maximum 150), shows an **equivalent number of normal trains**, clearly labelled *inferred, not verified*. Enhanced happiness, boosts or changed gym conditions may produce a similar gain.
-- Compares the session total against the equivalent **total projected gain**, not blindly against one 10 E exercise. If the result is not meaningfully comparable with current conditions, the UI reports **Not comparable** rather than a spurious percentage such as +599%.
-- Correctly uses the current gym's energy-per-train in the comparison, including specialist gyms.
+## Improvements in v0.10.1
 
-This does **not** reconstruct individual gym training actions or silently grant progress. The **Just happened → Next action** section continues to label large increases across API-refresh checkpoints as *snapshot interval changes*, not individual trains.
-
-## Fixed: UK quiet hours (GMT and BST)
-
-- The simulator now explicitly calculates **Europe/London local time** using the last-Sunday-in-March and last-Sunday-in-October UK daylight-saving transitions (01:00 UTC).
-- This avoids reliance on an embedded WebView that may report a different timezone from the user's actual UK wall clock. The default sleep window remains **22:00–08:00 UK time**, configurable or disableable in Settings.
-- Any suggested next action in a configured sleep window is excluded from the next-action card. Normal training, Xanax, jump supplies and refill actions remain manual.
-- A 22:59 UTC suggestion on 27 October **would conflict** with the default 22:00 start and is suppressed. However, if the user has *explicitly set bedtime to 23:00*, a 22:59 training suggestion may be appropriate. The action card now displays the active quiet-hours configuration to make this visible.
-- UK summer-time starts/ends are covered by tests, including the October return to GMT.
+- **Today → Your training numbers:** The weekly cost summary now says **Additional purchases $0 (covered by owned supplies)** when it uses saved owned Xanax/points and the actual incremental purchase cost is zero. Positive costs and unpriced unavailable inventory remain subject to the original cost model.
+- **Just happened → Next action:** Alongside the immediate upcoming recommended action, the card now shows **Then: [following action]**. For example, with a usable energy bar and an available point refill, it can show *TRAIN* followed by *REFILL*. Actions remain hypothetical until completed manually, with optional self-reported confirmation and Undo.
+- **Mobile navigation:** Removed the negative top margin from the sticky tab bar and added CSS layer isolation/accelerated composition to mitigate partially drawn duplicate-looking tabs on Android WebView. This is an **on-device visual fix to verify**, not proof that no WebView can display a ghost tab row.
+- The independently tested **on-open API refresh, all eight tabs and full-screen panel** remain intact.
 
 ## Existing features retained
 
-- Full-screen phone interface with the **Today, Compare, Schedule, Supplies, Gyms, Perks & books, Progress and Settings** tabs.
-- Accurate Torn API v2 gym-dot normalisation and per-train/24-hour/seven-day maximum-gain forecasts.
-- The restored independent four-stat comparison matrix.
-- Read-only Happy jump/Xanax planning, market estimates and the saved **Torn $50 million weekly budget** by default.
-- A configurable quiet-hours schedule, projected energy wasted at the cap, manual point-refill safeguards.
-- Progress charts, partial-day coverage toggle, on-device training snapshots, and **Just happened → Next action** with undoable manual completion notes.
-- Live API data refresh on every opening; no automatic background polling or automated Torn game actions.
+The per-train, 24-hour and seven-day forecast, accurate Torn API v2 gym-dot normalization, multi-train gym comparison, UK GMT/BST-aware configurable sleep rules, Progress charts with the partial-day toggle, rolling stat observations, Xanax/Happy-jump plans, daily refill checks and existing Torn **$50m/week** planning limit remain unchanged.
 
 ## Install and rollback
 
-1. Keep only **one** main HJ helper script enabled. Disable duplicate Advanced/Preview/Companion scripts.
-2. Update its source using the [raw v0.10.0 script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js) and keep TornPDA injection set to **END**.
-3. Reload Torn and confirm the HJ button opens a dashboard marked **v0.10.0**. Press HJ to refresh the current Torn data.
-4. On the Gym page, train a small batch if appropriate, then check **Latest visible gym session**. With default quiet hours verify no recommendations between 22:00 and 08:00 UK time.
+1. Keep **only one main HJ userscript** enabled. Disable duplicate Advanced/Preview/Companion HJ variants.
+2. Update the source using the raw main link above; injection should remain **END** in TornPDA.
+3. Reload Torn, open the floating **HJ ◉** button and confirm **v0.10.1** in the full-screen header.
+4. Check that the extra partial tab row has disappeared. On Today, find *Just happened → Next action* and, where available, a *Then* action. Under *Your training numbers*, check that zero cash expenditure due to owned supplies is labelled as **additional purchases**.
 
-If anything prevents HJ from opening, disable v0.10.0 and install the independent [**v0.9.9 phone-confirmed rollback**](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.9.9-known-good.user.js). Leave only one enabled and **do not clear your local data**.
+If v0.10.1 fails to open or creates another layout regression, disable it and install the separately packaged **[v0.10.0 phone-confirmed rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.0-known-good.user.js)**. Keep one HJ script enabled and **do not clear device storage**.
 
-## Validation, privacy and limits
+## Validation
 
-**52/52 focused mocked TornPDA regression tests passed**, including loader startup, click-to-refresh, stat ledger, multi-train result parsing, session totals, ambiguous single boosted training, DST transitions, default 22:00–08:00 restrictions, an intentionally changed 23:00 bedtime, refill checks, Progress charts and four-stat comparison. The self-contained main script remains below the **57 KB compact guard**.
+**55/55 focused userscript regression tests passed**, covering launcher startup, tabs, sleep boundaries, actual gym gains, all-stat comparisons, rolling observations, action tracking, owned-points zero incremental spending and the train-before-refill follow-up action. JavaScript syntax passed and the main script remains **56,995 bytes**, under the 57,000-byte compact-source guard.
 
-Live Android v0.10.0 behaviour and the full GitHub Actions suite are not yet independently confirmed. The detected session's repetition count is a **model-derived equivalent** unless Torn explicitly provides a repetition count. Stat snapshots can include many different actions between refreshes.
+Live Android behaviour of v0.10.1 and the complete GitHub Actions test suite are **not yet verified**. CSS repaint bugs vary with WebView versions and devices.
 
-No real user API keys, individual personal stats, item inventories, money balances or private player records are included in this public repo. Torn actions remain manual, API calls are read-only, and optional gym-log reconciliation still requires a separate opt-in design.
+Read-only Torn gameplay; API requests retrieve live data but do not train, consume items or spend points. No real player API keys, personal account records or balances are committed to this public repository.
 
-MIT · IamEEKY · [Historical release notes](docs/legacy-release-notes.md)
+MIT · IamEEKY · [Historical release notes](docs/legacy-release-notes.md).
