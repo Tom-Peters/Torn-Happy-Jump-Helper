@@ -60,7 +60,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<57000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.10\.0/);
+  assert.match(src,/@version\s+0\.10\.1/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -71,7 +71,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.0");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.1");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -287,11 +287,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.10.0 keeps the mobile launcher visible before API work",()=>{
+test("v0.10.1 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.10.0");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.1");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -836,4 +836,39 @@ test("a boosted single train is labelled noncomparable instead of a misleading e
  assert.match(html,/Explicit result: 1 trains/);
  assert.match(html,/Not comparable/);
  assert.ok(!html.includes("+598.6%"));
+});
+
+test("owned points yield zero additional purchases, not falsely free items",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000,refills:true},7);
+ await a.btn.onclick();
+ const natural=a.core.plans().find(x=>x.method==="natural");
+ assert.ok(natural.count.points>0,"Natural schedule should spend points");
+ assert.equal(natural.cost,0,"Already owned points must not count as a new purchase");
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"natural"}};}}});
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Additional purchases \$0 \(covered by owned supplies\)/);
+ assert.match(html,/Selected forecast: natural/);
+});
+test("when first action is train before refill, next sequence also displays the following REFILL",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",ownedPoints:10000,refills:true},7);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"choose",val:"natural"}};}}});
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Just happened → Next action/);
+ assert.match(html,/Next recommended:.*TRAIN/);
+ assert.match(html,/Then:.*REFILL/);
+ assert.match(html,/Quiet hours:/);
+});
+test("tabs avoid the negative sticky margin that can cause overlapping WebView nav paint",()=>{
+ const a=setup();
+ const css=a.document.getElementById("hhj-mini-css").textContent;
+ assert.match(css,/\.tabs\{margin:0 -14px 14px/);
+ assert.match(css,/isolation:isolate;transform:translateZ\(0\)/);
+ assert.ok(!css.includes(".tabs{margin:-12px -14px 14px"));
 });
