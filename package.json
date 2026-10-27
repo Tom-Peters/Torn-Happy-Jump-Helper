@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "private": true,
-  "description": "TornPDA Happy Jump helper with validated partial-day coverage and focus-matched observed-vs-planned charts",
+  "description": "Full-screen TornPDA training adviser with just-detected gains, next manual action and undoable self-report notes",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
