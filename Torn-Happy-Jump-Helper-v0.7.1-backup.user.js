@@ -1,14 +1,12 @@
 // ==UserScript==
-// @name         Torn Happy Jump Helper
-// @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
+// @name         Torn Happy Jump Helper (v0.7.1 Recovery)
+// @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#recovery
 // @version      0.7.1
 // @description  Compact CSP-safe TornPDA gym, Happy jump and book planner (read only)
 // @author       IamEEKY
 // @match        https://www.torn.com/*
 // @match        https://torn.com/*
 // @run-at       document-end
-// @updateURL    https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js
-// @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js
 // @grant        none
 // ==/UserScript==
 (function(){
