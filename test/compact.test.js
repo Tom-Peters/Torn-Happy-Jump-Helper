@@ -15,7 +15,8 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   const body=node("body"),head=node("head");
   const document={body,head,createElement:node,addEventListener(){},
     getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null;}};
-  const w={setInterval(){},__TornHappyJumpLoaded:null};
+  const ticks=[];
+  const w={setInterval(fn){ticks.push(fn)},__TornHappyJumpLoaded:null};
   let nowMs=Date.parse(clock);
   const date=class extends Date {static now(){return nowMs}};
   const map=new Map();
@@ -52,7 +53,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
     document,{hostname:"www.torn.com",pathname},w,localStorage,PDA_httpGet,date);
   return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
-    core:w.__HJTEST,refresh:()=>w.__HJTEST.refresh(),fixture,advance:(seconds)=>{nowMs+=seconds*1000;}};
+    core:w.__HJTEST,refresh:()=>w.__HJTEST.refresh(),fixture,advance:(seconds)=>{nowMs+=seconds*1000;},tick:()=>ticks.forEach(fn=>fn())};
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
@@ -382,4 +383,23 @@ test("gym ranking includes only verified superior owned/unpurchased gyms and exc
  const panel=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.match(panel,/Better confirmed gym/);
  assert.match(panel,/Owned Better/);
+});
+
+test("rolling 15-minute verification runs only while dashboard is open and active",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength",autoVerify:true},7);
+ a.btn.onclick();await a.refresh();
+ const before=a.requests.length;
+ a.advance(14*60);a.tick();
+ assert.equal(a.requests.length,before,"Must not refresh before 15 minutes");
+ a.advance(2*60);a.tick();
+ assert.ok(a.requests.length>before,"Should request fresh Torn stats after 15 minutes open");
+});
+test("rolling verification stays disabled when user opts out of automatic checks",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength",autoVerify:false},7);
+ a.btn.onclick();await a.refresh();
+ const before=a.requests.length;
+ a.advance(20*60);a.tick();
+ assert.equal(a.requests.length,before,"Manual-only verification must never auto-refresh");
 });
