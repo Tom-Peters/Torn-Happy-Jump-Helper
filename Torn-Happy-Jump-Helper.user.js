@@ -30,7 +30,7 @@ if(y!==ukYear){
 const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;
 return a<b?m>=a&&m<b:m>=a||m<b;
 }
-function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" local":"Disabled"}
+function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" UK time":"Disabled"}
 
 function gymDots(raw){
 const dots=Number(raw);if(!Number.isFinite(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}
