@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "private": true,
-  "description": "TornPDA training helper: phone-tested launcher, sleep planning, local observed gains and safely inferred per-train comparisons",
+  "description": "TornPDA full-screen gym planner with on-open live refresh, sleep-aware forecasts and observed daily gains charts",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
