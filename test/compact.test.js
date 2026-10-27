@@ -698,7 +698,7 @@ test("user can self-report a due action and undo it without inventing Torn stat 
  await a.btn.onclick();
  const panel=a.document.getElementById("hhj-compact-panel");
  let html=panel.children[1].innerHTML;
- assert.match(html,/I completed this in Torn/);
+ assert.match(html,/Confirm (?:TRAIN|XANAX|REFILL)/);
  const statBefore=a.fixture["/user/battlestats"].battlestats.strength.value;
  panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
  const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes"));
