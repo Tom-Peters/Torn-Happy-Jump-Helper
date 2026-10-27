@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.9.6
+// @version      0.9.7
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.6";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.7";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -30,7 +30,7 @@ const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
 const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};
-let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),start=Date.now()/1000;
+let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),showPartial=get("show-partial",true),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";
 const refill=()=>refillStatus(data.refills?.refills?.energy);
@@ -621,24 +621,36 @@ rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};
 return true;
 }
 function gainsChart(daily){
-const days=Object.keys(daily).sort(),k=cfg.stat;
-if(!days.length)return card("Observed gains chart","No measured refresh intervals yet. Open HJ after training to build a daily chart.");
-const max=Math.max(1,...days.map(d=>Math.max(0,daily[d].real[k]||0)));
-return card("Daily "+esc(k)+" gains · observed only",
- '<p class="sub">Local refresh-to-refresh changes, not simulated gains. Dates without observations are omitted.</p>'+
- days.map(d=>{const v=daily[d].real[k]||0,w=Math.max(0,100*v/max);
- return '<div style="margin:9px 0"><div class="row"><small>'+esc(d.slice(5))+'</small><b>'+
- (v>=0?'+':'')+fmt(v)+'</b></div><div style="height:11px;background:#0c2232;border-radius:8px;overflow:hidden">'+
- '<div style="width:'+w.toFixed(1)+'%;height:100%;background:#4bdecb"></div></div></div>';
- }).join('')+
- '<p class="sub">Current focus: '+esc(k)+'. Change your focus stat in Today or Compare to view another chart.</p>');
+ const k=cfg.stat,days=Object.keys(daily).sort(),view=days.filter(d=>showPartial||daily[d].covered);
+ let html='<div class="row"><b>Show partial days</b><button data-act="partial">'+
+ (showPartial?"ON · Show all":"OFF · Covered only")+'</button></div>'+
+ '<p class="sub">Covered means near-midnight snapshots with no long gaps, not proof of complete gameplay history. Current days and older unverified entries are partial.</p>';
+ if(!view.length)return card("Daily gains · coverage",html+"No days meet this filter. Turn on partial days to see recorded changes.");
+ const max=Math.max(1,...view.map(d=>Math.max(0,daily[d].matched,daily[d].predicted)));
+ html+='<p class="sub">Same tracked intervals for both bars · <b style="color:#4bdecb">Observed</b> vs <b style="color:#8aa2fa">Scheduled</b> (hypothetical, not actual actions).</p>';
+ html+=view.map(d=>{const v=daily[d],bar=(n,color)=>'<div style="height:9px;background:#0c2232;border-radius:7px;overflow:hidden;margin:3px 0"><div style="width:'+
+ (Math.max(0,n)/max*100).toFixed(1)+'%;height:100%;background:'+color+'"></div></div>';
+ return '<div style="margin:11px 0"><div class="row"><b>'+esc(d.slice(5))+' · '+(v.covered?"Covered":"Partial")+'</b><small>'+v.matchedN+' comparable intervals</small></div>'+
+ bar(v.matched,"#4bdecb")+bar(v.predicted,"#8aa2fa")+
+ '<div class="row"><small>Observed +'+fmt(v.matched)+'</small><small>Scheduled +'+fmt(v.predicted)+'</small></div></div>';
+ }).join('');
+ return card("7-day "+esc(k)+" · observed vs planned",html);
 }
 function progressLog(){
 const recent=ledger.filter(x=>x.t>=Date.now()/1000-7*86400),daily={},focus=cfg.stat;
 for(const x of recent){
- const date=day(x.t),row=daily[date]||(daily[date]={n:0,changed:0,real:Object.fromEntries(ST.map(k=>[k,0]))});
+ const date=day(x.t),row=daily[date]||(daily[date]={n:0,changed:0,real:Object.fromEntries(ST.map(k=>[k,0])),
+ matched:0,predicted:0,matchedN:0,first:Infinity,last:0,ok:true,covered:false});
  row.n++;for(const k of ST)row.real[k]+=x.observed?.[k]||0;
  if(ST.some(k=>(x.observed?.[k]||0)>0))row.changed++;
+ if(x.stat===focus&&Number.isFinite(x.expected)){row.matched+=x.observed?.[focus]||0;row.predicted+=x.expected;row.matchedN++}
+ const midnight=Date.parse(date+"T00:00:00Z")/1000;
+ row.first=Math.min(row.first,Number(x.from)||Infinity);row.last=Math.max(row.last,x.t);
+ if(!x.from||x.from<midnight||x.t-x.from>7200)row.ok=false;
+}
+for(const [date,row] of Object.entries(daily)){
+ const midnight=Date.parse(date+"T00:00:00Z")/1000;
+ row.covered=row.ok&&row.first<=midnight+900&&row.last>=midnight+86400-900&&row.matchedN>0;
 }
 const latest=recent[recent.length-1],lastGain=[...recent].reverse().find(x=>(x.observed?.[focus]||0)>0);
 const today=daily[day(Date.now()/1000)],total=today?.real[focus]||0;
@@ -721,6 +733,7 @@ if(act==="mark-used"){put("used-day",day(Date.now()/1000));lastPlan=plans();draw
 if(act==="clear-refill"){put("used-day",null);lastPlan=plans();draw()}
 if(act==="clearhistory"){history=[];put("history",[]);draw()}
 if(act==="clearverification"){ledger=[];rolling=null;put("verification",[]);put("rolling-plan",null);draw()}
+if(act==="partial"){showPartial=!showPartial;put("show-partial",showPartial);draw()}
 if(act==="gym-owned"||act==="gym-buy"){const id=+content.querySelector("#hhj-gymlist")?.value;
 if(id&&/\/gym\.php$/.test(location.pathname||"")){verified[id]=act==="gym-owned"?"owned":"buy";put("gyms",verified);draw()}}
 if(act==="save"){
