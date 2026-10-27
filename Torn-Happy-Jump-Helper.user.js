@@ -29,7 +29,7 @@ const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"
 const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
-const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};
+const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},autoVerify:true,sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};
 let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
 "used":raw===true?"used":raw===false?"ready":"unknown";
@@ -40,7 +40,7 @@ const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||
 const cd=()=>data.cooldowns?.cooldowns||{};
 
 function clockMinutes(raw,fallback){
- if(typeof raw!=="string"||!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(raw))return fallback;
+ if(typeof raw!=="string"||!/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(raw))return fallback;
  return Number(raw.slice(0,2))*60+Number(raw.slice(3,5));
 }
 function sleeping(t){
@@ -103,10 +103,25 @@ if(n.includes("gym 3000"))return a>=1.25*Math.max(v,c,d);
 if(n.includes("isoyamas"))return c>=1.25*Math.max(a,v,d);
 if(n.includes("total rebound"))return v>=1.25*Math.max(a,c,d);
 if(n==="elites")return d>=1.25*Math.max(a,v,c);
-if(n.includes("sports science"))return false;
+if(n.includes("sports science"))return true; // Only recommended with independently verified gym access.
 return true;
 }
 function sessionGain(g,k,e,h,b){return gain(e,h,b[k],gymDots(g.modifiers?.[k]),g.energy_cost||10,bonus(k));}
+
+function gymOpportunities(stat=cfg.stat){
+ const current=gym(),all=data.gyms?.gyms||[],b=stats(),e=energy().maximum||150,h=happy().current||happy().maximum||5000;
+ if(!current||!(b[stat]>0))return [];
+ const base=sessionGain(current,stat,e,h,b);
+ if(!(base>0))return [];
+ return all.filter(x=>+x.id!==+current.id&&["owned","buy"].includes(verified[x.id])&&
+ gymEligible(x,b)&&gymDots(x.modifiers?.[stat])>0)
+ .map(candidate=>{
+  const gainValue=sessionGain(candidate,stat,e,h,b);
+  return {gym:candidate,status:verified[candidate.id],gain:gainValue,
+   change:100*(gainValue/base-1),currentGain:base};
+ }).filter(x=>Number.isFinite(x.change)&&x.change>0.1)
+ .sort((a,b)=>b.gain-a.gain);
+}
 function statAdvice(){
 const b=stats(),g=gym(),e=energy().maximum||150,h=happy().maximum||5000;
 if(!g||!ST.every(k=>b[k]>0))return null;
@@ -604,29 +619,36 @@ function plan(){
  ' planned actions. The totals above include every action.</p>';
  return html;
 }
+
 function gyms(){
-const g=gym(),all=data.gyms?.gyms||[],k=cfg.stat,b=stats(),e=energy().maximum||150,h=happy().maximum||5000;
-let html=g?card("Current gym",esc(g.name)+" · "+gymDots(g.modifiers?.[k]).toFixed(1)+" dots "+esc(k)):
-card("Gym unavailable","Refresh first.");
-const baseline=g?sessionGain(g,k,e,h,b):0;
-const eligible=all.filter(x=>x.id!==g?.id&&["owned","buy"].includes(verified[x.id])&&gymEligible(x,b))
-.map(x=>({gym:x,change:baseline>0?100*(sessionGain(x,k,e,h,b)/baseline-1):0}))
-.filter(x=>Number.isFinite(x.change)&&x.change>0.1).sort((a,b)=>b.change-a.change);
-html+=card("Better verified gyms",eligible.length?eligible.map(x=>"<p><b>"+esc(x.gym.name)+"</b> · <b>+"+
-x.change.toFixed(1)+"% estimated gains</b> per same energy · "+(verified[x.gym.id]==="buy"?
-"Unlocked but not purchased ("+cash(x.gym.cost)+")":"Owned; switch manually")+"</p>").join(""):
-"No better eligible, confirmed-access gym for this stat. Locked and unseen gyms are excluded.");
-if(/\/gym\.php$/.test(location.pathname||"")&&all.length){
-const visibleText=String(document.body?.innerText||"").replace(String(ui.innerText||""),"");
-const visible=all.filter(x=>String(x.name||"").length>3&&
-visibleText.toLowerCase().includes(x.name.toLowerCase())&&!verified[x.id]);
-html+=card("Confirm a gym shown on this page",visible.length?
-'<p class="sub">Confirm only gyms you can currently access in Torn. A matching name in the page does not prove it is unlocked.</p><select id="hhj-gymlist">'+
-visible.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join("")+
-'</select><button data-act="gym-owned">Owned</button><button data-act="gym-buy">Unlocked, not purchased</button>':
-"No unconfirmed gyms were detected from this page. Never confirm a locked or unavailable membership.");
-}else html+=card("Verify gym access","Open Torn’s Gym page and confirm memberships that are shown as available. This helper will not recommend unseen/locked gyms.");
-return html;
+ const current=gym(),stat=cfg.stat,all=data.gyms?.gyms||[];
+ if(!current)return card("Gym unavailable","Refresh your Torn gym data first.");
+ const e=energy().maximum||150,h=happy().current||happy().maximum||5000,b=stats();
+ const base=sessionGain(current,stat,e,h,b),candidates=gymOpportunities(stat);
+ let html=card("Gym optimisation · "+stat,
+ '<div class="metric-grid"><div><span>Current gym</span><strong>'+esc(current.name)+'</strong><small>'+
+ gymDots(current.modifiers?.[stat]).toFixed(1)+' dots · '+fmt(current.energy_cost||10)+' E/train</small></div>'+
+ '<div><span>Full '+fmt(e)+' E bar</span><strong>+'+fmt(base)+'</strong><small>Estimated '+esc(stat)+' gain</small></div></div>'+
+ '<p class="sub">Compares gains for the same energy allocation at your current stats and happiness. Memberships are never purchased or switched automatically.</p>');
+ html+=card("Better verified gyms",candidates.length?candidates.map((x,i)=>
+ '<div class="row"><div><b>'+esc(x.gym.name)+'</b> '+(i===0?'<span class="good">· Best verified option</span>':'')+
+ '<p class="sub">'+gymDots(x.gym.modifiers?.[stat]).toFixed(1)+' dots · '+
+ fmt(x.gym.energy_cost||10)+' E/train · '+fmt(e)+' E gives +'+fmt(x.gain)+
+ ' '+esc(stat)+'</p><small>'+esc(x.status==="buy"?"Unlocked but unpurchased — membership "+cash(x.gym.cost):
+ "Already owned — switch manually in Torn")+'</small></div><b class="good">+'+
+ x.change.toFixed(1)+'%</b></div>').join(""):
+ "No verified, eligible and higher-gain gym for this stat. Locked, unseen, and unconfirmed gyms are not recommended.");
+ if(/\/gym\.php$/.test(location.pathname||"")&&all.length){
+ const visibleText=String(document.body?.innerText||"").replace(String(ui.innerText||""),"");
+ const visible=all.filter(x=>String(x.name||"").length>3&&
+ visibleText.toLowerCase().includes(x.name.toLowerCase())&&!verified[x.id]&&x.id!==current.id);
+ html+=card("Confirm available gyms on Torn",visible.length?
+ '<p class="sub">Only mark a gym if Torn genuinely shows it unlocked. A visible name alone does not prove access.</p>'+
+ '<select id="hhj-gymlist">'+visible.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join("")+
+ '</select> <button data-act="gym-owned">Owned</button> <button data-act="gym-buy">Unlocked; not purchased</button>':
+ "No additional unverified gyms detected from this Gym page.");
+ }else html+=card("Verify new gyms","On Torn's Gym page, mark only gyms that you can actually enter or purchase. The catalogue cannot prove unlocks.");
+ return html;
 }
 function perks(){
 const rows=perkRows(),books=data.books||[];
