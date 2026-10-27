@@ -66,7 +66,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483647"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.7.3");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.7.4");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh Torn data/);
@@ -143,4 +143,24 @@ test("inventory API error 21 falls back once to unfiltered inventory and retains
   const panel=a.document.getElementById("hhj-compact-panel");
   assert.match(panel.children[1].innerHTML,/category 21; unfiltered fallback used/);
   assert.match(panel.children[1].innerHTML,/What should I do\?/);
+});
+
+test("realistic jump options require full kits and never confuse candy with eDVDs",async()=>{
+  const a=setup(true);
+  a.btn.onclick();
+  await a.refresh();
+  const all=a.core.plans(),candy=all.find(x=>x.method==="happy-candy"),
+    dvd=all.find(x=>x.method==="happy");
+  assert.equal(all.length,4);
+  assert.ok(candy&&dvd,"Both Happy jump strategies must be present");
+  assert.equal(candy.jumps,0,"48 high-priced candies should be blocked by $10m budget");
+  assert.equal(candy.count.lollipop,0,"Do not spend an incomplete kit");
+  assert.equal(dvd.jumps,1,"Four eDVDs + four Xanax + Ecstasy fit the fixture budget");
+  assert.equal(dvd.count.xanax,4);
+  assert.equal(dvd.count.dvd,4);
+  assert.equal(dvd.count.ecstasy,1);
+  assert.equal(dvd.count.lollipop,0,"eDVD jump must not substitute cheap candies");
+  assert.ok(dvd.events.some(e=>e.kind==="JUMP"&&e.detail.includes("Erotic DVDs")));
+  assert.ok(!a.document.getElementById("hhj-compact-panel").children[1].innerHTML.includes("No fully funded Happy jump forecast"),
+    "An affordable eDVD jump must remain selectable");
 });
