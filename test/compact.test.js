@@ -58,7 +58,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<55000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.9\.6/);
+  assert.match(src,/@version\s+0\.9\.7/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -69,7 +69,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.6");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.7");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -285,11 +285,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.9.6 keeps the mobile launcher visible before API work",()=>{
+test("v0.9.7 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.9.6");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.9.7");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -454,9 +454,11 @@ test("Progress charts measured gains from actual stored refresh intervals, not p
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
  const html=panel.children[1].innerHTML;
- assert.match(html,/Daily strength gains · observed only/);
- assert.match(html,/Dates without observations are omitted/);
+ assert.match(html,/7-day strength · observed vs planned/);
+ assert.match(html,/Same tracked intervals for both bars/);
  assert.match(html,/background:#4bdecb/);
+ assert.match(html,/background:#8aa2fa/);
+ assert.match(html,/Partial/);
  assert.match(html,/Observed stat gains · last seven days/);
  assert.ok(!html.includes("2026-10-26"),"No fabricated unobserved previous-day bar");
 });
@@ -508,4 +510,71 @@ test("the empty day after its first baseline is not interpreted as proven zero t
  assert.match(html,/No measured refresh intervals yet/);
  assert.match(html,/Open HJ to set a baseline/);
  assert.ok(!html.includes("checks without a new stat increase today"));
+});
+
+test("partial-day toggle hides incomplete days but preserves their recorded history",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
+ await a.btn.onclick();
+ const first=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
+ a.advance(3600);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=first.single.strength;
+ await a.refresh();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ let html=panel.children[1].innerHTML;
+ assert.match(html,/Show partial days/);
+ assert.match(html,/ON · Show all/);
+ assert.match(html,/10-27 · Partial/);
+ assert.match(html,/Scheduled/);
+ panel.onclick({target:{closest(){return {dataset:{act:"partial"}};}}});
+ html=panel.children[1].innerHTML;
+ assert.match(html,/OFF · Covered only/);
+ assert.match(html,/No days meet this filter/);
+ assert.ok(html.includes("Recorded today"),"Hiding partial bars never hides measured totals");
+ assert.equal(a.storage.getItem("hhj-compact-v1:show-partial"),"false");
+ panel.onclick({target:{closest(){return {dataset:{act:"partial"}};}}});
+ assert.match(panel.children[1].innerHTML,/ON · Show all/);
+ assert.equal(a.storage.getItem("hhj-compact-v1:show-partial"),"true");
+});
+test("same-window actual/planned excludes unrelated focused-stat forecasts",async()=>{
+ const fake=[
+ {t:Date.parse("2026-10-27T10:00:00Z")/1000,from:Date.parse("2026-10-27T09:00:00Z")/1000,
+  stat:"strength",expected:900,observed:{strength:610,defense:0,speed:0,dexterity:0}},
+ {t:Date.parse("2026-10-27T12:00:00Z")/1000,from:Date.parse("2026-10-27T10:00:00Z")/1000,
+  stat:"speed",expected:4000,observed:{strength:310,defense:0,speed:4000,dexterity:0}}
+ ];
+ const a=setup(false,false,"2026-10-27T13:00:00Z",{budget:50000000,stat:"strength"},7,"/index.php",fake);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/1 comparable intervals/);
+ assert.match(html,/Observed \+610/);
+ assert.match(html,/Scheduled \+900/);
+ assert.match(html,/Partial/);
+ assert.match(html,/str: 920/);
+ assert.ok(!html.includes("Scheduled +4,900"),
+ "Forecasts for another focus stat must not be combined with strength forecasts");
+});
+test("a near-full UTC day with continuous tracked intervals qualifies as covered, absent days do not",async()=>{
+ const midnight=Date.parse("2026-10-26T00:00:00Z")/1000,segments=[];
+ let prior=midnight+300;
+ for(let i=0;i<12;i++){
+  const t=i===11?midnight+86400-300:midnight+300+(i+1)*7200;
+  segments.push({t,from:prior,stat:"strength",expected:100,
+   observed:{strength:105,defense:0,speed:0,dexterity:0}});
+  prior=t;
+ }
+ const a=setup(false,false,"2026-10-27T10:00:00Z",
+ {budget:50000000,stat:"strength"},7,"/index.php",segments);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ let html=panel.children[1].innerHTML;
+ assert.match(html,/10-26 · Covered/);
+ panel.onclick({target:{closest(){return {dataset:{act:"partial"}};}}});
+ html=panel.children[1].innerHTML;
+ assert.match(html,/10-26 · Covered/);
+ assert.match(html,/OFF · Covered only/);
+ assert.ok(!html.includes("10-27 · Partial"));
 });
