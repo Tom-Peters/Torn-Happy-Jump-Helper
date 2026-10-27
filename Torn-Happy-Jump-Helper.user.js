@@ -307,7 +307,7 @@ fmt(summaryNow.energy)+' E</strong><small>'+summaryNow.trains+' train actions</s
 summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
 '<p class="sub">'+esc(p.note)+' · Manual actions; totals match period.</p>');html+=card("Predicted energy lost at cap",'<div class="metric-grid"><div><span>Total overflow</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
 '<div><span>While asleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div><p class="sub">Quiet: '+esc(sleepLabel())+
-'. Totals match the selected period.</p>');if(hours===168)html+=scheduleDays(summaryNow.events);if(!summaryNow.events.length)return html+card("No actions within this window","A jump may need more than 24 hours. Try seven days.");let dayKey="",count=0;for(const ev of summaryNow.events){
+'. Totals match the selected period.</p>');if(hours===168)html+=scheduleDays(summaryNow.events);if(!summaryNow.events.length)return html+card("No actions within this window","A jump may take over 24 hours; try seven days.");let dayKey="",count=0;for(const ev of summaryNow.events){
 if(count++>=120)break;const date=day(ev.t);if(date!==dayKey){dayKey=date;html+='<h3 class="day-header">'+date+' UTC</h3>'}
 html+='<div class="timeline-row"><span>'+compactUtc(ev.t)+'</span><b>'+esc(ev.kind)+
 '</b><span>'+esc(ev.detail)+'</span>'+(ev.spent?'<small>'+cash(ev.spent)+' estimated cost</small>':'')+'</div>';}
@@ -343,17 +343,17 @@ rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};return true;}
 let lastActionTap=0;
 function dueAction(p,t){return (p?.events||[]).find(e=>e.t>=t-600&&e.t<=t+600&&!sleeping(e.t)&&!actionNotes.some(n=>n.scheduled===e.t&&n.kind===e.kind&&n.method===p.method))}
 function actionFlow(p){
-const now=Date.now()/1000,obs=[...ledger].reverse().find(x=>ST.some(k=>(x.observed?.[k]||0)>0)),last=actionNotes[actionNotes.length-1],queue=(p?.events||[]).filter(e=>e.t>=now&&!sleeping(e.t)),next=queue[0],after=queue[1],third=queue[2],due=dueAction(p,now);
+const now=Date.now()/1000,obs=[...ledger].reverse().find(x=>ST.some(k=>(x.observed?.[k]||0)>0)),last=actionNotes[actionNotes.length-1],due=dueAction(p,now),future=(p?.events||[]).filter(e=>e.t>=now&&!sleeping(e.t)),queue=due?[due,...future.filter(e=>e!==due)]:future,next=queue[0],after=queue[1],third=queue[2];
 let h=obs?'<p><b>Detected:</b> '+ST.filter(k=>(obs.observed?.[k]||0)>0).map(k=>'+'+fmt(obs.observed[k])+' '+esc(k)).join(', ')+
 ' · '+compactUtc(obs.t)+'</p><p class="sub">'+(obs.inferred?'Likely training: '+obs.inferred+' train(s) inferred.':'Snapshot interval; actions unknown.')+'</p>':
-'<p class="sub">No gains yet; reopen after training.</p>';
+'<p class="sub">No gains yet; reopen after gym.</p>';
 if(last)h+='<p><b>You marked done:</b> '+esc(last.kind)+' · '+compactUtc(last.t)+
 ' <button data-act="undo-note">Undo</button></p>';
 h+=next?'<p><b>Next recommended:</b> '+esc(next.kind)+' · '+compactUtc(next.t)+' ('+eta(next.t)+')</p>'+
 '<p>'+esc(next.detail)+'</p>'+(after?'<p><b>Then:</b> '+esc(after.kind)+' · '+compactUtc(after.t)+'</p>':'')+(third?'<p><b>After:</b> '+esc(third.kind)+' · '+compactUtc(third.t)+'</p>':'')+(due?'<button data-act="note-done">Confirm '+esc(due.kind)+' · '+compactUtc(due.t)+'</button>':
 '<p class="sub">Confirm when due.</p>')+
-'<p class="sub">Self-reported; reopening checks Torn.</p>':
-'<p>No remaining steps; refresh to replan.</p>';
+'<p class="sub">Self-reported, not verified.</p>':
+'<p>No steps left; refresh to replan.</p>';
 return card("Just happened → Next action",h+'<p class="sub">Quiet hours: '+esc(sleepLabel())+'</p>');
 }
 function gainsChart(daily){
