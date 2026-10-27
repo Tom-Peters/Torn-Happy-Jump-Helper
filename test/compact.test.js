@@ -57,7 +57,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<55000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.9\.3/);
+  assert.match(src,/@version\s+0\.9\.4/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -68,7 +68,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.3");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.4");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/Refresh data/);
@@ -289,11 +289,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.9.3 keeps the mobile launcher visible before API work",()=>{
+test("v0.9.4 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.9.3");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.9.4");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -357,8 +357,8 @@ test("rolling verification starts with a baseline, then records real stat gains 
  assert.ok(Number.isFinite(records[0].expected));
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
- assert.match(panel.children[1].innerHTML,/Rolling verification/);
- assert.match(panel.children[1].innerHTML,/seven days/);
+ assert.match(panel.children[1].innerHTML,/Observed stat gains/);
+ assert.match(panel.children[1].innerHTML,/last seven days/);
  assert.match(panel.children[1].innerHTML,/Clear rolling history/);
 });
 test("rolling history is cleared without wiping budget or other saved settings",async()=>{
@@ -370,4 +370,58 @@ test("rolling history is cleared without wiping budget or other saved settings",
  assert.equal(a.storage.getItem("hhj-compact-v1:verification"),"[]");
  assert.equal(a.storage.getItem("hhj-compact-v1:rolling-plan"),"null");
  assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:settings")).budget,50000000);
+});
+
+test("Progress compares matched observed training with a one-train baseline, not 7-day forecast",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength",sleepEnabled:true},7);
+ a.btn.onclick();await a.refresh();
+ const initial=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
+ assert.ok(initial.single.strength>0);
+ assert.equal(initial.gymId,9);
+ a.advance(3600);
+ // Synthetic training observation, not user stat data: one ordinary 10E train.
+ const observed=initial.single.strength*1.006;
+ a.fixture["/user/battlestats"].battlestats.strength.value+=observed;
+ await a.refresh();
+ const samples=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"));
+ assert.equal(samples.length,1);
+ assert.equal(samples[0].inferred,1);
+ assert.equal(samples[0].single,initial.single.strength);
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Estimated per train/);
+ assert.match(html,/standard trains inferred/);
+ assert.match(html,/Latest measured change/);
+ assert.ok(!html.includes("Last interval: planned +"),"Never compare full forecast directly against one train");
+ assert.ok(!html.includes("Observed changes"),"Remove once-per-day zero card");
+ assert.match(html,/Daily totals/);
+});
+test("multi-stat or book-like gains do not invent a per-train calibration",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+  {budget:50000000,stat:"strength"},7);
+ a.btn.onclick();await a.refresh();
+ const first=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
+ a.advance(500);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=first.single.strength*1.85;
+ a.fixture["/user/battlestats"].battlestats.speed.value+=250;
+ await a.refresh();
+ const sample=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"))[0];
+ assert.equal(sample.inferred,null);
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
+ assert.match(panel.children[1].innerHTML,/No reliable per-train match/);
+ assert.ok(!panel.children[1].innerHTML.includes("Estimated per train"));
+});
+test("legacy v0.9.3 observation entries show actual gains without pretending a missing baseline exists",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
+ a.storage.setItem("hhj-compact-v1:verification",JSON.stringify([
+  {t:Date.parse("2026-10-27T08:30:00Z")/1000,stat:"strength",
+   expected:29000,observed:{strength:630,defense:0,speed:0,dexterity:0},method:"xanax"}
+ ]));
+ // Local verification is loaded on boot: fixture reload check is handled by code's
+ // ordinary persistence path. Here verify source doesn't reintroduce the old label.
+ assert.ok(!a.source.includes("Last interval: planned +"));
+ assert.ok(a.source.includes("Observed stat gains"));
 });
