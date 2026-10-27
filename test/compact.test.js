@@ -457,7 +457,7 @@ test("Progress charts measured gains from actual stored refresh intervals, not p
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
  const html=panel.children[1].innerHTML;
  assert.match(html,/7-day strength · observed vs planned/);
- assert.match(html,/Paired bars compare the same refresh intervals only/);
+ assert.match(html,/Paired bars use matching intervals only/);
  assert.match(html,/background:#4bdecb/);
  assert.match(html,/background:#8aa2fa/);
  assert.match(html,/Partial/);
@@ -509,7 +509,7 @@ test("the empty day after its first baseline is not interpreted as proven zero t
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
  const html=panel.children[1].innerHTML;
- assert.match(html,/No measured refresh intervals yet/);
+ assert.match(html,/No recorded gains yet/);
  assert.match(html,/Open HJ to set a baseline/);
  assert.ok(!html.includes("checks without a new stat increase today"));
 });
@@ -531,7 +531,7 @@ test("partial-day toggle hides incomplete days but preserves their recorded hist
  panel.onclick({target:{closest(){return {dataset:{act:"partial"}};}}});
  html=panel.children[1].innerHTML;
  assert.match(html,/OFF · Covered only/);
- assert.match(html,/No days meet this filter/);
+ assert.match(html,/No covered days/);
  assert.ok(html.includes("Recorded today"),"Hiding partial bars never hides measured totals");
  assert.equal(a.storage.getItem("hhj-compact-v1:show-partial"),"false");
  panel.onclick({target:{closest(){return {dataset:{act:"partial"}};}}});
@@ -599,7 +599,7 @@ test("coverage toggle persists across a fresh userscript installation and never 
  const p=b.document.getElementById("hhj-compact-panel");
  p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
  assert.match(p.children[1].innerHTML,/OFF · Covered only/);
- assert.match(p.children[1].innerHTML,/No days meet this filter/);
+ assert.match(p.children[1].innerHTML,/No covered days/);
  assert.equal(a.storage.getItem("hhj-compact-v1:verification"),originalHistory);
  p.onclick({target:{closest(){return {dataset:{act:"partial"}}}}});
  assert.equal(b.storage.getItem("hhj-compact-v1:show-partial"),"true");
@@ -657,7 +657,7 @@ test("overlapping duplicate checkpoints cannot manufacture covered days",async()
  assert.match(html,/10-26 · Partial/);
  p.onclick({target:{closest(){return {dataset:{act:"partial"}}}}});
  html=p.children[1].innerHTML;
- assert.match(html,/No days meet this filter/);
+ assert.match(html,/No covered days/);
 });
 
 test("v0.10.0 opens a Just happened → Next action card on Today and Schedule",async()=>{
@@ -686,7 +686,7 @@ test("last snapshot gain is surfaced but never asserted as a precisely identifie
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
  assert.match(html,/Detected:/);
  assert.match(html,/strength/);
- assert.match(html,/Snapshot:/);
+ assert.match(html,/Snapshot interval change/);
  assert.match(html,/Just happened → Next action/);
  assert.match(html,/Next recommended:/);
 });
