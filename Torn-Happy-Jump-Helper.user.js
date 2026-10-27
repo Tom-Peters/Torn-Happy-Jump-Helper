@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.7.1
+// @version      0.7.2
 // @description  Compact CSP-safe TornPDA gym, Happy jump and book planner (read only)
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.1";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.2";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
  xanax:206,ecstasy:197,lollipop:310,dvd:366
@@ -25,8 +25,8 @@ const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";
 const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
-const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0};
-let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
+const CFG={budget:10000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{}};
+let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod=cfg.mode==="happy"?"happy":"auto",history=get("history",[]),verified=get("gyms",{}),start=Date.now()/1000;
 const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
  "used":raw===true?"used":raw===false?"ready":"unknown";
 const refill=()=>refillStatus(data.refills?.refills?.energy);
@@ -50,9 +50,29 @@ function gain(e,h,s,dots,cost=10,m=1){
 }
 function basket(item,n,stock=0){
  const buy=Math.max(0,n-stock);if(!buy)return 0;
- const rows=[...(prices[item]||[])].filter(x=>x.price>0&&x.amount>0).sort((a,b)=>a.price-b.price);
+ const rows=[...(prices[item]||[])].filter(x=>Number.isFinite(+x.price)&&+x.price>0&&+x.amount>0).sort((a,b)=>a.price-b.price);
  let remaining=buy,total=0;for(const r of rows){const take=Math.min(remaining,r.amount);remaining-=take;total+=take*r.price;if(!remaining)return total}
- return Infinity;
+ const manual=+cfg.manualPrices?.[item];return manual>0&&Number.isFinite(manual)?total+remaining*manual:Infinity;
+}
+function owned(name){return name==="points"?Math.max(0,+cfg.ownedPoints||0):Math.max(0,+inv[name]||0)}
+function needs(plan){return Object.entries(plan?.count||{}).filter(([,num])=>num>0).map(([name,num])=>({name,num,have:owned(name),missing:Math.max(0,num-owned(name)),price:basket(name,num,owned(name))}));}
+function gymEligible(g,b){
+ const n=String(g?.name||"").toLowerCase(),a=b.strength||0,v=b.speed||0,c=b.defense||0,d=b.dexterity||0;
+ if(n.includes("balboas"))return c+d>=1.25*(a+v);
+ if(n.includes("frontline"))return a+v>=1.25*(c+d);
+ if(n.includes("gym 3000"))return a>=1.25*Math.max(v,c,d);
+ if(n.includes("isoyamas"))return c>=1.25*Math.max(a,v,d);
+ if(n.includes("total rebound"))return v>=1.25*Math.max(a,c,d);
+ if(n==="elites")return d>=1.25*Math.max(a,v,c);
+ if(n.includes("sports science"))return false;
+ return true;
+}
+function sessionGain(g,k,e,h,b){return gain(e,h,b[k],(+g.modifiers?.[k]||0)/10,g.energy_cost||10,bonus(k));}
+function statAdvice(){
+ const b=stats(),g=gym(),e=energy().maximum||150,h=happy().maximum||5000;
+ if(!g||!ST.every(k=>b[k]>0))return null;
+ const baseline=ST.map(k=>({stat:k,current:b[k],gain:sessionGain(g,k,e,h,b)}));
+ return {balance:[...baseline].sort((x,y)=>x.current-y.current)[0],value:[...baseline].sort((x,y)=>y.gain-x.gain)[0]};
 }
 function loadInput(){
  const g=gym(),b=stats(),k=cfg.stat,bar=energy(),h=happy();
@@ -68,7 +88,7 @@ function simulate(method,input,hours=168){
  const events=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);
  let firstRefill=p.refill!=="ready",yday="",refilled=false,bank=0,stack=0,boosterCD=p.booster,cost=0,available=true;
  const add=(t,kind,detail,q=0,g=0)=>events.push({t,kind,detail,q,g});
- const bookCost=(name,n)=>name==="points"?basket("points",n,inv.points||0):basket(name,n,inv[name]||0);
+ const bookCost=(name,n)=>basket(name,n,owned(name));
  const afford=(name,num=1)=>{const newTotal=bookCost(name,count[name]+num),old=bookCost(name,count[name]);return Number.isFinite(newTotal)&&cost+newTotal-old<=cfg.budget};
  const use=(name,n)=>{const old=bookCost(name,count[name]);count[name]+=n;const next=bookCost(name,count[name]);cost+=next-old;};
  const train=(t,label)=>{const used=Math.floor(e/p.cost)*p.cost;if(!used)return;
@@ -94,7 +114,7 @@ function simulate(method,input,hours=168){
     if(jumps>0)continue;
     if(stack<3&&t>=nextDrug&&e<=750&&afford("xanax")){use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;
       nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/3",250)}
-    if(stack===3&&t>=nextDrug&&boosterCD===0&&t%900===60&&afford("lollipop",4)&&afford("ecstasy")){
+    if(stack===3&&t>=nextDrug&&boosterCD===0&&t%900===60&&afford("lollipop",4)&&afford("ecstasy")&&cost+Math.max(0,bookCost("lollipop",count.lollipop+4)-bookCost("lollipop",count.lollipop))+Math.max(0,bookCost("ecstasy",count.ecstasy+1)-bookCost("ecstasy",count.ecstasy))<=cfg.budget){
       use("lollipop",4);use("ecstasy",1);h=Math.min(99999,2*(h+4*25));jumps++;
       add(t,"JUMP","Use 4 lollipops, then Ecstasy, then train immediately · estimated Happy "+fmt(h));
       train(t,"Happy-jump gym training");
@@ -149,9 +169,9 @@ async function refresh(){
  updated=Date.now();const st=stats();
  if(Object.values(st).some(x=>x>0)){const today=day(Date.now()/1000),last=history[history.length-1];
    if(!last||last.d!==today){history.push({d:today,s:st});history=history.slice(-90);put("history",history)}}
- lastPlan=plans();busy=false;draw();
+ try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}busy=false;draw();
 }
-function save(){put("settings",cfg);lastPlan=plans();draw()}
+function save(){put("settings",cfg);try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}draw()}
 const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed;z-index:2147483646;inset:12% 8px 9% 8px;max-width:580px;margin:auto;background:#0b1726;border:2px solid #52d9c5;border-radius:15px;color:white;font:14px/1.4 system-ui;overflow:hidden;box-shadow:0 8px 50px #000c";
 const content=document.createElement("div");content.style.cssText="height:calc(100% - 60px);overflow:auto;padding:10px;overscroll-behavior:contain";
 const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;background:#182b42";
@@ -166,6 +186,40 @@ function mount(){if(!document.body)return;for(const el of [button,ui])if(!docume
  if(!document.getElementById("hhj-mini-css")){css.id="hhj-mini-css";(document.head||document.body).appendChild(css)}}
 function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
 function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
+function recommendation(){
+ const input=loadInput(),regular=(lastPlan||[]).filter(x=>x.method!=="happy"&&x.affordable&&x.gain>0)
+   .sort((a,b)=>b.gain-a.gain),jump=(lastPlan||[]).find(x=>x.method==="happy");
+ if(!input)return card("Training recommendation","Refresh live data to compare options.");
+ let out=regular.length?'<p><b>Best regular 7-day plan:</b> '+esc(regular[0].method)+
+  ' · +'+fmt(regular[0].gain)+' '+esc(input.stat)+' · '+cash(regular[0].cost)+
+  '</p><button data-act="choose" data-val="'+esc(regular[0].method)+'">Show regular schedule</button>':
+  '<p class="warn">Regular plan not fully priced or not possible within budget. Check Supplies.</p>';
+ if(jump?.jumps)out+='<p><b>One prepared Happy jump:</b> +'+fmt(jump.gain)+' '+esc(input.stat)+
+  ' · '+cash(jump.cost)+'</p><button data-act="choose" data-val="happy">Show Happy jump actions</button>';
+ else out+='<p class="warn">Happy jump unavailable with the current energy, cooldown, priced supplies or budget. Review Supplies before planning a jump.</p>';
+ out+='<p class="sub">These are different time horizons: regular = seven days, Happy jump = one preparation and train session. A Happy jump is not an automatic repeatable weekly gain.</p>';
+ return card("What should I do?",out,"hero");
+}
+function supplies(){
+ const list=lastPlan||plans(),chosen=list.find(x=>x.method===selectedMethod)||
+  list.find(x=>x.method==="xanax")||list[0];
+ let out=controls("Supply plan",selectedMethod==="auto"?"xanax":selectedMethod,
+  [["natural","Natural"],["xanax","Xanax"],["happy","Happy jump"]],"choose-supply");
+ if(!chosen)return out+card("Supplies unavailable","Refresh gym, stats and market data first.");
+ const rows=needs(chosen),missing=rows.filter(x=>x.missing>0&&!Number.isFinite(x.price));
+ out+=card("Forecast basket",'<p><b>'+esc(chosen.method.toUpperCase())+'</b> · '+fmt(chosen.energy)+
+  ' E trained · '+(Number.isFinite(chosen.cost)?cash(chosen.cost):"Price incomplete")+
+  ' against '+cash(cfg.budget)+' budget</p>'+
+  (rows.length?rows.map(x=>'<div class="row"><span>'+esc(x.name)+' × '+fmt(x.num)+
+   ' <small>(owned '+fmt(x.have)+', need '+fmt(x.missing)+')</small></span><b>'+
+   (Number.isFinite(x.price)?cash(x.price):"Price unavailable")+'</b></div>').join(""):
+   '<p>No items forecast for this scenario.</p>')+
+   (missing.length?'<p class="warn">Unknown market prices: '+esc(missing.map(x=>x.name).join(", "))+
+    '. No zero-cost assumptions; enter a manual price in Settings or refresh markets.</p>':
+    '<p class="sub">Cost is a purchasing estimate. Prices and inventory may be cached; owned points must be entered manually.</p>'));
+ out+=card("Source health",'<p>'+esc(errs.length?errs.join(" · "):"No API errors reported at last refresh.")+'</p>');
+ return out;
+}
 function today(){
  const p=loadInput(),a=activePlan(),next=a?.events.find(x=>x.t>=Date.now()/1000),
      current=stats();
@@ -183,8 +237,13 @@ function today(){
   '</div><p class="sub">'+(refillState==="used"?"No further refill is scheduled today. ":
   "Check Torn before spending points. ")+
   'API true means used; missing values never count as ready. Manual marks expire at UTC midnight.</p>');
+ out+=recommendation();
+ const advice=statAdvice();
+ if(advice)out+=card("Choose a stat",'<p><b>Balance your stats:</b> '+esc(advice.balance.stat)+' ('+fmt(advice.balance.current)+')</p><button data-act="stat" data-val="'+esc(advice.balance.stat)+'">Focus lowest stat</button>'+
+ '<p><b>Max gain in current gym:</b> '+esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+' per full energy bar)</p><button data-act="stat" data-val="'+esc(advice.value.stat)+'">Focus max-gain stat</button><p class="sub">These are separate goal strategies; the current focus remains your choice.</p>');
  if(a)out+=card("Projected seven-day training","<div class='row'><b>"+esc(a.method)+"</b><b class='good'>+"+fmt(a.gain)+" "+esc(cfg.stat)+"</b></div>"+
   "<p>"+cash(a.cost)+" budgeted · "+fmt(a.energy)+" energy trained · "+a.count.xanax+" Xanax</p><p class='sub'>"+esc(a.note)+"</p>");
+ out+='<div class="row"><button data-act="tab" data-val="supplies">Open shopping list and price diagnostics</button></div>';
  out+=card("Live snapshot",'<div class="row"><span>Energy</span><b>'+fmt(p.energy)+"/"+fmt(p.maxE)+'</b></div>'+
   '<div class="row"><span>Happy</span><b>'+fmt(p.happy)+"/"+fmt(p.maxH)+'</b></div>'+
   '<div class="row"><span>Drug cooldown</span><b>'+fmt(p.drug/60)+' min</b></div>'+
@@ -208,19 +267,29 @@ function plan(){
   (events.length>80?"<p class='sub'>Showing first 80 of "+events.length+" actions.</p>":"");
 }
 function gyms(){
- const g=gym(),all=data.gyms?.gyms||[],k=cfg.stat;let html=g?
- card("Active gym",esc(g.name)+" · "+((g.modifiers?.[k]||0)/10).toFixed(1)+" dots "+esc(k)):
- card("Gym unavailable","Refresh first");
- const eligible=all.filter(x=>x.id!==g?.id&&["owned","buy"].includes(verified[x.id])&&
-  (x.modifiers?.[k]||0)>(g?.modifiers?.[k]||0)).sort((a,b)=>b.modifiers[k]-a.modifiers[k]);
- html+=card("Better verified gyms",eligible.length?eligible.map(x=>"<p><b>"+esc(x.name)+"</b> · "+(x.modifiers[k]/10).toFixed(1)+
-  " dots · "+(verified[x.id]==="buy"?"Unlocked but not purchased ("+cash(x.cost)+")":"Owned")+"</p>").join(""):
-  "No better verified gym. Unseen or locked gyms are deliberately excluded.");
- if(/\/gym\.php$/.test(location.pathname||"")&&all.length)html+=card("Confirm visible gym",
-  '<p class="sub">Only confirm gyms that Torn currently shows unlocked on this page.</p><select id="hhj-gymlist">'+
-  all.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join("")+
-  '</select><button data-act="gym-owned">Owned</button><button data-act="gym-buy">Can buy</button>');
- else html+=card("Verify gym access","Open Torn's Gym page, reopen HJ, and confirm visible gym memberships. The full catalogue alone does not prove an unlock.");
+ const g=gym(),all=data.gyms?.gyms||[],k=cfg.stat,b=stats(),e=energy().maximum||150,h=happy().maximum||5000;
+ let html=g?card("Current gym",esc(g.name)+" · "+((g.modifiers?.[k]||0)/10).toFixed(1)+" dots "+esc(k)):
+ card("Gym unavailable","Refresh first.");
+ const baseline=g?sessionGain(g,k,e,h,b):0;
+ const eligible=all.filter(x=>x.id!==g?.id&&["owned","buy"].includes(verified[x.id])&&gymEligible(x,b))
+  .map(x=>({gym:x,change:baseline>0?100*(sessionGain(x,k,e,h,b)/baseline-1):0}))
+  .filter(x=>Number.isFinite(x.change)&&x.change>0.1).sort((a,b)=>b.change-a.change);
+ html+=card("Better verified gyms",eligible.length?eligible.map(x=>"<p><b>"+esc(x.gym.name)+"</b> · <b>+"+
+  x.change.toFixed(1)+"% estimated gains</b> per same energy · "+(verified[x.gym.id]==="buy"?
+   "Unlocked but not purchased ("+cash(x.gym.cost)+")":"Owned; switch manually")+"</p>").join(""):
+  "No better eligible, confirmed-access gym for this stat. Locked and unseen gyms are excluded.");
+ if(/\/gym\.php$/.test(location.pathname||"")&&all.length){
+  // Only offer names actually present in the visible Torn gym page; the catalogue
+  // alone cannot establish that a specialist or paid gym is unlocked.
+  const visibleText=String(document.body?.innerText||"").replace(String(ui.innerText||""),"");
+  const visible=all.filter(x=>String(x.name||"").length>3&&
+   visibleText.toLowerCase().includes(x.name.toLowerCase())&&!verified[x.id]);
+  html+=card("Confirm a gym shown on this page",visible.length?
+   '<p class="sub">Confirm only gyms you can currently access in Torn. A matching name in the page does not prove it is unlocked.</p><select id="hhj-gymlist">'+
+   visible.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join("")+
+   '</select><button data-act="gym-owned">Owned</button><button data-act="gym-buy">Unlocked, not purchased</button>':
+   "No unconfirmed gyms were detected from this page. Never confirm a locked or unavailable membership.");
+ }else html+=card("Verify gym access","Open Torn’s Gym page and confirm memberships that are shown as available. This helper will not recommend unseen/locked gyms.");
  return html;
 }
 function perks(){
@@ -249,15 +318,20 @@ function settings(){return card("Planner settings",
   '<label>Weekly budget <input id="hhj-budget" type="number" min="0" value="'+cfg.budget+'"></label>'+
   '<p><label><input id="hhj-refills" type="checkbox"'+(cfg.refills?" checked":"")+'> Compare daily points refills</label></p>'+
   '<p><label>Manual extra gym bonus % <input id="hhj-gymbonus" type="number" min="0" max="200" value="'+cfg.gymBonus+'"></label></p>'+
-  '<button data-act="save">Save settings</button><p class="sub">A budget is a preference, not verified cash on hand. Stats and history stay on this device.</p>')}
-const labels=[["today","Today"],["compare","Compare"],["plan","Plan"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["settings","Settings"]];
+  '<p><label>Points already owned <input id="hhj-points" type="number" min="0" value="'+(+cfg.ownedPoints||0)+'"></label></p>'+
+  '<p class="sub">Optional manual unit prices, used only when live market listings cannot cover your basket:</p>'+
+  ["points","xanax","ecstasy","lollipop","dvd"].map(k=>'<p><label>'+esc(k)+
+   ' price <input data-price="'+k+'" type="number" min="0" value="'+(+cfg.manualPrices?.[k]||0)+'"></label></p>').join("")+
+  '<button data-act="save">Save settings</button><p class="sub">Your $10m default budget is editable. Owned points and manual prices are local assumptions, not live Torn balances or guaranteed offers.</p>')}
+const labels=[["today","Today"],["compare","Compare"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["settings","Settings"]];
 function draw(){
  if(!opened)return;
- content.innerHTML='<nav class="tabs">'+labels.map(([k,v])=>
+ try{content.innerHTML='<nav class="tabs">'+labels.map(([k,v])=>
  '<button class="'+(k===tab?'on':'')+'" data-act="tab" data-val="'+k+'">'+v+'</button>').join("")+
  '</nav>'+(tab==="today"?today():tab==="compare"?compare():tab==="plan"?plan():
- tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():settings())+
+ tab==="supplies"?supplies():tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():settings())+
  '<p class="sub">IamEEKY · Forecast only · No automated Torn actions · v'+VER+'</p>';
+ }catch(e){content.innerHTML='<section class="card"><h3>Panel recovery</h3><p>Rendering failed: '+esc(e.message)+'</p><button data-act="refresh">Retry refresh</button></section>';}
  const tabs=content.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");
  if(tabs&&selected)tabs.scrollLeft=Math.max(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);
 }
@@ -271,6 +345,7 @@ ui.addEventListener("click",event=>{
  if(act==="stat"){cfg.stat=val;selectedMethod="auto";save()}
  if(act==="mode"){cfg.mode=val;selectedMethod=val==="happy"?"happy":"auto";save()}
  if(act==="choose"){selectedMethod=val;tab="plan";draw()}
+ if(act==="choose-supply"){selectedMethod=val;draw()}
  if(act==="horizon"){cfg.horizon=+val;save()}
  if(act==="mark-used"){put("used-day",day(Date.now()/1000));lastPlan=plans();draw()}
  if(act==="clear-refill"){put("used-day",null);lastPlan=plans();draw()}
@@ -280,7 +355,10 @@ ui.addEventListener("click",event=>{
  if(act==="save"){
   cfg.budget=Math.max(0,+content.querySelector("#hhj-budget")?.value||0);
   cfg.refills=!!content.querySelector("#hhj-refills")?.checked;
-  cfg.gymBonus=Math.min(200,Math.max(0,+content.querySelector("#hhj-gymbonus")?.value||0));save()}
+  cfg.gymBonus=Math.min(200,Math.max(0,+content.querySelector("#hhj-gymbonus")?.value||0));
+  cfg.ownedPoints=Math.max(0,+content.querySelector("#hhj-points")?.value||0);
+  cfg.manualPrices=Object.fromEntries(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
+    [k,Math.max(0,+content.querySelector('[data-price="'+k+'"]')?.value||0)]));save()}
 });
 mount();document.addEventListener?.("DOMContentLoaded",mount,{once:true});
 window.setInterval(()=>{mount();},5000);
