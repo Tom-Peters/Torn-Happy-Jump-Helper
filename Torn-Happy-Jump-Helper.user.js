@@ -374,7 +374,7 @@ const latest=recent[recent.length-1],lastGain=[...recent].reverse().find(x=>(x.o
 '<p>Open HJ to set a baseline, then reopen after training to record stat changes.</p>';html+='<p class="sub">Daily totals use UTC refresh dates. Days without a recorded change are not assumed to have zero activity.</p>'+
 Object.entries(daily).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,x])=>
 '<div class="row"><b>'+esc(date)+'</b><small>'+x.changed+' gain checks / '+x.n+' total · '+
-ST.map(k=>k.slice(0,3)+': '+fmt(x.real[k])).join(' · ')+'</small></div>').join('');return gainsChart(daily)+card("Observed stat gains · last seven days",html+
+ST.map(k=>k.slice(0,3)+': '+fmt(x.real[k])).join(' · ')+'</small></div>').join('');return actionFlow(activePlan())+gainsChart(daily)+card("Observed stat gains · last seven days",html+
 '<button data-act="clearverification">Clear rolling history</button>');}
 function progress(){
 const st=stats(),regular=(lastPlan||[]).filter(x=>!x.method.startsWith("happy")&&x.affordable)
