@@ -1,0 +1,378 @@
+// ==UserScript==
+// @name         Torn Happy Jump Helper (v0.9.7 previous chart build)
+// @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#archive-0.9.7
+// @version      0.9.7
+// @description  TornPDA stable launcher recovery; full-screen read-only training planner
+// @author       IamEEKY
+// @match        https://www.torn.com/*
+// @match        https://torn.com/*
+// @run-at       document-end
+// @grant        none
+// ==/UserScript==
+(function(){
+"use strict";const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.7";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(window.__TornHappyJumpBooting===VER)return;window.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
+xanax:206,ecstasy:197,lollipop:310,dvd:366
+};const fmt=n=>Number.isFinite(n)?Math.round(n).toLocaleString("en-US"):"—";const cash=n=>Number.isFinite(n)?"$"+fmt(n):"Price unknown";const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const compactUtc=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Math.floor(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,manualPrices:{},sleepEnabled:true,sleepStart:"22:00",sleepEnd:"08:00"};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lastPlan=null,selectedMethod="auto",history=get("history",[]),verified=get("gyms",{}),ledger=get("verification",[]),rolling=get("rolling-plan",null),showPartial=get("show-partial",true),start=Date.now()/1000;const refillStatus=(raw,t=Date.now()/1000)=>get("used-day",null)===day(t)?
+"used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>refillStatus(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Object.fromEntries(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}
+function mins(v,back){return validClock(v)?Number(v.slice(0,2))*60+Number(v.slice(3)):back}
+function sleeping(t){
+if(!cfg.sleepEnabled)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),m=d.getHours()*60+d.getMinutes();return a<b?m>=a&&m<b:m>=a||m<b;}
+function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" local":"Disabled"}
+
+function gymDots(raw){
+const dots=Number(raw);if(!Number.isFinite(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}
+const perkRows=()=>Object.entries(data.perks?.perks||{}).flatMap(([type,entries])=>
+(Array.isArray(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));const bonus=stat=>perkRows().reduce((n,r)=>{
+const d=r.description, p=+(d.match(/(\d+(?:\.\d+)?)\s*%/)||[])[1];const scoped=d.match(/\b(strength|speed|defen[cs]e|dexterity)\b/i)?.[1]?.toLowerCase().replace("defence","defense");return n+(p>0&&p<=200&&/gym.{0,12}gains?|gains?.{0,12}gym/i.test(d)&&!/decreas|reduc|lower|penalty/i.test(d)&&(!scoped||scoped===stat)?p/100:0);},1+Math.max(0,+cfg.gymBonus||0)/100);function gain(e,h,s,dots,cost=10,m=1){
+let steps=Math.floor(e/cost),sum=0,ss=s,hh=h;while(steps-->0){const g=Math.max(0,((3.480061091e-7*Math.log(hh+250)+3.091619094e-6)*ss+
+6.82775184551527e-5*(hh+250)-0.0301431777)*dots*cost*m);sum+=g;ss+=g;hh=Math.max(0,hh-cost*0.5)}
+return sum;}
+function basket(item,n,stock=0){
+const buy=Math.max(0,n-stock);if(!buy)return 0;const rows=[...(prices[item]||[])].filter(x=>Number.isFinite(+x.price)&&+x.price>0&&+x.amount>0).sort((a,b)=>a.price-b.price);let remaining=buy,total=0;for(const r of rows){const take=Math.min(remaining,r.amount);remaining-=take;total+=take*r.price;if(!remaining)return total}
+const manual=+cfg.manualPrices?.[item];return manual>0&&Number.isFinite(manual)?total+remaining*manual:Infinity;}
+
+function jumpKit(method="happy"){
+const required=method==="happy-candy"?{xanax:4,lollipop:48,ecstasy:1}:{xanax:4,dvd:4,ecstasy:1};const entries=Object.entries(required).map(([name,num])=>({
+name,num,have:owned(name),missing:Math.max(0,num-owned(name)),price:basket(name,num,owned(name))
+}));const total=entries.reduce((sum,x)=>sum+x.price,0);return {entries,total,available:Number.isFinite(total)&&total<=cfg.budget};}
+function kitAffordable(){return jumpKit().available}
+function owned(name){return name==="points"?Math.max(0,+cfg.ownedPoints||0):Math.max(0,+inv[name]||0)}
+function needs(plan){return Object.entries(plan?.count||{}).filter(([,num])=>num>0).map(([name,num])=>({name,num,have:owned(name),missing:Math.max(0,num-owned(name)),price:basket(name,num,owned(name))}));}
+function gymEligible(g,b){
+const n=String(g?.name||"").toLowerCase(),a=b.strength||0,v=b.speed||0,c=b.defense||0,d=b.dexterity||0;if(n.includes("balboas"))return c+d>=1.25*(a+v);if(n.includes("frontline"))return a+v>=1.25*(c+d);if(n.includes("gym 3000"))return a>=1.25*Math.max(v,c,d);if(n.includes("isoyamas"))return c>=1.25*Math.max(a,v,d);if(n.includes("total rebound"))return v>=1.25*Math.max(a,c,d);if(n==="elites")return d>=1.25*Math.max(a,v,c);if(n.includes("sports science"))return false;return true;}
+function sessionGain(g,k,e,h,b){return gain(e,h,b[k],gymDots(g.modifiers?.[k]),g.energy_cost||10,bonus(k));}
+function statAdvice(){
+const b=stats(),g=gym(),e=energy().maximum||150,h=happy().maximum||5000;if(!g||!ST.every(k=>b[k]>0))return null;const baseline=ST.map(k=>({stat:k,current:b[k],gain:sessionGain(g,k,e,h,b)}));return {balance:[...baseline].sort((x,y)=>x.current-y.current)[0],value:[...baseline].sort((x,y)=>y.gain-x.gain)[0]};}
+function loadInput(){
+const g=gym(),b=stats(),k=cfg.stat,bar=energy(),h=happy();if(!g||!(b[k]>0)||!(gymDots(g.modifiers?.[k])>0)||!(h.maximum>0))return null;return {gym:g,stat:k,value:b[k],dots:gymDots(g.modifiers[k]),cost:g.energy_cost||10,energy:bar.current||0,maxE:bar.maximum||150,regen:bar.interval||120,inc:bar.increment||1,happy:h.current||h.maximum,maxH:h.maximum,drug:cd().drug||0,booster:cd().booster||0,m:bonus(k),refill:refill(),now:Date.now()/1000};}
+function simulate(method,input,hours=168){
+const p=input,now=Math.ceil(p.now/60)*60,until=now+3600*hours,cap=p.maxE;let e=p.energy,h=p.happy,stat=p.value,nextDrug=now+p.drug,spent=0,gainTotal=0,trainedE=0,regenLost=0,sleepLost=0,drugCount=0,jumps=0;const events=[],losses=[],count={xanax:0,ecstasy:0,lollipop:0,dvd:0,points:0},day0=day(now);const kitOk=!method.startsWith("happy")||jumpKit(method).available;let firstRefill=p.refill!=="ready",yday="",refilled=false,bank=0,stack=0,boosterCD=p.booster,cost=0,available=true;const add=(t,kind,detail,q=0,g=0,spent=0)=>events.push({t,kind,detail,q,g,spent});const bookCost=(name,n)=>basket(name,n,owned(name));const afford=(name,num=1)=>{const newTotal=bookCost(name,count[name]+num),old=bookCost(name,count[name]);return Number.isFinite(newTotal)&&cost+newTotal-old<=cfg.budget};const use=(name,n)=>{const old=bookCost(name,count[name]);count[name]+=n;const next=bookCost(name,count[name]);const paid=next-old;cost+=paid;return paid;};const train=(t,label)=>{const used=Math.floor(e/p.cost)*p.cost;if(!used)return;const g=gain(used,h,stat,p.dots,p.cost,p.m);e-=used;h=Math.max(0,h-used*.5);stat+=g;gainTotal+=g;trainedE+=used;add(t,"TRAIN",label+" · "+used+" E · +"+fmt(g)+" "+p.stat,used,g)};for(let t=now;t<until;t+=60){
+const asleep=sleeping(t),preBed=!asleep&&sleeping(t+60),wake=t>now&&!asleep&&sleeping(t-60);const d=day(t);if(d!==yday){yday=d;refilled=d===day0?firstRefill:false}
+if(t>now){bank+=60;boosterCD=Math.max(0,boosterCD-60);while(bank>=p.regen){bank-=p.regen;if(e<cap)e=Math.min(cap,e+p.inc);else {regenLost+=p.inc;if(asleep)sleepLost+=p.inc;losses.push({t,q:p.inc,asleep})}}
+}
+if(t%900===0){h=h>p.maxH?p.maxH:Math.min(p.maxH,h+5)}
+if(asleep)continue;if(method==="natural"||method==="xanax"){
+if(preBed&&e>=p.cost)train(t,"Train before bed to reduce overnight regeneration waste");if(wake&&e>=p.cost)train(t,"Train after waking to free energy capacity");if(method==="xanax"&&t>=nextDrug&&e<=750&&afford("xanax")){const paid=use("xanax",1);drugCount++;e=Math.min(1000,e+250);h+=75;nextDrug=t+7*3600;add(t,"XANAX","Take Xanax manually; estimated +250 E",250,0,paid);train(t,"Train after Xanax")}
+else if(e>=cap)train(t,"Train naturally regenerated energy");if(cfg.refills&&!refilled&&e<cap&&afford("points",30) ){
+if(e>=p.cost)train(t,"Train before available daily point refill");const restored=cap-e,paid=use("points",30);refilled=true;e=cap;add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,restored,0,paid);train(t,"Train refilled energy");}
+}else if(method==="happy"||method==="happy-candy"){
+if(jumps>0||!kitOk)continue;if(stack===0&&(preBed||wake)&&e>=p.cost)train(t,preBed?"Train before bed":"Train after waking");if(stack===0&&t>=nextDrug&&e>=p.cost)train(t,"Train current energy immediately before starting Xanax stack");if(stack<4&&t>=nextDrug&&e<=760){const paid=use("xanax",1);stack++;e=Math.min(1000,e+250);h+=75;nextDrug=t+7*3600;add(t,"XANAX","Stack Xanax "+stack+"/4; wait for drug cooldown",250,0,paid)}
+if(stack===4&&t>=nextDrug&&boosterCD===0&&t%900===60){
+const candy=method==="happy-candy";const paidBoost=candy?use("lollipop",48):use("dvd",4);const paidEcstasy=use("ecstasy",1);h=Math.min(99999,2*(h+(candy?48*25:4*2500)));boosterCD=24*3600;jumps++;add(t,"JUMP","Use "+(candy?"48 lollipops":"four Erotic DVDs")+" consecutively, then Ecstasy; train before the next 15-minute happiness reset · estimated Happy "+fmt(h),0,0,paidBoost+paidEcstasy);train(t,"Happy-jump gym training");}
+}
+}
+return {method,events,losses,gain:gainTotal,cost,energy:trainedE,lost:regenLost,sleepLost,drugs:drugCount,jumps,count,start:now,end:until,affordable:cost<=cfg.budget&&Number.isFinite(cost),note:method.startsWith("happy")?"Single prepared Happy jump only; not a reliable repeated weekly forecast":
+"Assumes every manual action happens on time and future Xanax cooldowns are 7 hours"};}
+function plans(){const p=loadInput();if(!p)return [];return ["natural","xanax","happy-candy","happy"].map(k=>simulate(k,p));}
+function summary(p,hours=168,now=null){
+if(!p)return null;const start=now??p.start,end=start+hours*3600;const events=p.events.filter(x=>x.t>=start&&x.t<end),losses=(p.losses||[]).filter(x=>x.t>=start&&x.t<end);return {hours,events,lost:losses.reduce((n,x)=>n+x.q,0),sleepLost:losses.filter(x=>x.asleep).reduce((n,x)=>n+x.q,0),gain:events.reduce((v,x)=>v+(x.g||0),0),energy:events.filter(x=>x.kind==="TRAIN").reduce((v,x)=>v+(x.q||0),0),cost:events.reduce((v,x)=>v+(x.spent||0),0),trains:events.filter(x=>x.kind==="TRAIN").length,refills:events.filter(x=>x.kind==="REFILL").length,xanax:events.filter(x=>x.kind==="XANAX").length,jumps:events.filter(x=>x.kind==="JUMP").length};}
+function trainEstimate(p,e=p.cost){return gain(Math.floor(e/p.cost)*p.cost,p.happy,p.value,p.dots,p.cost,p.m)}
+
+function activePlan(){
+const list=lastPlan||[];if(!list.length)return null;if(selectedMethod!=="auto"){
+const choice=list.find(x=>x.method===selectedMethod);if(choice)return choice;}
+const feasible=list.filter(x=>x.affordable&&(!x.method.startsWith("happy")||x.jumps>0));const choices=feasible.filter(x=>cfg.mode==="happy"?x.method.startsWith("happy"):!x.method.startsWith("happy"));return choices.sort((a,b)=>b.gain-a.gain)[0]||feasible.find(x=>x.method==="natural")||list[0];}
+function projection(s,g){return [50000000,100000000,200000000,1000000000].map(goal=>{
+let value=s,weeks=0;while(value<goal&&weeks<5200){value+=Math.max(0,g*(1+Math.max(0,value-s)*0.00000002));weeks++}
+return {goal,weeks:value>=goal?weeks:null,spend:value>=goal?weeks*(activePlan()?.cost||0):null};})}
+async function api(path){
+if(KEY.includes("PDA-APIKEY"))throw Error("TornPDA did not substitute its API key");const url=BASE+path,headers={Authorization:"ApiKey "+KEY,Accept:"application/json"};const r=typeof PDA_httpGet==="function"?await PDA_httpGet(url,headers):
+await window.flutter_inappwebview.callHandler("PDA_httpGet",url,headers);if(r.status!==200)throw Error("HTTP "+r.status);const body=JSON.parse(r.responseText);if(body.error)throw Error("Torn error "+body.error.code);return body;}
+async function refresh(){
+if(busy)return;busy=true;errs=[];draw();const paths={bars:"/user/bars",cooldowns:"/user/cooldowns",stats:"/user/battlestats",gym:"/user/gym",gyms:"/torn/gyms",refills:"/user/refills",perks:"/user/perks"};for(const [k,id] of Object.entries(ITEMS))paths["m_"+k]="/market/"+id+"/itemmarket?limit=100";paths.m_points="/market/pointsmarket";let next={};inv={};prices={};const jobs=Object.entries(paths);let index=0;const worker=async()=>{while(index<jobs.length){const [name,path]=jobs[index++];try{
+const v=await api(path);if(name.startsWith("m_"))prices[name.slice(2)]=name==="m_points"?
+(v.pointsmarket||[]).map(x=>({price:x.cost,amount:x.quantity})):
+v.itemmarket?.listings||[];else next[name]=v;}catch(err){errs.push(name+": "+String(err.message).slice(0,70))}}};await Promise.all([worker(),worker(),worker()]);data=next;let allInventory=null;for(const cat of ["Drug","Candy","Book","Booster"]){try{
+let items;try{items=(await api("/user/inventory?cat="+cat+"&limit=250")).inventory?.items}
+catch(e){
+if(!/\b21\b/.test(String(e.message)))throw e;try{items=(await api("/user/inventory?cat="+cat.toLowerCase()+"&limit=250")).inventory?.items}
+catch(e2){
+if(!/\b21\b/.test(String(e2.message)))throw e2;if(!allInventory){
+allInventory=[];for(let offset=0;offset<2000;offset+=250){
+const page=(await api("/user/inventory?limit=250&offset="+offset)).inventory?.items;if(!Array.isArray(page))throw Error("Unfiltered inventory unavailable");allInventory.push(...page);if(page.length<250)break;if(offset===1750)throw Error("Inventory exceeds safe page limit");}
+}
+const ids=cat==="Drug"?[206,197]:cat==="Candy"?[310]:cat==="Booster"?[366]:[];items=allInventory.filter(x=>cat==="Book"?(x.id>=744&&x.id<=787):ids.includes(x.id));errs.push("Inventory "+cat+": category 21; unfiltered fallback used");}
+}
+if(!Array.isArray(items))throw Error("Missing inventory items");if(cat==="Book")data.books=items;else for(const row of items)for(const [name,id] of Object.entries(ITEMS))
+if(row.id===id&&!row.faction_owned)inv[name]=(inv[name]||0)+(+row.amount||0);}catch(e){if(cat==="Book")data.books=null;errs.push("Inventory "+cat+": "+String(e.message).slice(0,70))}}
+updated=Date.now();const st=stats();if(Object.values(st).some(x=>x>0)){const today=day(Date.now()/1000),last=history[history.length-1];if(!last||last.d!==today){history.push({d:today,s:st});history=history.slice(-90);put("history",history)}}
+let checkpointed=false;try{checkpointed=checkpoint(st)}catch(e){errs.push("Verification: "+String(e.message).slice(0,70))}
+try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}
+if(checkpointed&&rolling){
+const p=activePlan();rolling.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));rolling.method=p?.method||"none";const g=gym(),h=happy();rolling.gymId=g?.id??null;rolling.single=g?Object.fromEntries(ST.map(k=>[k,sessionGain(g,k,g.energy_cost||10,h.current??h.maximum??0,st)])):null;put("rolling-plan",rolling);}
+busy=false;draw();}
+function save(){put("settings",cfg);try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}draw()}
+const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed!important;z-index:2147483647!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;background:#091622;color:#f4f8fb;font:14px/1.5 system-ui;overflow:hidden;box-sizing:border-box;border:0!important;box-shadow:none!important";const content=document.createElement("div");content.style.cssText="height:calc(100% - 62px);overflow-y:auto;overflow-x:hidden;padding:12px 14px 30px;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch";const header=document.createElement("div");header.style.cssText="height:62px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;background:#12283b;border-bottom:1px solid #355568";header.innerHTML="<b>⚡ HAPPY JUMP</b><span class='sub'>READ ONLY · v"+VER+"</span><button type='button' data-act='close' aria-label='Close Happy Jump Helper'>✕</button>";ui.append(header,content);const button=document.createElement("button");button.id="hhj-launch";button.textContent="HJ ◉";button.type="button";button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483645!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";const launcherStyle=button.style.cssText;function showLauncher(visible){
+const desired=launcherStyle.replace("display:block!important","display:"+(visible?"block":"none")+"!important");button.style.cssText=desired;const mounted=document.getElementById("hhj-launch");if(mounted&&mounted!==button)mounted.style.cssText=desired;const duplicates=document.querySelectorAll?.('[id="hhj-launch"]')||[];for(const el of duplicates)if(el!==button&&el!==mounted){
+if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}
+if(!visible){
+const otherLaunchers=document.querySelectorAll?.("button")||[];for(const el of otherLaunchers){
+if(el===button||ui.contains?.(el))continue;if(el.id==="hhj-launch"||/^HJ\s*[◉⦿]/i.test(String(el.textContent||"").trim())){
+if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}
+}
+}
+}
+const css=document.createElement("style");css.textContent="#hhj-compact-panel button,#hhj-compact-panel select,#hhj-compact-panel input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}#hhj-compact-panel button.on{background:#087e74;border-color:#4be6cf}#hhj-compact-panel button:disabled{opacity:.45}#hhj-compact-panel .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}#hhj-compact-panel .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}#hhj-compact-panel .card{background:#172a40;border:1px solid #426078;border-radius:12px;margin:9px 0;padding:12px}#hhj-compact-panel .hero{border-color:#58decc}#hhj-compact-panel .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}#hhj-compact-panel .choices{justify-content:flex-start;gap:8px}#hhj-compact-panel .choices button{min-width:90px}#hhj-compact-panel .sub{opacity:.75;font-size:12px}#hhj-compact-panel h3{margin:6px 0 12px;font-size:16px}#hhj-compact-panel .good{color:#86f1d7}#hhj-compact-panel .warn{color:#ffd598}";css.textContent+=""+
+"#hhj-compact-panel{box-sizing:border-box!important}"+
+"#hhj-compact-panel .card{margin:10px 0;padding:13px 14px;background:#142a3c;border-color:#304e65}"+
+"#hhj-compact-panel .hero{border-color:#1dd6cb;background:#133546}"+
+"#hhj-compact-panel .tabs{margin:-12px -14px 14px;padding:10px 14px 12px;top:0;border-bottom:1px solid #24465b;scrollbar-width:none}"+
+"#hhj-compact-panel .tabs button{min-height:42px}"+
+"#hhj-compact-panel .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}"+
+"#hhj-compact-panel .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin:10px 0}"+
+"#hhj-compact-panel .metric-grid>div{background:#0e2332;border:1px solid #304a5c;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0}"+
+"#hhj-compact-panel .metric-grid span{font-size:12px;color:#acc3d0}"+
+"#hhj-compact-panel .metric-grid strong{font-size:clamp(17px,4vw,25px);line-height:1.2;color:#8cf1df;overflow-wrap:anywhere}"+
+"#hhj-compact-panel .metric-grid small{color:#b8c8d4;font-size:11px}"+
+"#hhj-compact-panel .timeline-row{display:grid;grid-template-columns:95px 70px minmax(0,1fr);gap:7px;align-items:start;padding:10px 8px;border-bottom:1px solid #324a5a}"+
+"#hhj-compact-panel .timeline-row span{overflow-wrap:anywhere}"+
+"#hhj-compact-panel .timeline-row small{grid-column:3;font-size:11px;color:#8cf1df}"+
+"#hhj-compact-panel .day-header{position:sticky;top:62px;background:#0d2333;padding:12px;margin:14px -14px 0;z-index:1}"+
+"#hhj-compact-panel button{min-height:41px;touch-action:manipulation}"+
+"#hhj-compact-panel .choices{gap:6px}"+
+"#hhj-compact-panel .choices button{min-width:0}"+
+"#hhj-compact-panel .row>*{min-width:0;overflow-wrap:anywhere}"+
+"#hhj-compact-panel .alert{padding:10px;border-left:3px solid #59e7d7;background:#173444;border-radius:7px}"+
+"@media(max-width:380px){#hhj-compact-panel .timeline-row{grid-template-columns:83px 58px minmax(0,1fr)}#hhj-compact-panel .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}";function mount(){
+if(!document.body)return;for(const el of [button,ui]){
+const previous=document.getElementById(el.id);if(previous&&previous!==el&&typeof previous.replaceWith==="function")previous.replaceWith(el);else if(!previous)document.body.appendChild(el);}
+const priorStyle=document.getElementById("hhj-mini-css");if(!priorStyle){css.id="hhj-mini-css";(document.head||document.body).appendChild(css)}
+else if(priorStyle!==css&&priorStyle.textContent!==css.textContent)priorStyle.textContent=css.textContent;if(opened)showLauncher(false);}
+function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
+function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
+function readGymResult(){
+if(!/\/gym\.php$/.test(location.pathname||""))return null;const root=document.querySelector?.("#gymroot")||document.body;const visible=String(root?.innerText||"");const pattern=/\bYou gained\s+([\d,.]+)\s+(strength|defense|speed|dexterity)\b/gi;let found=null,match;while((match=pattern.exec(visible)))found=match;if(!found)return null;const amount=Number(found[1].replace(/,/g,""));return Number.isFinite(amount)&&amount>0?{stat:found[2].toLowerCase(),amount}:null;}
+function actualComparison(observed){
+if(!observed)return "";const g=gym(),st=stats(),bar=happy(),s=observed.stat;if(!g||!(st[s]>0)||!(gymDots(g.modifiers?.[s])>0))return "";const predicted=gain(g.energy_cost||10,bar.current??bar.maximum??0,st[s],gymDots(g.modifiers[s]),g.energy_cost||10,bonus(s));const diff=predicted>0?100*(observed.amount/predicted-1):null;const dec=x=>Number(x).toLocaleString("en-GB",{maximumFractionDigits:2,minimumFractionDigits:0});return card("Compare with Torn's latest visible train",'<p class="sub">Training result detected on the current Gym page. This is an observed result, not an API forecast.</p>'+
+'<div class="metric-grid"><div><span>Torn awarded</span><strong>+'+dec(observed.amount)+'</strong><small>'+esc(s)+'</small></div>'+
+'<div><span>Model estimates now</span><strong>+'+dec(predicted)+'</strong><small>'+fmt(g.energy_cost||10)+' energy</small></div>'+
+'<div><span>Observed vs model</span><strong>'+(diff===null?"—":(diff>=0?"+":"")+diff.toFixed(1)+"%")+
+'</strong><small>Perks, timing, happiness and randomness affect differences</small></div></div>'+
+'<p class="sub">The forecast uses current stats/happiness, which may already have changed since that train. Do not treat one result as an exact calibration.</p>');}
+function statMatrix(){
+const g=gym(),bar=energy(),h=happy(),statValues=stats(),all=[];if(!g)return [];for(const stat of ST){
+if(!(statValues[stat]>0)||!(gymDots(g.modifiers?.[stat])>0))continue;const inp={gym:g,stat,value:statValues[stat],dots:gymDots(g.modifiers[stat]),cost:g.energy_cost||10,energy:bar.current||0,maxE:bar.maximum||150,regen:bar.interval||120,inc:bar.increment||1,happy:h.current||h.maximum,maxH:h.maximum,drug:cd().drug||0,booster:cd().booster||0,m:bonus(stat),refill:refill(),now:Date.now()/1000};const options=["natural","xanax"].map(method=>simulate(method,inp));const best=options.filter(x=>x.affordable).sort((a,b)=>b.gain-a.gain)[0]||options[0];all.push({stat,perTrain:trainEstimate(inp),daily:summary(best,24),weekly:summary(best,168),method:best.method});}
+return all;}
+function recommendation(){
+const input=loadInput(),regular=(lastPlan||[]).filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable&&x.gain>0)
+.sort((a,b)=>b.gain-a.gain),jumps=(lastPlan||[]).filter(x=>x.method.startsWith("happy")&&x.jumps===1);const natural=(lastPlan||[]).find(x=>x.method==="natural"&&x.affordable);if(!input)return card("Training recommendation","Refresh live data to compare options.");let out='<p class="sub"><b>Weekly spending limit: '+cash(cfg.budget)+'</b> · Based on your saved setting. Change under Settings.</p>';out+=regular.length?'<p><b>Best regular 7-day plan:</b> '+esc(regular[0].method)+
+' · +'+fmt(regular[0].gain)+' '+esc(input.stat)+' · '+cash(regular[0].cost)+
+'</p><button data-act="choose" data-val="'+esc(regular[0].method)+'">Show regular schedule</button>':
+'<p class="warn">Regular plan not fully priced or not possible within budget. Check Supplies.</p>';if(regular.length){
+const best=regular[0],spendShare=cfg.budget>0?Math.round(best.cost/cfg.budget*100):0;out+='<p class="sub">Estimated spend: '+spendShare+'% of your weekly limit. '+fmt(best.energy)+' energy trained. Forecast assumes precise manual timing.</p>';}
+if(natural&&regular[0]?.method!=="natural"){
+out+='<p><b>Lower-cost option — Natural:</b> +'+fmt(natural.gain)+' '+esc(input.stat)+
+' · '+cash(natural.cost)+'</p><button data-act="choose" data-val="natural">Show natural schedule</button>';}
+for(const method of ["happy-candy","happy"]){
+const jump=jumps.find(x=>x.method===method),kit=jumpKit(method);const name=method==="happy-candy"?"Budget candy jump":"eDVD Happy jump";if(jump)out+='<p><b>'+name+':</b> +'+fmt(jump.gain)+' '+esc(input.stat)+
+' · '+cash(jump.cost)+'</p><button data-act="choose" data-val="'+method+'">Show '+name+' schedule</button>';else out+='<p class="sub">'+name+': not affordable or fully priced (kit '+
+(Number.isFinite(kit.total)?cash(kit.total):"cost unknown")+'; budget '+cash(cfg.budget)+
+'). <button data-act="tab" data-val="supplies">Check supplies</button></p>';}
+out+='<p class="sub">These are different time horizons: regular = seven days, Happy jump = one preparation and train session. A Happy jump is not an automatic repeatable weekly gain.</p>';return card("What should I do?",out,"hero");}
+function supplies(){
+const list=lastPlan||plans(),chosen=list.find(x=>x.method===selectedMethod)||
+list.find(x=>x.method==="xanax")||list[0];let out=controls("Supply plan",selectedMethod==="auto"?"xanax":selectedMethod,[["natural","Natural"],["xanax","Xanax"],["happy-candy","Candy jump"],["happy","eDVD jump"]],"choose-supply");if(!chosen)return out+card("Supplies unavailable","Refresh gym, stats and market data first.");const rows=needs(chosen),missing=rows.filter(x=>x.missing>0&&!Number.isFinite(x.price));out+=card("Forecast basket",'<p><b>'+esc(chosen.method.toUpperCase())+'</b> · '+fmt(chosen.energy)+
+' E trained · '+(Number.isFinite(chosen.cost)?cash(chosen.cost):"Price incomplete")+
+' against '+cash(cfg.budget)+' budget</p>'+
+(rows.length?rows.map(x=>'<div class="row"><span>'+esc(x.name)+' × '+fmt(x.num)+
+' <small>(owned '+fmt(x.have)+', need '+fmt(x.missing)+')</small></span><b>'+
+(Number.isFinite(x.price)?cash(x.price):"Price unavailable")+'</b></div>').join(""):
+'<p>No items forecast for this scenario.</p>')+
+(missing.length?'<p class="warn">Unknown market prices: '+esc(missing.map(x=>x.name).join(", "))+
+'. No zero-cost assumptions; enter a manual price in Settings or refresh markets.</p>':
+'<p class="sub">Cost is a purchasing estimate. Prices and inventory may be cached; owned points must be entered manually.</p>'));for(const method of ["happy-candy","happy"]){
+const kit=jumpKit(method),candy=method==="happy-candy";out+=card(candy?"Budget candy-jump kit":"eDVD Happy-jump kit",'<p><b>'+(candy?"4 Xanax + 48 lollipops + 1 Ecstasy":"4 Xanax + 4 Erotic DVDs + 1 Ecstasy")+
+'</b> (base 24-hour booster capacity).</p>'+
+kit.entries.map(x=>'<div class="row"><span>'+esc(x.name)+' × '+fmt(x.num)+
+' (owned '+fmt(x.have)+', need '+fmt(x.missing)+')</span><b>'+
+(Number.isFinite(x.price)?cash(x.price):"Market price missing")+'</b></div>').join("")+
+'<div class="row"><b>Kit purchases</b><b>'+(Number.isFinite(kit.total)?cash(kit.total):"Incomplete prices")+'</b></div>'+
+'<p class="'+(kit.available?"good":"warn")+'">'+(kit.available?
+"Within budget for the required items. Actual cooldowns, the happiness reset and overdose risk still apply.":
+"Insufficient budget or unknown price; no complete jump recommended.")+
+'</p><p class="sub">Assumes stacking from near-empty energy. Use boosters consecutively only when cooldown permits, followed by Ecstasy and training before the next 15-minute happiness reset. Extra booster capacity and special item effects are not modeled.</p>');}
+out+=card("Source health",'<p>'+esc(errs.length?errs.join(" · "):"No API errors reported at last refresh.")+'</p>');return out;}
+function today(){
+const p=loadInput(),a=activePlan(),next=a?.events.find(x=>x.t>=Date.now()/1000);let out='<div class="toolbar"><b>MAX GAINS · '+esc(cfg.stat.toUpperCase())+'</b>'+
+'<button data-act="refresh"'+(busy?' disabled':'')+'>'+(busy?'Refreshing…':'↻ Refresh data')+'</button></div>'+
+'<p class="sub">'+(updated?'Last refreshed '+new Date(updated).toLocaleTimeString("en-GB"):
+'No API refresh yet')+' · All gains and schedules are estimates.</p>';out+=controls("Training type",cfg.mode,[["training","Regular"],["happy","Happy jump"]],"mode");out+=controls("Target stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");if(!p){
+out+=card("Live training data required","Refresh to load your current stats, active gym, energy and cooldowns.");if(errs.length)out+=card("API diagnostics",errs.map(x=>'<p>'+esc(x)+'</p>').join(""));return out;}
+const window24=summary(a,24),window7=summary(a,168),single=trainEstimate(p);const fullE=Math.floor(p.energy/p.cost)*p.cost,barGain=trainEstimate(p,fullE),isAsleep=sleeping(Date.now()/1000);out+=card("Your training numbers",'<div class="metric-grid">'+
+'<div><span>Per gym train</span><strong>+'+fmt(single)+'</strong><small>'+p.cost+' E at live happiness</small></div>'+
+'<div><span>Train current '+fmt(fullE)+' E</span><strong>+'+fmt(barGain)+'</strong><small>'+fmt(p.energy)+'/'+fmt(p.maxE)+' E available</small></div>'+
+'<div><span>Next 24 hours</span><strong>+'+fmt(window24?.gain??NaN)+'</strong><small>'+fmt(window24?.energy??NaN)+' E · '+cash(window24?.cost)+'</small></div>'+
+'<div><span>Next 7 days</span><strong>+'+fmt(window7?.gain??NaN)+'</strong><small>'+fmt(window7?.energy??NaN)+' E · '+cash(window7?.cost)+'</small></div>'+
+'</div><p class="sub">Selected forecast: '+esc(a?.method||"none")+' · Budget '+cash(cfg.budget)+
+' · Expected 7-day spending '+cash(window7?.cost)+'. Per-train uses your present happiness; other totals sum future simulated train actions.</p>','hero');out+=actualComparison(readGymResult());out+=card("Sleep-aware schedule",'<p><b>'+esc(sleepLabel())+'</b> · '+(isAsleep?"Manual actions postponed until wake time.":"No manual actions during your sleep window.")+'</p>'+
+'<div class="metric-grid"><div><span>Predicted 24h energy waste</span><strong>'+fmt(window24?.lost??0)+' E</strong><small>'+fmt(window24?.sleepLost??0)+' E overnight</small></div>'+
+'<div><span>Predicted 7-day energy waste</span><strong>'+fmt(window7?.lost??0)+' E</strong><small>'+fmt(window7?.sleepLost??0)+' E overnight</small></div></div>'+
+'<p class="sub">Uses spare energy before bed and on waking when possible. Sleep-time cap overflow cannot always be avoided.</p>');const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);if(refillState==="ready"){
+const prevGain=fullE>0?trainEstimate(p,fullE):0;const afterH=Math.max(0,p.happy-fullE*.5),afterS=p.value+prevGain;const refillGain=gain(Math.floor(p.maxE/p.cost)*p.cost,afterH,afterS,p.dots,p.cost,p.m);out+=card(isAsleep?"Refill ready — postpone until awake":cfg.mode==="happy"?"Refill available — protect your jump timing":"Priority: daily 30-point refill is READY",'<p class="alert"><b>Best immediate refill sequence:</b> '+
+(fullE>0?'Train '+fmt(fullE)+' E (≈ +'+fmt(prevGain)+' '+esc(cfg.stat)+'), then ':'')+
+'use the 30-point energy refill in Torn, and train the new energy (≈ +'+fmt(refillGain)+').</p>'+
+'<p>Combined immediate estimated gain: <b class="good">+'+fmt(prevGain+refillGain)+'</b> '+esc(cfg.stat)+
+' · Cost: 30 points (check your actual point balance).</p>'+
+'<p class="sub">'+(cfg.mode==="happy"?
+"If preparing a Happy jump, do not spend the refill prematurely. Compare the jump schedule first; it may be better used immediately before the final happy training session.":
+"This is an alternative to taking Xanax now; do not refill a full bar.")+'</p>'+
+'<button data-act="mark-used">Mark refill used after you spend it</button>');}else out+=card("Daily point refill",'<div class="row"><b>'+
+(refillState==="used"?"USED TODAY":"UNVERIFIED")+'</b>'+
+(marked?'<button data-act="clear-refill">Clear manual mark</button>':'')+
+'</div><p class="sub">'+(refillState==="used"?"Next daily reset 00:00 UTC.":
+"Torn did not confirm availability. No refill is assumed.")+'</p>');out+=card("Next step · selected forecast",next?
+'<div class="row"><b>'+esc(next.kind)+'</b><b>'+compactUtc(next.t)+'</b></div>'+
+'<p>'+esc(next.detail)+'</p><p class="sub">'+eta(next.t)+
+' · Check live cooldowns, energy and items before any action.</p>'+
+'<button data-act="tab" data-val="plan">Open schedule</button>':
+"No remaining scheduled action in the current forecast. Refresh to recalculate.");out+=recommendation();const advice=statAdvice();if(advice)out+=card("Stat strategy",'<p><b>Balance:</b> '+esc(advice.balance.stat)+
+' ('+fmt(advice.balance.current)+')</p><p><b>Largest current full-bar gain:</b> '+
+esc(advice.value.stat)+' (+'+fmt(advice.value.gain)+') </p>'+
+'<button data-act="stat" data-val="'+esc(advice.value.stat)+'">Use max-gain stat</button>'+
+'<p class="sub">Maximum gains is your priority; changing focus recalculates every projection.</p>');out+=card("Current Torn snapshot",'<div class="metric-grid">'+
+'<div><span>Energy</span><strong>'+fmt(p.energy)+'/'+fmt(p.maxE)+'</strong></div>'+
+'<div><span>Happiness</span><strong>'+fmt(p.happy)+'/'+fmt(p.maxH)+'</strong></div>'+
+'<div><span>Drug cooldown</span><strong>'+fmt(Math.ceil(p.drug/60))+'m</strong></div>'+
+'<div><span>Booster cooldown</span><strong>'+fmt(Math.ceil(p.booster/60))+'m</strong></div></div>'+
+'<p>'+esc(p.gym.name)+' · '+p.dots.toFixed(1)+' '+esc(p.stat)+' gym dots</p>');if(errs.length)out+=card("Data diagnostics",errs.map(x=>'<p class="warn">'+esc(x)+'</p>').join(""));return out;}
+function compare(){
+const p=loadInput(),all=lastPlan||[];if(!p)return card("Missing training data","Refresh Torn data to calculate gains.");let html=controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat");html+=card("Same-period comparison",'<p>Regular training compares the same 24-hour and seven-day periods. Happy jumps show one prepared jump, not seven days of repeated jumps.</p>'+
+'<p class="sub">Budget '+cash(cfg.budget)+' · '+esc(p.gym.name)+' · '+p.dots.toFixed(1)+' gym dots · Estimates, not observed gains.</p>');html+=card("All four stats — regular training potential",'<p class="sub">What if you focused all gym energy on each stat separately? These forecasts are alternatives, not gains to add together.</p>'+
+statMatrix().map(x=>'<div class="stat-row"><div class="row"><b>'+esc(x.stat)+
+'</b><button data-act="stat" data-val="'+esc(x.stat)+'">Focus</button></div>'+
+'<div class="metric-grid"><div><span>Per train</span><strong>+'+fmt(x.perTrain)+'</strong></div>'+
+'<div><span>24 hours</span><strong>+'+fmt(x.daily.gain)+'</strong></div>'+
+'<div><span>7 days</span><strong>+'+fmt(x.weekly.gain)+'</strong><small>'+esc(x.method)+'</small></div></div></div>').join(""));for(const x of all){
+const d=summary(x,24),w=summary(x,168),blocked=x.method.startsWith("happy")&&x.jumps===0;const name={natural:"Natural energy + refill",xanax:"Xanax + regeneration","happy-candy":"Candy Happy jump",happy:"eDVD Happy jump"}[x.method];html+=card(name,blocked?
+'<p class="warn">Jump not forecast: required supplies are unpriced or above budget.</p><button data-act="tab" data-val="supplies">View kit</button>':
+'<div class="metric-grid">'+
+'<div><span>Single train now</span><strong>+'+fmt(trainEstimate(p))+'</strong><small>'+p.cost+' E at current happiness</small></div>'+
+'<div><span>Next 24 h</span><strong>+'+fmt(d.gain)+'</strong><small>'+fmt(d.energy)+' E · '+cash(d.cost)+'</small></div>'+
+'<div><span>Next 7 days</span><strong>+'+fmt(w.gain)+'</strong><small>'+fmt(w.energy)+' E · '+cash(w.cost)+'</small></div></div>'+
+'<p class="sub">'+esc(x.note)+'</p><button data-act="choose" data-val="'+esc(x.method)+'">View schedule</button>');}
+return html;}
+function plan(){
+const p=activePlan(),hours=+cfg.horizon===168?168:24;let html=controls("Time window",String(hours),[["24","24 hours"],["168","7 days"]],"horizon");if(!p)return html+card("No forecast","Refresh your current Torn data first.");if(p.method.startsWith("happy")&&p.jumps===0){
+const kit=jumpKit(p.method);return html+card("Jump cannot be scheduled",'<p>Item prices missing or the complete kit exceeds your budget.</p><p>Kit: '+
+(Number.isFinite(kit.total)?cash(kit.total):"Price unavailable")+' · Weekly budget: '+cash(cfg.budget)+
+'</p><button data-act="tab" data-val="supplies">See supplies</button>');}
+const summaryNow=summary(p,hours,Date.now()/1000);html+=card("Totals in this "+(hours===24?"24-hour":"7-day")+" window",'<div class="metric-grid"><div><span>Stat gain</span><strong>+'+fmt(summaryNow.gain)+
+'</strong><small>'+esc(cfg.stat)+'</small></div><div><span>Energy trained</span><strong>'+
+fmt(summaryNow.energy)+' E</strong><small>'+summaryNow.trains+' train actions</small></div>'+
+'<div><span>Estimated spend</span><strong>'+cash(summaryNow.cost)+'</strong><small>'+
+summaryNow.xanax+' Xanax · '+summaryNow.refills+' refills</small></div></div>'+
+'<p class="sub">'+esc(p.note)+' · All actions are manual. Figures include only actions within this window.</p>');html+=card("Predicted energy lost at cap",'<div class="metric-grid"><div><span>Total overflow</span><strong>'+fmt(summaryNow.lost)+' E</strong></div>'+
+'<div><span>While asleep</span><strong>'+fmt(summaryNow.sleepLost)+' E</strong></div></div><p class="sub">Quiet hours: '+esc(sleepLabel())+
+'. Forecast totals match the selected period.</p>');if(!summaryNow.events.length)return html+card("No actions within this window","Try the seven-day view. A jump may require more than 24 hours of preparation.");let dayKey="",count=0;for(const ev of summaryNow.events){
+if(count++>=120)break;const date=day(ev.t);if(date!==dayKey){dayKey=date;html+='<h3 class="day-header">'+date+' UTC</h3>'}
+html+='<div class="timeline-row"><span>'+compactUtc(ev.t)+'</span><b>'+esc(ev.kind)+
+'</b><span>'+esc(ev.detail)+'</span>'+(ev.spent?'<small>'+cash(ev.spent)+' estimated cost</small>':'')+'</div>';}
+if(summaryNow.events.length>120)html+='<p class="sub">Showing 120 of '+summaryNow.events.length+
+' planned actions. The totals above include every action.</p>';return html;}
+function gyms(){
+const g=gym(),all=data.gyms?.gyms||[],k=cfg.stat,b=stats(),e=energy().maximum||150,h=happy().maximum||5000;let html=g?card("Current gym",esc(g.name)+" · "+gymDots(g.modifiers?.[k]).toFixed(1)+" dots "+esc(k)):
+card("Gym unavailable","Refresh first.");const baseline=g?sessionGain(g,k,e,h,b):0;const eligible=all.filter(x=>x.id!==g?.id&&["owned","buy"].includes(verified[x.id])&&gymEligible(x,b))
+.map(x=>({gym:x,change:baseline>0?100*(sessionGain(x,k,e,h,b)/baseline-1):0}))
+.filter(x=>Number.isFinite(x.change)&&x.change>0.1).sort((a,b)=>b.change-a.change);html+=card("Better verified gyms",eligible.length?eligible.map(x=>"<p><b>"+esc(x.gym.name)+"</b> · <b>+"+
+x.change.toFixed(1)+"% estimated gains</b> per same energy · "+(verified[x.gym.id]==="buy"?
+"Unlocked but not purchased ("+cash(x.gym.cost)+")":"Owned; switch manually")+"</p>").join(""):
+"No better eligible, confirmed-access gym for this stat. Locked and unseen gyms are excluded.");if(/\/gym\.php$/.test(location.pathname||"")&&all.length){
+const visibleText=String(document.body?.innerText||"").replace(String(ui.innerText||""),"");const visible=all.filter(x=>String(x.name||"").length>3&&
+visibleText.toLowerCase().includes(x.name.toLowerCase())&&!verified[x.id]);html+=card("Confirm a gym shown on this page",visible.length?
+'<p class="sub">Confirm only gyms you can currently access in Torn. A matching name in the page does not prove it is unlocked.</p><select id="hhj-gymlist">'+
+visible.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join("")+
+'</select><button data-act="gym-owned">Owned</button><button data-act="gym-buy">Unlocked, not purchased</button>':
+"No unconfirmed gyms were detected from this page. Never confirm a locked or unavailable membership.");}else html+=card("Verify gym access","Open Torn’s Gym page and confirm memberships that are shown as available. This helper will not recommend unseen/locked gyms.");return html;}
+function perks(){
+const rows=perkRows(),books=data.books||[];return card("Training effects",rows.length?rows.map(x=>"<p><b>"+esc(x.type)+"</b> · "+esc(x.description)+"</p>").join(""):"No relevant perks loaded.")+
+card("Gym books and future use",!Array.isArray(data.books)?"Book inventory unavailable; no ownership assumed.":books.filter(x=>x.id>=744&&x.id<=787&&x.amount>0).map(x=>{
+const stat={744:"strength",745:"speed",746:"defense",747:"dexterity"}[x.id];return "<p><b>"+esc(x.name||"Book #"+x.id)+"</b> · "+(stat?
+"Save to 200m "+stat+" for the full +10m cap":
+"Save until a high-output 31-day training block")+
+". <span class='sub'>Used copies can remain visible: usability unverified.</span></p>"
+}).join("")||"Book inventory unavailable or no books returned.");}
+function checkpoint(st){
+const now=Date.now()/1000;if(!ST.every(k=>Number.isFinite(st[k])&&st[k]>0))return false;if(rolling&&rolling.t<now-30&&now-rolling.t<=7*86400&&rolling.s){
+const delta=Object.fromEntries(ST.map(k=>[k,st[k]-(Number(rolling.s[k])||0)]));const expected=(rolling.events||[]).filter(x=>x.t>=rolling.t&&x.t<=now).reduce((n,x)=>n+(x.g||0),0);const changed=ST.filter(k=>delta[k]>0),stat=changed.length===1?changed[0]:rolling.stat;const single=Number(rolling.single?.[stat]),n=single>0?Math.round(delta[stat]/single):0;const consistent=changed.length===1&&rolling.gymId===gym()?.id&&n>=1&&n<=20&&
+Math.abs(delta[stat]/n-single)/single<=0.12;ledger.push({t:now,from:rolling.t,stat,observed:delta,expected,method:rolling.method,single:single>0?single:null,inferred:consistent?n:null});ledger=ledger.filter(x=>now-x.t<30*86400).slice(-120);put("verification",ledger);}
+rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};return true;}
+function gainsChart(daily){
+const k=cfg.stat,days=Object.keys(daily).sort(),view=days.filter(d=>showPartial||daily[d].covered);let html='<div class="row"><b>Show partial days</b><button data-act="partial">'+
+(showPartial?"ON · Show all":"OFF · Covered only")+'</button></div>'+
+'<p class="sub">Covered means near-midnight snapshots with no long gaps, not proof of complete gameplay history. Current days and older unverified entries are partial.</p>';if(!days.length)return card("Daily gains · coverage","No measured refresh intervals yet. Open HJ after training."); if(!view.length)return card("Daily gains · coverage",html+"No days meet this filter. Turn on partial days to see recorded changes.");const max=Math.max(1,...view.map(d=>Math.max(0,daily[d].matched,daily[d].predicted)));html+='<p class="sub">Same tracked intervals for both bars · <b style="color:#4bdecb">Observed</b> vs <b style="color:#8aa2fa">Scheduled</b> (hypothetical, not actual actions).</p>';html+=view.map(d=>{const v=daily[d],bar=(n,color)=>'<div style="height:9px;background:#0c2232;border-radius:7px;overflow:hidden;margin:3px 0"><div style="width:'+
+(Math.max(0,n)/max*100).toFixed(1)+'%;height:100%;background:'+color+'"></div></div>';return '<div style="margin:11px 0"><div class="row"><b>'+esc(d.slice(5))+' · '+(v.covered?"Covered":"Partial")+'</b><small>'+v.matchedN+' comparable intervals</small></div>'+
+bar(v.matched,"#4bdecb")+bar(v.predicted,"#8aa2fa")+
+'<div class="row"><small>Observed +'+fmt(v.matched)+'</small><small>Scheduled +'+fmt(v.predicted)+'</small></div></div>';}).join('');return card("7-day "+esc(k)+" · observed vs planned",html);}
+function progressLog(){
+const recent=ledger.filter(x=>x.t>=Date.now()/1000-7*86400),daily={},focus=cfg.stat;for(const x of recent){
+const date=day(x.t),row=daily[date]||(daily[date]={n:0,changed:0,real:Object.fromEntries(ST.map(k=>[k,0])),matched:0,predicted:0,matchedN:0,span:0,first:Infinity,last:0,ok:true,covered:false});row.n++;for(const k of ST)row.real[k]+=x.observed?.[k]||0;if(ST.some(k=>(x.observed?.[k]||0)>0))row.changed++;if(x.stat===focus&&Number.isFinite(x.expected)){row.matched+=x.observed?.[focus]||0;row.predicted+=x.expected;row.matchedN++}
+const midnight=Date.parse(date+"T00:00:00Z")/1000;row.first=Math.min(row.first,Number(x.from)||Infinity);row.last=Math.max(row.last,x.t);if(x.from)row.span+=Math.max(0,x.t-x.from);if(!x.from||x.from<midnight||x.t-x.from>7200)row.ok=false;}
+for(const [date,row] of Object.entries(daily)){
+const midnight=Date.parse(date+"T00:00:00Z")/1000;row.covered=row.ok&&row.first<=midnight+900&&row.last>=midnight+86400-900&&row.span>=23*3600&&row.matchedN>0;}
+const latest=recent[recent.length-1],lastGain=[...recent].reverse().find(x=>(x.observed?.[focus]||0)>0);const today=daily[day(Date.now()/1000)],total=today?.real[focus]||0;const gainChecks=today?.changed||0,idle=Math.max(0,(today?.n||0)-gainChecks);const start=recent[0]?.from||recent[0]?.t;let html=recent.length?'<div class="metric-grid">'+
+'<div><span>Recorded today</span><strong>+'+fmt(total)+'</strong><small>'+esc(focus)+' since recorded checkpoints</small></div>'+
+'<div><span>Latest recorded gain</span><strong>'+(lastGain?'+'+fmt(lastGain.observed[focus]):'—')+
+'</strong><small>'+esc(focus)+' · '+(lastGain?compactUtc(lastGain.t):'None recorded')+'</small></div></div>'+
+(latest&&!(latest.observed?.[focus]>0)?'<p class="sub">Latest refresh: no new '+esc(focus)+
+' gain. Your last recorded gain is shown above.</p>':'')+
+'<p class="sub">'+gainChecks+' checks with stat increases · '+idle+
+' checks without a new stat increase today. These are <b>checks, not individual gym trains</b>.</p>'+
+(lastGain?.inferred?'<p>Latest matching interval: estimated +'+fmt(lastGain.single)+
+' per train, +'+fmt(lastGain.observed[focus]/lastGain.inferred)+
+' observed per inferred train ('+lastGain.inferred+' inferred).</p>':
+'<p class="sub">No reliable individual-train comparison yet. Current stat changes can include several actions or bonuses.</p>')+
+'<p class="sub">Partial coverage: refresh-to-refresh differences only. Training before the first baseline or during untracked gaps may be missing. '+
+(start?'Earliest stored checkpoint: '+compactUtc(start)+'. ':'')+
+'Torn activity logs may therefore show more trains than this chart.</p>':
+'<p>Open HJ to set a baseline, then reopen after training to record stat changes.</p>';html+='<p class="sub">Daily totals use UTC refresh dates. Days without a recorded change are not assumed to have zero activity.</p>'+
+Object.entries(daily).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,x])=>
+'<div class="row"><b>'+esc(date)+'</b><small>'+x.changed+' gain checks / '+x.n+' total · '+
+ST.map(k=>k.slice(0,3)+': '+fmt(x.real[k])).join(' · ')+'</small></div>').join('');return gainsChart(daily)+card("Observed stat gains · last seven days",html+
+'<button data-act="clearverification">Clear rolling history</button>');}
+function progress(){
+const st=stats(),regular=(lastPlan||[]).filter(x=>!x.method.startsWith("happy")&&x.affordable)
+.sort((a,b)=>b.gain-a.gain)[0];return progressLog()+card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+
+card("Long-term targets · regular training only",regular?projection(st[cfg.stat],regular.gain).map(x=>
+"<div class='row'><b>"+fmt(x.goal)+"</b><span>"+(x.weeks===null?"Outside model":x.weeks+" weeks")+"</span></div>").join("")+
+"<p class='sub'>Assumes repeating regular weekly training. One-time Happy jumps are never silently repeated.</p>":
+"No budget-feasible repeating plan available.")+
+'<button data-act="clearhistory">Clear local history</button>';}
+function settings(){return card("Planner settings",'<label>Weekly budget <input id="hhj-budget" type="number" min="0" value="'+cfg.budget+'"></label>'+
+'<p><label><input id="hhj-refills" type="checkbox"'+(cfg.refills?" checked":"")+'> Compare daily points refills</label></p>'+
+'<h3>Sleep schedule</h3>'+
+'<p><label><input id="hhj-sleepenabled" type="checkbox"'+(cfg.sleepEnabled?' checked':'')+'> Avoid manual actions during sleep</label></p>'+
+'<div class="row"><label>Bedtime <input id="hhj-sleepstart" type="time" value="'+esc(cfg.sleepStart||"22:00")+
+'"></label><label>Wake <input id="hhj-sleepend" type="time" value="'+esc(cfg.sleepEnd||"08:00")+'"></label></div>'+
+'<p class="sub">Device local time · Default 22:00–08:00 · The schedule trains spare energy before bed and on waking.</p>'+
+'<p><label>Manual extra gym bonus % <input id="hhj-gymbonus" type="number" min="0" max="200" value="'+cfg.gymBonus+'"></label></p>'+
+'<p><label>Points already owned <input id="hhj-points" type="number" min="0" value="'+(+cfg.ownedPoints||0)+'"></label></p>'+
+'<p class="sub">Optional manual unit prices, used only when live market listings cannot cover your basket:</p>'+
+["points","xanax","ecstasy","lollipop","dvd"].map(k=>'<p><label>'+esc(k)+
+' price <input data-price="'+k+'" type="number" min="0" value="'+(+cfg.manualPrices?.[k]||0)+'"></label></p>').join("")+
+'<button data-act="save">Save settings</button><p class="sub">Your configured weekly budget is retained and editable. Owned points and manual prices are local assumptions, not live Torn balances or guaranteed offers.</p>')}
+const labels=[["today","Today"],["compare","Compare"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["settings","Settings"]];function draw(){
+if(!opened)return;const scroll=content.scrollTop||0;try{content.innerHTML='<nav class="tabs">'+labels.map(([k,v])=>
+'<button class="'+(k===tab?'on':'')+'" data-act="tab" data-val="'+k+'">'+v+'</button>').join("")+
+'</nav>'+(tab==="today"?today():tab==="compare"?compare():tab==="plan"?plan():
+tab==="supplies"?supplies():tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():settings())+
+'<p class="sub">IamEEKY · Forecast only · No automated Torn actions · v'+VER+'</p>';}catch(e){content.innerHTML='<section class="card"><h3>Panel recovery</h3><p>Rendering failed: '+esc(e.message)+'</p><button data-act="refresh">Retry refresh</button></section>';}
+content.scrollTop=scroll;const tabs=content.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");if(tabs&&selected)tabs.scrollLeft=Math.max(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);}
+button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";showLauncher(!opened);if(opened){draw();return refresh()}});ui.addEventListener("click",event=>{
+const b=event.target.closest("button");if(!b)return;const act=b.dataset.act,val=b.dataset.val;if(act==="close"){opened=false;ui.style.display="none";showLauncher(true)}
+if(act==="refresh")refresh();if(act==="tab"){tab=val;content.scrollTop=0;draw()}
+if(act==="stat"){cfg.stat=val;selectedMethod="auto";save()}
+if(act==="mode"){cfg.mode=val;selectedMethod="auto";save()}
+if(act==="choose"){selectedMethod=val;tab="plan";draw()}
+if(act==="choose-supply"){selectedMethod=val;draw()}
+if(act==="horizon"){cfg.horizon=+val;save()}
+if(act==="mark-used"){put("used-day",day(Date.now()/1000));lastPlan=plans();draw()}
+if(act==="clear-refill"){put("used-day",null);lastPlan=plans();draw()}
+if(act==="clearhistory"){history=[];put("history",[]);draw()}
+if(act==="clearverification"){ledger=[];rolling=null;put("verification",[]);put("rolling-plan",null);draw()}
+if(act==="partial"){showPartial=!showPartial;put("show-partial",showPartial);draw()}
+if(act==="gym-owned"||act==="gym-buy"){const id=+content.querySelector("#hhj-gymlist")?.value;if(id&&/\/gym\.php$/.test(location.pathname||"")){verified[id]=act==="gym-owned"?"owned":"buy";put("gyms",verified);draw()}}
+if(act==="save"){
+cfg.budget=Math.max(0,+content.querySelector("#hhj-budget")?.value||0);cfg.refills=!!content.querySelector("#hhj-refills")?.checked;cfg.sleepEnabled=!!content.querySelector("#hhj-sleepenabled")?.checked;const bed=content.querySelector("#hhj-sleepstart")?.value,wake=content.querySelector("#hhj-sleepend")?.value;cfg.sleepStart=validClock(bed)?bed:"22:00";cfg.sleepEnd=validClock(wake)?wake:"08:00";if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;cfg.gymBonus=Math.min(200,Math.max(0,+content.querySelector("#hhj-gymbonus")?.value||0));cfg.ownedPoints=Math.max(0,+content.querySelector("#hhj-points")?.value||0);cfg.manualPrices=Object.fromEntries(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
+[k,Math.max(0,+content.querySelector('[data-price="'+k+'"]')?.value||0)]));save()}
+});mount();document.addEventListener?.("DOMContentLoaded",mount,{once:true});window.setInterval(()=>{mount();},5000);if(typeof window!=="undefined"){window.__TornHappyJumpLoaded=VER;window.__TornHappyJumpStage={version:VER,phase:"mounted"};}
+})();
