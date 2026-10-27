@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.9.4
+// @version      0.9.5
 // @description  TornPDA stable launcher recovery; full-screen read-only training planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.4";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.9.5";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
 if(window.__TornHappyJumpBooting===VER)return;
 window.__TornHappyJumpBooting=VER;
@@ -620,6 +620,19 @@ if(rolling&&rolling.t<now-30&&now-rolling.t<=7*86400&&rolling.s){
 rolling={t:now,s:st,stat:cfg.stat,method:"none",events:[]};
 return true;
 }
+function gainsChart(daily){
+const days=Object.keys(daily).sort(),k=cfg.stat;
+if(!days.length)return card("Observed gains chart","No measured refresh intervals yet. Open HJ after training to build a daily chart.");
+const max=Math.max(1,...days.map(d=>Math.max(0,daily[d].real[k]||0)));
+return card("Daily "+esc(k)+" gains · observed only",
+ '<p class="sub">Local refresh-to-refresh changes, not simulated gains. Dates without observations are omitted.</p>'+
+ days.map(d=>{const v=daily[d].real[k]||0,w=Math.max(0,100*v/max);
+ return '<div style="margin:9px 0"><div class="row"><small>'+esc(d.slice(5))+'</small><b>'+
+ (v>=0?'+':'')+fmt(v)+'</b></div><div style="height:11px;background:#0c2232;border-radius:8px;overflow:hidden">'+
+ '<div style="width:'+w.toFixed(1)+'%;height:100%;background:#4bdecb"></div></div></div>';
+ }).join('')+
+ '<p class="sub">Current focus: '+esc(k)+'. Change your focus stat in Today or Compare to view another chart.</p>');
+}
 function progressLog(){
 const recent=ledger.filter(x=>x.t>=Date.now()/1000-7*86400),daily={};
 for(const x of recent){
@@ -642,7 +655,7 @@ html+='<p class="sub">Daily totals below include only intervals observed between
  Object.entries(daily).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,x])=>
  '<div class="row"><b>'+esc(date)+'</b><small>'+x.n+' intervals · '+
  ST.map(k=>k.slice(0,3)+': '+fmt(x.real[k])).join(' · ')+'</small></div>').join('');
-return card("Observed stat gains · last seven days",html+
+return gainsChart(daily)+card("Observed stat gains · last seven days",html+
  '<button data-act="clearverification">Clear rolling history</button>');
 }
 function progress(){
@@ -672,22 +685,24 @@ function settings(){return card("Planner settings",
 const labels=[["today","Today"],["compare","Compare"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["settings","Settings"]];
 function draw(){
 if(!opened)return;
+const scroll=content.scrollTop||0;
 try{content.innerHTML='<nav class="tabs">'+labels.map(([k,v])=>
 '<button class="'+(k===tab?'on':'')+'" data-act="tab" data-val="'+k+'">'+v+'</button>').join("")+
 '</nav>'+(tab==="today"?today():tab==="compare"?compare():tab==="plan"?plan():
 tab==="supplies"?supplies():tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():settings())+
 '<p class="sub">IamEEKY · Forecast only · No automated Torn actions · v'+VER+'</p>';
 }catch(e){content.innerHTML='<section class="card"><h3>Panel recovery</h3><p>Rendering failed: '+esc(e.message)+'</p><button data-act="refresh">Retry refresh</button></section>';}
+content.scrollTop=scroll;
 const tabs=content.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");
 if(tabs&&selected)tabs.scrollLeft=Math.max(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);
 }
-button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";showLauncher(!opened);if(opened)draw()});
+button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";showLauncher(!opened);if(opened){draw();refresh()}});
 ui.addEventListener("click",event=>{
 const b=event.target.closest("button");if(!b)return;
 const act=b.dataset.act,val=b.dataset.val;
 if(act==="close"){opened=false;ui.style.display="none";showLauncher(true)}
 if(act==="refresh")refresh();
-if(act==="tab"){tab=val;draw()}
+if(act==="tab"){tab=val;content.scrollTop=0;draw()}
 if(act==="stat"){cfg.stat=val;selectedMethod="auto";save()}
 if(act==="mode"){cfg.mode=val;selectedMethod="auto";save()}
 if(act==="choose"){selectedMethod=val;tab="plan";draw()}
