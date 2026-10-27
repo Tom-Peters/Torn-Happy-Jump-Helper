@@ -60,7 +60,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<57000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.10\.2/);
+  assert.match(src,/@version\s+0\.10\.3/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -667,7 +667,7 @@ test("v0.10.0 opens a Just happened → Next action card on Today and Schedule",
  let html=panel.children[1].innerHTML;
  assert.match(html,/Just happened → Next action/);
  assert.match(html,/Next recommended:/);
- assert.match(html,/No gains yet/);
+ assert.match(html,/No gains detected/);
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"plan"}};}}});
  html=panel.children[1].innerHTML;
  assert.match(html,/Just happened → Next action/);
@@ -990,7 +990,9 @@ test("recently overdue action is visibly flagged without claiming it was complet
  a.fixture["/user/bars"].bars.energy.current=150;
  await a.btn.onclick();
  a.advance(180);
- const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"today"}};}}});
+ const html=panel.children[1].innerHTML;
  assert.match(html,/OVERDUE 3m/);
  assert.match(html,/Confirm TRAIN/);
  assert.match(html,/Self-reported only/);
