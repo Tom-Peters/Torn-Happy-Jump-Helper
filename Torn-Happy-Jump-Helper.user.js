@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.7.4
+// @version      0.7.5
 // @description  Compact CSP-safe TornPDA gym, Happy jump and book planner (read only)
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -13,8 +13,10 @@
 // ==/UserScript==
 (function(){
 "use strict";
-const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.4";
+const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.7.5";
 if(!/^(www\.)?torn\.com$/.test(location.hostname))return;
+if(window.__TornHappyJumpBooting===VER)return;
+window.__TornHappyJumpBooting=VER;
 const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={
 xanax:206,ecstasy:197,lollipop:310,dvd:366
 };
@@ -22,6 +24,8 @@ const fmt=n=>Number.isFinite(n)?Math.round(n).toLocaleString("en-US"):"—";
 const cash=n=>Number.isFinite(n)?"$"+fmt(n):"Price unknown";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";
+const compactUtc=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";
+const eta=t=>{const m=Math.ceil((t-Date.now()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Math.floor(m/60)+"h "+m%60+"m"};
 const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};
 const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};
@@ -115,7 +119,7 @@ if(method==="natural"||method==="xanax"){
 if(method==="xanax"&&t>=nextDrug&&e<=750&&afford("xanax")){use("xanax",1);drugCount++;e=Math.min(1000,e+250);h+=75;
 nextDrug=t+7*3600;add(t,"XANAX","Take Xanax manually; estimated +250 E",250);train(t,"Train after Xanax")}
 else if(e>=cap)train(t,"Train naturally regenerated energy");
-if(cfg.refills&&!refilled&&e<cap&&afford("points",30)&&t%86400>=12*3600){
+if(cfg.refills&&!refilled&&e<cap&&afford("points",30) ){
 if(e>=p.cost)train(t,"Train before available daily point refill");
 const restored=cap-e;use("points",30);refilled=true;e=cap;
 add(t,"REFILL","Spend 30 points manually; restore "+restored+" E up to "+cap,restored);train(t,"Train refilled energy");
@@ -207,28 +211,58 @@ if(!last||last.d!==today){history.push({d:today,s:st});history=history.slice(-90
 try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}busy=false;draw();
 }
 function save(){put("settings",cfg);try{lastPlan=plans()}catch(e){lastPlan=null;errs.push("Planner: "+String(e.message).slice(0,90))}draw()}
-const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed;z-index:2147483646;inset:12% 8px 9% 8px;max-width:580px;margin:auto;background:#0b1726;border:2px solid #52d9c5;border-radius:15px;color:white;font:14px/1.4 system-ui;overflow:hidden;box-shadow:0 8px 50px #000c";
+const ui=document.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed;z-index:2147483647;inset:8% 8px 6% 8px;max-width:580px;margin:auto;background:#0b1726;border:2px solid #52d9c5;border-radius:15px;color:white;font:14px/1.4 system-ui;overflow:hidden;box-shadow:0 8px 50px #000c";
 const content=document.createElement("div");content.style.cssText="height:calc(100% - 60px);overflow:auto;padding:10px;overscroll-behavior:contain";
 const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;background:#182b42";
 header.innerHTML="<b>⚡ HAPPY JUMP HELPER</b><span>READ ONLY · v"+VER+"</span><button data-act='close'>✕</button>";
 ui.append(header,content);
 const button=document.createElement("button");button.id="hhj-launch";button.textContent="HJ ◉";button.type="button";
-button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483647!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";
+button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483645!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";
 const launcherStyle=button.style.cssText;
-function showLauncher(visible){button.style.cssText=launcherStyle.replace("display:block!important","display:"+(visible?"block":"none")+"!important")}
+function showLauncher(visible){
+ const desired=launcherStyle.replace("display:block!important","display:"+(visible?"block":"none")+"!important");
+ button.style.cssText=desired;
+ const mounted=document.getElementById("hhj-launch");
+ if(mounted&&mounted!==button)mounted.style.cssText=desired;
+ const duplicates=document.querySelectorAll?.('[id="hhj-launch"]')||[];
+ for(const el of duplicates)if(el!==button&&el!==mounted){
+  if(el.style?.setProperty)el.style.setProperty("display","none","important");
+  else if(el.style)el.style.cssText+=";display:none!important";
+ }
+}
 const css=document.createElement("style");css.textContent="#hhj-compact-panel button,#hhj-compact-panel select,#hhj-compact-panel input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}#hhj-compact-panel button.on{background:#087e74;border-color:#4be6cf}#hhj-compact-panel button:disabled{opacity:.45}#hhj-compact-panel .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}#hhj-compact-panel .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}#hhj-compact-panel .card{background:#172a40;border:1px solid #426078;border-radius:12px;margin:9px 0;padding:12px}#hhj-compact-panel .hero{border-color:#58decc}#hhj-compact-panel .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}#hhj-compact-panel .choices{justify-content:flex-start;gap:8px}#hhj-compact-panel .choices button{min-width:90px}#hhj-compact-panel .sub{opacity:.75;font-size:12px}#hhj-compact-panel h3{margin:6px 0 12px;font-size:16px}#hhj-compact-panel .good{color:#86f1d7}#hhj-compact-panel .warn{color:#ffd598}";
-function mount(){if(!document.body)return;for(const el of [button,ui])if(!document.getElementById(el.id))document.body.appendChild(el);
-if(!document.getElementById("hhj-mini-css")){css.id="hhj-mini-css";(document.head||document.body).appendChild(css)}}
+function mount(){
+ if(!document.body)return;
+ for(const el of [button,ui]){
+  const previous=document.getElementById(el.id);
+  if(previous&&previous!==el&&typeof previous.replaceWith==="function")previous.replaceWith(el);
+  else if(!previous)document.body.appendChild(el);
+ }
+ const priorStyle=document.getElementById("hhj-mini-css");
+ if(!priorStyle){css.id="hhj-mini-css";(document.head||document.body).appendChild(css)}
+ else if(priorStyle!==css&&priorStyle.textContent!==css.textContent)priorStyle.textContent=css.textContent;
+ if(opened)showLauncher(false);
+}
 function controls(title,active,choices,act){return '<div class="row"><b>'+esc(title)+'</b></div><div class="row choices">'+choices.map(([k,v])=>'<button data-act="'+act+'" data-val="'+esc(k)+'"'+(k===active?' class="on"':'')+'>'+esc(v)+'</button>').join("")+"</div>"}
 function card(t,b,cls=""){return '<section class="card '+cls+'"><h3>'+esc(t)+'</h3>'+b+"</section>"}
 function recommendation(){
 const input=loadInput(),regular=(lastPlan||[]).filter(x=>(x.method==="natural"||x.method==="xanax")&&x.affordable&&x.gain>0)
 .sort((a,b)=>b.gain-a.gain),jumps=(lastPlan||[]).filter(x=>x.method.startsWith("happy")&&x.jumps===1);
+const natural=(lastPlan||[]).find(x=>x.method==="natural"&&x.affordable);
 if(!input)return card("Training recommendation","Refresh live data to compare options.");
-let out=regular.length?'<p><b>Best regular 7-day plan:</b> '+esc(regular[0].method)+
+let out='<p class="sub"><b>Weekly spending limit: '+cash(cfg.budget)+'</b> · Based on your saved setting. Change under Settings.</p>';
+out+=regular.length?'<p><b>Best regular 7-day plan:</b> '+esc(regular[0].method)+
 ' · +'+fmt(regular[0].gain)+' '+esc(input.stat)+' · '+cash(regular[0].cost)+
 '</p><button data-act="choose" data-val="'+esc(regular[0].method)+'">Show regular schedule</button>':
 '<p class="warn">Regular plan not fully priced or not possible within budget. Check Supplies.</p>';
+if(regular.length){
+ const best=regular[0],spendShare=cfg.budget>0?Math.round(best.cost/cfg.budget*100):0;
+ out+='<p class="sub">Estimated spend: '+spendShare+'% of your weekly limit. '+fmt(best.energy)+' energy trained. Forecast assumes precise manual timing.</p>';
+}
+if(natural&&regular[0]?.method!=="natural"){
+ out+='<p><b>Lower-cost option — Natural:</b> +'+fmt(natural.gain)+' '+esc(input.stat)+
+ ' · '+cash(natural.cost)+'</p><button data-act="choose" data-val="natural">Show natural schedule</button>';
+}
 for(const method of ["happy-candy","happy"]){
 const jump=jumps.find(x=>x.method===method),kit=jumpKit(method);
 const name=method==="happy-candy"?"Budget candy jump":"eDVD Happy jump";
@@ -282,9 +316,20 @@ let out=controls("Training method",cfg.mode,[["training","Regular"],["happy","Ha
 out+='<div class="row"><button data-act="refresh"'+(busy?' disabled':'')+'>↻ '+(busy?'Refreshing':'Refresh Torn data')+'</button><span class="sub">'+(updated?'Updated '+new Date(updated).toLocaleTimeString():'Not loaded')+'</span></div>';
 if(errs.length)out+=card("API diagnostics",errs.map(x=>"<p class='sub'>"+esc(x)+"</p>").join(""));
 if(!p)return out+card("Waiting for live data","Refresh Torn data to load your current gym, battle stats, energy and cooldowns.");
-out+=card("Next manual action",next?
-"<div class='row'><b>"+esc(next.kind)+"</b><b>"+utc(next.t)+"</b></div><p>"+esc(next.detail)+"</p><p class='sub'>Actual Torn values take priority. This is a conditional forecast.</p><button data-act='tab' data-val='plan'>View plan</button>":
-"No remaining actions are scheduled. Refresh to replan.","hero");
+const refillReady=cfg.refills&&refill()==="ready";
+if(refillReady){
+ const canTrain=Math.floor(p.energy/p.cost)*p.cost;
+ out+=card("Available now · 30-point energy refill",
+ '<p>Current energy: <b>'+fmt(p.energy)+'/'+fmt(p.maxE)+'</b>. '+
+ (canTrain?'Train '+fmt(canTrain)+' E before refilling to avoid wasting it. ':'')+
+ 'If you prefer the refill route, spend 30 points in Torn, then train the restored energy.</p>'+
+ '<p class="sub">This is an alternative to the Xanax-focused forecast, not an extra refill. Verify your actual points and energy before acting.</p>');
+}
+out+=card("Next step in selected forecast",next?
+ "<div><b>"+esc(next.kind)+"</b> · <b>"+compactUtc(next.t)+"</b> <span class='sub'>("+eta(next.t)+")</span></div>"+
+ "<p>"+esc(next.detail)+"</p><p class='sub'>Your selected plan is "+esc(a?.method||"none")+
+ ". Only proceed after checking the live cooldowns in Torn.</p><button data-act='tab' data-val='plan'>View schedule</button>":
+ "No remaining actions are scheduled. Refresh to replan.","hero");
 const refillState=refill(),marked=get("used-day",null)===day(Date.now()/1000);
 out+=card("Daily point refill",'<div class="row"><b>'+(refillState==="used"?"USED":refillState==="ready"?"AVAILABLE":"UNKNOWN")+
 '</b>'+(refillState==="used"?(marked?'<button data-act="clear-refill">Clear manual mark</button>':'<span class="sub">Next reset 00:00 UTC</span>'):
