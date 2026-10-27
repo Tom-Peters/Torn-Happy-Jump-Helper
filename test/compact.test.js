@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null,seedPartial=null){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null,seedPartial=null,seedActions=null){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -22,6 +22,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   if(settings)map.set("hhj-compact-v1:settings",JSON.stringify(settings));
   if(seedVerification)map.set("hhj-compact-v1:verification",JSON.stringify(seedVerification));
   if(typeof seedPartial==="boolean")map.set("hhj-compact-v1:show-partial",JSON.stringify(seedPartial));
+  if(seedActions)map.set("hhj-compact-v1:action-notes",JSON.stringify(seedActions));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
     setItem(k,v){map.set(k,String(v));}};
   const fixture={
@@ -59,7 +60,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<57000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.9\.8/);
+  assert.match(src,/@version\s+0\.9\.9/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -70,7 +71,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.8");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.9.9");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -286,11 +287,11 @@ test("Gym page observation compares a read-only train result with calculated gai
  assert.match(html,/Per gym train/);
 });
 
-test("v0.9.8 keeps the mobile launcher visible before API work",()=>{
+test("v0.9.9 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.9.8");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.9.9");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -657,4 +658,79 @@ test("overlapping duplicate checkpoints cannot manufacture covered days",async()
  p.onclick({target:{closest(){return {dataset:{act:"partial"}}}}});
  html=p.children[1].innerHTML;
  assert.match(html,/No days meet this filter/);
+});
+
+test("v0.9.9 opens a Just happened → Next action card on Today and Schedule",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ let html=panel.children[1].innerHTML;
+ assert.match(html,/Just happened → Next action/);
+ assert.match(html,/Next recommended:/);
+ assert.match(html,/Snapshot/);
+ assert.match(html,/exact actions unknown|No gains detected/);
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"plan"}};}}});
+ html=panel.children[1].innerHTML;
+ assert.match(html,/Just happened → Next action/);
+ assert.match(html,/Next recommended:/);
+});
+test("last snapshot gain is surfaced but never asserted as a precisely identified action",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",{budget:50000000,stat:"strength"},7);
+ await a.btn.onclick();
+ a.advance(900);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=610.25;
+ await a.refresh();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/Detected:/);
+ assert.match(html,/strength/);
+ assert.match(html,/Snapshot:/);
+ assert.match(html,/Just happened → Next action/);
+ assert.match(html,/Next recommended:/);
+});
+test("user can self-report a due action and undo it without inventing Torn stat gains",async()=>{
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength"},7);
+ a.fixture["/user/cooldowns"].cooldowns.drug=0;
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ let html=panel.children[1].innerHTML;
+ assert.match(html,/I completed this in Torn/);
+ const statBefore=a.fixture["/user/battlestats"].battlestats.strength.value;
+ panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
+ const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes"));
+ assert.equal(notes.length,1);
+ assert.ok(notes[0].kind==="TRAIN"||notes[0].kind==="XANAX"||notes[0].kind==="REFILL");
+ assert.equal(notes[0].method,"xanax");
+ assert.equal(a.fixture["/user/battlestats"].battlestats.strength.value,statBefore);
+ assert.ok(a.requests.every(url=>url.startsWith("https://api.torn.com/v2/")));
+ html=panel.children[1].innerHTML;
+ assert.match(html,/You marked done/);
+ panel.onclick({target:{closest(){return {dataset:{act:"undo-note"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),"[]");
+ assert.equal(a.fixture["/user/battlestats"].battlestats.strength.value,statBefore);
+});
+test("distant hypothetical actions cannot be marked completed before they are due",async()=>{
+ const a=setup(true,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength",refills:false},7);
+ a.fixture["/user/cooldowns"].cooldowns.drug=21600;
+ a.fixture["/user/bars"].bars.energy.current=0;
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Record completion when due/);
+ assert.ok(!html.includes('data-act="note-done"'));
+ panel.onclick({target:{closest(){return {dataset:{act:"note-done"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("self-reported action notes from a previous session display without claiming API verification",async()=>{
+ const seed=[{t:Date.parse("2026-10-27T08:30:00Z")/1000,kind:"TRAIN",
+  scheduled:Date.parse("2026-10-27T08:30:00Z")/1000,method:"natural"}];
+ const a=setup(false,false,"2026-10-27T09:00:00Z",
+ {budget:50000000,stat:"strength"},7,"/index.php",null,null,seed);
+ await a.btn.onclick();
+ const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
+ assert.match(html,/You marked done:.*TRAIN/);
+ assert.match(html,/Self-reported, not verified/);
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:action-notes")).length,1);
 });
