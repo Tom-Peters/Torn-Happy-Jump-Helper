@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.10.7",
+  "version": "0.10.8",
   "private": true,
-  "description": "Read-only TornPDA Happy Jump planner: resilient HJ launcher with live gym snapshot recovery, imported Copy Logs and off-schedule refill handling",
+  "description": "Experimental read-only TornPDA Happy Jump startup diagnostic and resilient HJ launcher; phone injection not yet confirmed",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
