@@ -17,6 +17,7 @@ jobs:
       - name: Syntax and unit tests
         run: |
           node --check Torn-Happy-Jump-Helper-v0.11.0-preview.user.js
+          node --check Torn-Happy-Jump-Helper-preview.user.js
           npm run check
           node --check Torn-Happy-Jump-Helper-v0.10.9-compat.user.js
           node --check Torn-Happy-Jump-Helper-v0.10.10-compat.user.js
