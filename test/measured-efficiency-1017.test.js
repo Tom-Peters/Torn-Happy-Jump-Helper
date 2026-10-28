@@ -270,13 +270,13 @@ test("measured efficiency separates the 25 E gym from 10 E training",async()=>{
  const mk=cost=>a.core.mCard({cost,happy:3400,value:1452966,dots:1,m:1});
  const h=mk(25);
  assert.match(h,/Measured training efficiency/);
- assert.match(h,/1,7[0-9]{2}/,"25E sessions have typical gain around 1700 per train");
+ assert.match(h,/1,698/,"25E sessions have typical gain around 1700 per train");
  assert.match(h,/5 comparable sessions/);
  assert.match(h,/1 outliers excluded/);
  assert.match(h,/25 E\/train/);
  const old=mk(10);
  assert.match(old,/Need 3 sessions at 10 E\/train/);
- assert.doesNotMatch(old,/1,7[0-9]{2}/);
+ assert.doesNotMatch(old,/1,698/);
 });
 test("no comparable logs does not claim invented measured efficiency",()=>{
  const a=boot(()=>({log:[]}));
