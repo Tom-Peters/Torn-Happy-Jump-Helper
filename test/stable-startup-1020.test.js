@@ -20,8 +20,8 @@ test("retains exact phone-confirmed bootstrap declarations except version",()=>{
  const source=fs.readFileSync(target,"utf8"),baseline=fs.readFileSync(stable,"utf8");
  assert.ok(source.length<59000);
  const marker="const N=\"hhj-compact-v1\"";
- const ahead=s=>s.slice(s.indexOf(marker),s.indexOf("function aFl("));
- assert.equal(ahead(source),ahead(baseline),"before the changed panel, startup and existing function definitions must remain byte-identical");
+ const ahead=s=>s.slice(s.indexOf(marker),s.indexOf("function today("));
+ assert.equal(ahead(source),ahead(baseline),"startup, API and planning declarations before the changed Today UI must remain byte-identical");
  assert.match(source,/@version\s+0\.10\.20/);
  assert.match(source,/@run-at\s+document-end/);
  assert.match(source,/###PDA-APIKEY###/);
