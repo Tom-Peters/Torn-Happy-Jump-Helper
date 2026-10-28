@@ -1,5 +1,18 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.22 — transparent gym access and partial forecast alignment (Android trial)
+
+**[Install optional v0.10.22](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.22-compat.user.js)**
+
+Phone screenshots of working v0.10.21 on 28 October 2026 show **Frontline Fitness, 7.5 Strength dots**, a blank **Better vr gyms** result, verified training **+1,740 per 25 E** vs model **+1,800**, automatic **×0.97** calibration with 10/11 comparable sessions, and **69.3% agreement in only 5 selected API intervals**. Neither the empty gym suggestions nor the alignment number proves the current gym is optimal or that the full model is 69.3% accurate.
+
+This small opt-in update retains v0.10.21's proven launch code, read-only activity tracking, gym log parsing, current calibration and training formulas. It:
+- Renames **Better vr gyms** to **Accessible gym comparison** and distinguishes *no verified alternatives* from *no better option among verified accessible gyms*.
+- Offers **one-time gym-access verification** using the full Torn API gym list on the Gym page, even when TornPDA's mobile gym chooser uses icons rather than discoverable text names. Users can mark a gym as **Membership owned** or **Unlocked, not bought**, or **Remove verification**. A gym is never automatically declared owned or unlocked simply because it exists in Torn's catalogue. Locked/unverified gyms are never suggested as accessible. The actions update only local script storage, not Torn membership.
+- Correctly relabels the previous `7-day matched forecast accuracy` card as **7-day schedule vs observed — partial**, reports planned and observed amounts and interval count, and explicitly explains that skipped/off-schedule training, incomplete snapshots, and excluded zero-gain intervals make it an unsuitable full model-accuracy metric.
+- Preserves all existing settings and data. Under 60,000 characters, no Unicode smart quotes that would be rewritten into invalid JavaScript by TornPDA, and includes dedicated test coverage for gym filtering and API-snapshot semantics.
+- **Not yet verified on Android**. Keep v0.10.21 installed but disabled when trialling the new script; don't clear TornPDA storage.
+
 ## v0.10.21 feature confirmation and recommendation audit (28 October 2026)
 
 Phone follow-up confirmed:
