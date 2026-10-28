@@ -1,0 +1,90 @@
+"use strict";
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+const FILE=path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.10.11-compat.user.js");
+function boot(respond){
+  const code=fs.readFileSync(FILE,"utf8").replace("###PDA-APIKEY###","fixture-test-key");
+  const store=new Map(),calls=[];
+  function element(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
+    append(...xs){this.children.push(...xs)},appendChild(x){this.children.push(x)},
+    addEventListener(event,fn){this["on"+event]=fn},setAttribute(){},
+    get id(){return this._id},set id(value){this._id=value}};}
+  const body=element("body"),head=element("head");
+  const document={body,head,createElement:element,addEventListener(){},
+    getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null}};
+  const localStorage={getItem(k){return store.get(k)||null},setItem(k,v){store.set(k,String(v))}};
+  const window={setInterval(){}};
+  const instrumented=code.replace(/\}\)\(\);\s*$/, "window.__autoTests={readLog,scanGym,copiedGymCard,getLogs:()=>al,getStatus:()=>ls};})();");
+  assert.notEqual(instrumented,code);
+  const PDA_httpGet=async (url,headers)=>{calls.push({url,headers});const data=respond(url);
+    return {status:200,responseText:JSON.stringify(data)}};
+  new Function("document","location","window","localStorage","PDA_httpGet",instrumented)(
+    document,{hostname:"www.torn.com",pathname:"/gym.php"},window,localStorage,PDA_httpGet);
+  return {core:window.__autoTests,document,window,store,calls};
+}
+const now=Math.floor(Date.now()/1000);
+const sample={id:"gym-train-1",timestamp:now-60,log:5301,data:{stat:"speed",stat_gain:10000,energy_used:150}};
+test("phone-compatible automatic-log build retains launcher and no paste field",()=>{
+  const src=fs.readFileSync(FILE,"utf8");
+  assert.ok(src.length<60000,"keep working phone size threshold");
+  assert.match(src,/@version\s+0\.10\.11/);
+  assert.doesNotMatch(src,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
+  assert.match(src,/\/user\/log\?log=5301/);
+  assert.ok(!src.includes('id="hhj-copiedlog"'));
+  const a=boot(()=>({log:[]}));
+  assert.ok(a.document.getElementById("hhj-launch"));
+  assert.ok(a.document.getElementById("hhj-compact-panel"));
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.11");
+});
+test("automatically finds +10000 stat gain from read-only Torn gym log",async()=>{
+  const a=boot(()=>({log:[sample],_metadata:{links:{next:null}}}));
+  await a.core.scanGym();
+  assert.equal(a.core.getLogs().length,1);
+  assert.equal(a.core.getLogs()[0].amount,10000);
+  assert.match(a.core.copiedGymCard(),/10,000/);
+  assert.equal(a.calls.length,1);
+  assert.ok(a.calls[0].url.includes("/v2/user/log?log=5301"));
+  assert.equal(a.calls[0].headers.Authorization,"ApiKey fixture-test-key");
+  assert.ok(a.store.has("hhj-compact-v1:gym-api-logs"));
+});
+test("repeat scans do not double count the same gym event",async()=>{
+  const a=boot(()=>({log:[sample]}));
+  await a.core.scanGym(true);
+  await a.core.scanGym(true);
+  assert.equal(a.core.getLogs().length,1);
+  assert.match(a.core.copiedGymCard(),/7 days:<\/b> \+10,000/);
+});
+test("no extra requests when reopened within one minute",async()=>{
+  const a=boot(()=>({log:[sample]}));
+  await a.core.scanGym();
+  await a.core.scanGym();
+  assert.equal(a.calls.length,1);
+});
+test("no access to personal logs reports permission issue without fabricating gains",async()=>{
+  const a=boot(()=>({error:{code:7,error:"Incorrect permissions"}}));
+  await a.core.scanGym();
+  assert.equal(a.core.getLogs().length,0);
+  assert.match(a.core.getStatus(),/Logs unavailable/);
+  assert.match(a.core.getStatus(),/log permission/);
+});
+test("unknown log format does not create imaginary stat gains",async()=>{
+  const a=boot(()=>({log:[{id:"new-shape",timestamp:now-60,data:{energy_used:150}}]}));
+  await a.core.scanGym();
+  assert.equal(a.core.getLogs().length,0);
+  assert.match(a.core.getStatus(),/unrecognised/);
+});
+test("follows next-page links only on the Torn user-log endpoint",async()=>{
+  const next="https://api.torn.com/v2/user/log?log=5301&limit=100&from=1700000000";
+  const a=boot(u=>u.includes("from=1700000000")
+    ? {log:[{id:"two",timestamp:now-30,data:{stat:"strength",gain:2500}}]}
+    : {log:[sample],_metadata:{links:{next}}});
+  await a.core.scanGym();
+  assert.equal(a.core.getLogs().length,2);
+  assert.equal(a.calls.length,2);
+  const b=boot(()=>({log:[sample],_metadata:{links:{next:"https://evil.example/steal"}}}));
+  await b.core.scanGym();
+  assert.equal(b.calls.length,1,"never follow non-Torn pagination URLs");
+  assert.match(b.core.getStatus(),/Invalid page/);
+});
