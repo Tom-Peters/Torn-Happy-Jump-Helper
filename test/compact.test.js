@@ -1313,3 +1313,22 @@ test("snapshot gain with no matching forecast focus stays recorded without a pha
  assert.ok(!html.includes("Scheduled (matched) +25,000"));
  assert.match(html,/str: 1,679/);
 });
+
+test("Progress lets the user check for a later Torn gain without closing Happy Jump Helper",async()=>{
+ const a=setup(false,false,"2026-10-28T00:00:00Z",{stat:"strength",sleepEnabled:false},7);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ let html=panel.children[1].innerHTML;
+ assert.match(html,/Latest stat check: 28 Oct, 00:00 UTC/);
+ assert.match(html,/↻ Check new gains/);
+ a.advance(360);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=10110.05;
+ panel.onclick({target:{closest(){return {dataset:{act:"refresh"}};}}});
+ await settleRefresh(a);
+ html=panel.children[1].innerHTML;
+ assert.match(html,/Latest stat check: 28 Oct, 00:06 UTC/);
+ assert.match(html,/Latest recorded gain/);
+ assert.match(html,/\+10,110/);
+ assert.match(html,/API snapshot changes, not complete gym logs/);
+});
