@@ -3,7 +3,7 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
-const FILE=path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.11.0-preview.user.js");
+const FILE=path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.11.1-preview.user.js");
 function boot(reply){
  const source=fs.readFileSync(FILE,"utf8").replace("###PDA-APIKEY###","unit-test-key");
  const store=new Map(),calls=[];
@@ -27,14 +27,14 @@ const now=()=>Math.floor(Date.now()/1000);
 const activity=(id,kind,t)=>({id:String(id),timestamp:t,details:{id:kind,title:kind===4900?"Energy refill":"Xanax use"},data:{}});
 test("v0.10.18 is a compact launcher without any manual action confirmations",()=>{
  const s=fs.readFileSync(FILE,"utf8");
- assert.match(s,/@version\s+0\.11\.0/);
+ assert.match(s,/@version\s+0\.11\.1/);
  assert.ok(s.length<65000);
  for(const label of ["I did it","Missed it · Replan","Not sure","data-act=\"mark-used\"","data-act=\"note-done\"","data-act=\"watch-done\""])assert.ok(!s.includes(label),"manual completion UI: "+label);
  assert.doesNotMatch(s,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
  const a=boot();
  assert.ok(a.document.getElementById("hhj-launch"));
  assert.ok(a.document.getElementById("hhj-compact-panel"));
- assert.equal(a.window.__TornHappyJumpLoaded,"0.11.0");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.11.1");
 });
 test("Xanax and point refill are read from Torn activity, never submitted to Torn",async()=>{
  const t=now(),entries=[activity("refill-1",4900,t-120),activity("xanax-1",2290,t-60)];
@@ -151,7 +151,7 @@ test("actual TornPDA pre-processing still creates HJ launcher and loaded marker"
  const localStorage={getItem(){return null},setItem(){}};
  const wrapped=pdaTransform(source);
  new Function("document","window","location","localStorage","PDA_httpGet",wrapped)(document,window,{hostname:"www.torn.com",pathname:"/gym.php"},localStorage,async()=>({status:200,responseText:"{}"}));
- assert.equal(window.__TornHappyJumpLoaded,"0.11.0");
+ assert.equal(window.__TornHappyJumpLoaded,"0.11.1");
  assert.ok(document.getElementById("hhj-launch"));
  assert.ok(document.getElementById("hhj-compact-panel"));
 });
@@ -211,14 +211,14 @@ test("canonical installer stays pinned at the confirmed release during preview",
  const preview=fs.readFileSync(FILE,"utf8");
  assert.match(stable,/@version\s+0\.10\.22/);
  assert.match(stable,/@updateURL\s+https:\/\/raw\.githubusercontent\.com\/Tom-Peters\/Torn-Happy-Jump-Helper\/main\/Torn-Happy-Jump-Helper\.user\.js/);
- assert.match(preview,/@version\s+0\.11\.0/);
+ assert.match(preview,/@version\s+0\.11\.1/);
  assert.ok(!/[“”‘’]/.test(preview),"TornPDA smart punctuation must not break JS strings");
  assert.doesNotMatch(preview,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
 });
 test("preview launcher mounts and Today is concise by default",()=>{
  const a=boot();
  assert.ok(a.document.getElementById("hhj-launch"));
- assert.equal(a.window.__TornHappyJumpLoaded,"0.11.0");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.11.1");
  const html=a.core.getToday();
  assert.match(html,/Refresh/);
  assert.doesNotMatch(html,/Your training numbers/);
@@ -260,7 +260,7 @@ test("the permanent preview channel is independent of the pinned stable channel"
  const stable=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
  const preview=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-preview.user.js"),"utf8");
  assert.match(stable,/@version\s+0\.10\.22/);
- assert.match(preview,/@version\s+0\.11\.0/);
+ assert.match(preview,/@version\s+0\.11\.1/);
  assert.match(preview,/@updateURL\s+https:\/\/raw\.githubusercontent\.com\/Tom-Peters\/Torn-Happy-Jump-Helper\/main\/Torn-Happy-Jump-Helper-preview\.user\.js/);
  assert.match(preview,/@namespace\s+https:\/\/github\.com\/Tom-Peters\/Torn-Happy-Jump-Helper#preview\b/);
  assert.ok(!/[“”‘’]/.test(preview));
