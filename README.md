@@ -1,10 +1,25 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.17 — compare measured gains against the gym model (Android trial)
+
+**[Install v0.10.17](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.17-compat.user.js)**
+
+The user confirmed **v0.10.16** launches and works in Android TornPDA. Latest confirmed action shown correctly: **+3,452 Strength, 2 trains, 28 October 07:41 UTC**; next scheduled Xanax after cooldown around 12:30 UTC, used daily refill, and verified seven-day Strength history. Keep v0.10.16 installed but disabled when testing the new version.
+
+The preceding real log screenshots show **27 October: 78 trains / 780 E / +48,099 Strength** (about **10 E per train**) versus **28 October: 25 trains / 625 E / +42,576 Strength** (**25 E per train**). An unqualified cross-gym average would be misleading.
+
+v0.10.17:
+- Adds **Measured training efficiency** on both **Today** and **Progress**. It groups recent actual Gym training logs by focused stat **and the current gym's energy-per-train cost**, using only logs within 0.5 E of that cost.
+- Needs **three recent comparable sessions** before displaying a typical observed per-train gain. The robust median excludes samples outside 70–130% of the initial median; the card reports how many sessions were included and excluded. It does not assume missing logs prove zero.
+- Displays **typical logged per-train gain** alongside **the current gym model's per-train estimate**, with a warning that happiness and perks may differ.
+- Does **not** automatically recalibrate the simulator or claim the two values reflect exactly matching conditions. The observed difference can be reviewed before adjusting model coefficients.
+- Preserves startup, complete training log history, actions, refill handling, user settings and read-only TornPDA requests. Remains under **60 KB**; automated tests include mixed 10/25 E gyms, very large boosted outliers and missing data. **Not yet tested on phone.**
+
 ## v0.10.16 — live action awareness (Android trial)
 
 **[Install v0.10.16](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.16-compat.user.js)**
 
-v0.10.15 is confirmed to open on the user's Android TornPDA. This update is built from that compact working code and changes the **Just happened → Next action** panel, not the gym formulas.
+v0.10.15 and v0.10.16 are confirmed to open on the user's Android TornPDA. This update is built from that compact working code and changes the **Just happened → Next action** panel, not the gym formulas.
 
 - Shows the **latest confirmed training** directly from Torn gym logs (actual stat, gain, timestamp and number of trains). It no longer presents inferred API-checkpoint training as a confirmed individual event.
 - Recognizes logged training within **10 minutes either side** of a matching scheduled train (for the focused stat). Such a step is treated as *training observed near that time* rather than creating a false missed-step warning; no assumption about a specific Xanax/Happy Jump method is made.
