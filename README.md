@@ -1,5 +1,20 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.12 — phone-tested foundation with log-filter diagnostics (trial)
+
+**[Install v0.10.12 log fallback trial](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.12-compat.user.js)**
+
+The user's v0.10.11 screenshot confirmed HJ and live stats work, with a +40,897 Strength increase since the first API snapshot but `0 logs · 0 new` in log history. Their test key is **Full Access**. This is not sufficient evidence to blame API permissions. Torn's current Swagger requires Full Access for `GET /user/log`, confirms `log` and `cat` filters, and returns an array of logs in API v2.
+
+The v0.10.12 trial now:
+- Checks Gym train log type **5301**, and if no recognizable records, falls back to Gym category **125**. If still unsuccessful, samples one capped page of unfiltered user logs. Each scan uses read-only Torn API requests and is bounded.
+- Reports per-filter record counts, number of newly saved recognized gains and, for unrecognized gym events, **field names only** (never raw values, API keys or unrelated log data).
+- Keeps recognized historical logs locally, keyed by stable event IDs; does not add overlapping API checkpoints or fabricate gains from a failed parse.
+- Displays **No verified gym entries yet** rather than claiming zero training when the parser has not confirmed events.
+- Keeps the standalone startup pattern and a 59,944-character size. The screenshot-confirmed v0.10.11 remains an easy rollback. The new build passes simulated tests but **has not yet been confirmed on Android TornPDA**.
+
+Only enable **one** main HJ version. Retain local storage and do not share an API key or raw logs to debug; a screenshot of the redacted status counts is enough.
+
 ## v0.10.11 automatic gym log search — trial, Android unverified
 
 **[Install v0.10.11 automatic logs trial](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.11-compat.user.js)**
