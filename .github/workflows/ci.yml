@@ -30,6 +30,7 @@ jobs:
           node --check Torn-Happy-Jump-Helper-v0.10.19-compat.user.js
           node --check Torn-Happy-Jump-Helper-v0.10.20-compat.user.js
           node --check Torn-Happy-Jump-Helper-v0.10.21-compat.user.js
+          node --check Torn-Happy-Jump-Helper-v0.10.22-compat.user.js
       - name: Reject mutation-capable PDA request handlers
         run: |
           if grep -En 'PDA_http(Post|Put|Patch|Delete)\(' Torn-Happy-Jump-Helper.user.js; then
