@@ -66,7 +66,7 @@ test("recorded off-plan gym training is known but cannot prove an unrelated sche
  a.core.setFocus("strength");
  assert.equal(a.core.actDone({kind:"TRAIN",t:t-3600}),true);
  assert.equal(a.core.actDone({kind:"TRAIN",t:t+1800}),false);
- const html=a.core.aFl({method:"natural",events:[{kind:"TRAIN",t:t+1800,detail:"Scheduled train"}]});
+ const noon=Math.floor(t/86400)*86400+86400+43200; const html=a.core.aFl({method:"natural",events:[{kind:"TRAIN",t:noon,detail:"Scheduled train"}]});
  assert.match(html,/Latest gym training/);
  assert.match(html,/Next:/);
  assert.doesNotMatch(html,/Confirm TRAIN|I did it|Missed it/);
