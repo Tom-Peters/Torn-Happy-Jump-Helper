@@ -43,7 +43,7 @@ test("verified gym training is recognised, but a different scheduled session sta
  a.core.setStat("strength");await a.core.scanGym(true);
  assert.equal(a.core.aDone({kind:"TRAIN",t:t-3600}),true);
  assert.equal(a.core.aDone({kind:"TRAIN",t:t+3600}),false);
- const html=a.core.aFl({events:[{kind:"TRAIN",t:t+3600,detail:"Next train"}]});
+ const noon=Math.floor(t/86400)*86400+86400+43200; const html=a.core.aFl({events:[{kind:"TRAIN",t:noon,detail:"Next train"}]});
  assert.match(html,/Latest confirmed training/);assert.match(html,/10,000 strength/);assert.match(html,/Next:/);
  assert.doesNotMatch(html,/I did it|Missed it|Not sure/);
 });
