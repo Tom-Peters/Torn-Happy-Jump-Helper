@@ -252,7 +252,7 @@ test("property and energy can comparisons are visible only when data is availabl
  assert.match(h,/Private Island what-if/);
  assert.match(h,/Energy-can what-if/);
  assert.match(h,/5025/);
- assert.match(h,/2h base booster cooldown/);
+ assert.match(h,/Timed simulation: 2-hour booster cooldown/);
  assert.match(h,/no items or properties are purchased/i);
 });
 
