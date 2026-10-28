@@ -16,7 +16,7 @@ function boot(reply){
  getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null}};
  const localStorage={getItem(k){return store.get(k)||null},setItem(k,v){store.set(k,String(v))}};
  const window={setInterval(){}};
- const injected=source.replace(/\}\)\(\);\s*$/, "window.__activity={scanActions,scanGym,actDone,refill,aFl,cMet,cFactor,mCard,boostCard,fCard,gymTip,gyms,getKnown:()=>vr,getActions:()=>acts,getLogs:()=>al,getInput:()=>loadInput(),setFocus:k=>{cfg.stat=k},setData:v=>{data=v},setVerifiedGyms:v=>{vr=v},setLedger:v=>{ledger=v},getToday:today,lab,badge,miniRefresh,getButton:()=>button,setPlan:v=>{lp=v},setCurrent:time=>{updated=time},setMode:v=>{cfg.mode=v},getConfig:()=>cfg,getState:()=>data};})();");
+ const injected=source.replace(/\}\)\(\);\s*$/, "window.__activity={scanActions,scanGym,actDone,refill,aFl,cMet,cFactor,mCard,boostCard,fCard,gymTip,gyms,getKnown:()=>vr,getActions:()=>acts,getLogs:()=>al,getInput:()=>loadInput(),setFocus:k=>{cfg.stat=k},setData:v=>{data=v},setVerifiedGyms:v=>{vr=v},setLedger:v=>{ledger=v},getToday:today,lab,simulate,cFactor,targetWeeks,realInput:()=>loadInput(),badge,miniRefresh,getButton:()=>button,setPlan:v=>{lp=v},setCurrent:time=>{updated=time},setMode:v=>{cfg.mode=v},getConfig:()=>cfg,getState:()=>data};})();");
  assert.notEqual(injected,source);
  const PDA_httpGet=async(url,headers)=>({status:200,responseText:JSON.stringify((calls.push({url,headers}),reply?.(url)||{log:[]}))});
  new Function("document","location","window","localStorage","PDA_httpGet",injected)(
@@ -264,4 +264,38 @@ test("the permanent preview channel is independent of the pinned stable channel"
  assert.match(preview,/@updateURL\s+https:\/\/raw\.githubusercontent\.com\/Tom-Peters\/Torn-Happy-Jump-Helper\/main\/Torn-Happy-Jump-Helper-preview\.user\.js/);
  assert.match(preview,/@namespace\s+https:\/\/github\.com\/Tom-Peters\/Torn-Happy-Jump-Helper#preview\b/);
  assert.ok(!/[“”‘’]/.test(preview));
+});
+
+test("higher base Happy cannot reduce projected gains after calibration is held constant",()=>{
+ const a=boot(),stat=x=>({value:x});
+ a.core.setFocus("strength");
+ a.core.setData({gym:{gym:{id:1}},gyms:{gyms:[{id:1,name:"Frontline Fitness",energy_cost:25,modifiers:{strength:75}}]},stats:{battlestats:{strength:stat(1514728),speed:stat(2003873),defense:stat(1179842),dexterity:stat(1007916)}},bars:{bars:{energy:{current:10,maximum:150,interval:600,increment:5},happy:{current:3461,maximum:3475}}},cooldowns:{cooldowns:{drug:0,booster:0}},refills:{refills:{energy:true}}});
+ const p=a.core.realInput();
+ assert.ok(p);
+ const original=a.core.simulate("natural",{...p,happy:3475,maxH:3475,_factor:.97},168);
+ const upgrade=a.core.simulate("natural",{...p,happy:5025,maxH:5025,_factor:.97},168);
+ assert.ok(upgrade.gain>original.gain,"higher Happy with the same trains and calibration should produce higher gains");
+ const h=a.core.lab();
+ assert.match(h,/Private Island what-if/);
+ assert.match(h,/days sooner/);
+ assert.doesNotMatch(h,/Time difference: -/);
+});
+test("energy cans count actual delivered E and shared booster cooldown rather than invented 56 cans",()=>{
+ const a=boot(),stat=x=>({value:x});
+ a.core.setFocus("strength");
+ a.core.setData({gym:{gym:{id:1}},gyms:{gyms:[{id:1,name:"Frontline Fitness",energy_cost:25,modifiers:{strength:75}}]},stats:{battlestats:{strength:stat(1514728),speed:stat(2003873),defense:stat(1179842),dexterity:stat(1007916)}},bars:{bars:{energy:{current:10,maximum:150,interval:600,increment:5},happy:{current:3461,maximum:3475}}},cooldowns:{cooldowns:{drug:0,booster:0}},refills:{refills:{energy:true}}});
+ const p=a.core.realInput();
+ const base=a.core.simulate("natural",{...p,_factor:.97},168);
+ const extra=a.core.simulate("natural",{...p,_factor:.97,_canScenario:{perDay:8,baseE:25,mult:1}},168);
+ assert.ok(extra.canCount>0 && extra.canCount<=56);
+ assert.ok(extra.canAdded>0 && extra.canAdded<=extra.canCount*25);
+ assert.equal(extra.events.filter(x=>x.kind==="CAN").length,extra.canCount);
+ assert.ok(extra.gain>=base.gain,"schedule should not lose overall gain for additive cans in this setup");
+ assert.match(a.core.lab(),/Timed simulation/);
+});
+test("fractional milestone projections change for moderately higher weekly gains",()=>{
+ const a=boot();
+ const slower=a.core.targetWeeks(1514728,1700000),faster=a.core.targetWeeks(1514728,1750000);
+ assert.ok(slower>faster);
+ assert.ok((slower-faster)*7>.2);
 });
