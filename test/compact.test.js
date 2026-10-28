@@ -1574,3 +1574,26 @@ test("awake override never invents actual gym progress or a used daily refill",a
  assert.ok(a.core.plans().some(plan=>plan.events.some(e=>e.kind==="REFILL"&&new Date(e.t*1000).toISOString().slice(0,10)==="2026-10-28")),
  "If refill still ready, waking exception must not automatically use it");
 });
+
+test("inventory user-data requests avoid service cache when refreshing owned supplies",async()=>{
+ const a=setup(false,false,"2026-10-28T00:07:00Z",{stat:"strength"},7);
+ await a.btn.onclick();
+ const calls=a.requests.filter(u=>u.includes("/user/inventory"));
+ assert.ok(calls.length>=4);
+ assert.ok(calls.every(u=>u.includes("&timestamp=")), "Every inventory category query should request up-to-date quantities");
+ assert.ok(a.requests.filter(u=>u.includes("/market/")).every(u=>!u.includes("timestamp=")),
+  "Global market prices should retain Torn service caching");
+});
+test("undoing a copied gym log respects the currently selected stat",async()=>{
+ const a=setup(false,false,"2026-10-28T00:10:00Z",{stat:"strength"},7);
+ await a.btn.onclick();
+ assert.equal(a.core.importCopiedLog("You used 25 energy training your strength in Sample Fitness increasing it by 1,300.50 to 1,601,300.50"),1);
+ assert.equal(a.core.importCopiedLog("You used 25 energy training your speed in Sample Fitness increasing it by 2,100.25 to 2,102,100.25"),1);
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ p.onclick({target:{closest(){return {dataset:{act:"undo-copied"}};}}});
+ const x=JSON.parse(a.storage.getItem("hhj-compact-v1:copied-gym-logs"));
+ assert.equal(x.length,1);
+ assert.equal(x[0].stat,"speed");
+ assert.equal(x[0].amount,2100.25);
+});
