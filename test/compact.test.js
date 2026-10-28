@@ -1320,14 +1320,14 @@ test("Progress lets the user check for a later Torn gain without closing Happy J
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
  let html=panel.children[1].innerHTML;
- assert.match(html,/Latest stat check: 28 Oct, 00:00 UTC/);
+ assert.match(html,/Last live stat read: 28 Oct, 00:00 UTC/);
  assert.match(html,/↻ Check new gains/);
  a.advance(360);
  a.fixture["/user/battlestats"].battlestats.strength.value+=9000.25;
  panel.onclick({target:{closest(){return {dataset:{act:"refresh"}};}}});
  await settleRefresh(a);
  html=panel.children[1].innerHTML;
- assert.match(html,/Latest stat check: 28 Oct, 00:06 UTC/);
+ assert.match(html,/Last live stat read: 28 Oct, 00:06 UTC/);
  assert.match(html,/Latest recorded gain/);
  assert.match(html,/\+9,000/);
  assert.match(html,/API snapshot changes, not complete gym logs/);
