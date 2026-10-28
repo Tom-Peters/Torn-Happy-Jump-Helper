@@ -1,5 +1,18 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.21 confirmed launched on Android TornPDA — 28 October 2026 at 20:58 UK time
+
+User-supplied HJ Startup Test screenshot confirmed:
+- `Main HJ launcher in DOM: YES`
+- `Main HJ loaded marker: 0.10.21`
+- `Main HJ startup marker: 0.10.21`
+- `Main HJ stage: {"version":"0.10.21","phase":"mounted"}`
+- `TornPDA HTTP bridge present: YES`
+
+**The smart-apostrophe injection/parsing fix is now phone-confirmed.** v0.10.21 is the working *launcher* baseline; the user has not yet confirmed API-driven drug/refill detection, calibration, forecast accuracy, or gym suggestions within the dashboard. The separate HJ Startup Test's `No API requests made` line describes only that diagnostic, not the main helper.
+
+**Next on-device check:** disable the diagnostic, open the actual HJ launcher, verify its eight tabs and live refresh, check the automatically detected latest drug/refill/gym events, and inspect any `Activity:` error if unavailable. Keep v0.10.16 as an additional known-good fallback. Preserve TornPDA saved data and never paste real API keys into repository issues or screenshots.
+
 ## Root cause found — TornPDA quote normalization (v0.10.21)
 
 **[Install v0.10.21](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.21-compat.user.js)**
