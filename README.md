@@ -8,9 +8,28 @@ This unversioned path contains **phone-confirmed v0.10.22** and includes the per
 
 **Stable promotion policy:** Develop new releases at versioned preview URLs. Run all syntax, mobile smart-quote preprocessing, dashboard, API and read-only regression checks; require a successful phone test. Only then publish the confirmed candidate to the permanent URL. Until that point, the stable installer remains pinned at v0.10.22. The GitHub repository default branch can contain newer preview files without changing the stable installer.
 
+## v0.11.1 — fix Upgrade Lab property gain inversion and energy-can overestimation
+
+**Permanent Preview:** [Torn-Happy-Jump-Helper-preview.user.js](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js), now at **v0.11.1**.
+**Pinned stable:** v0.10.22 remains unchanged.
+
+The user's v0.11.0 mobile screenshot confirmed the Upgrade Lab rendered correctly but exposed:
+- **Property at 5,025 base Happy:** `-779` Strength for a 7-day comparison against a Castle base-Happy scenario, despite higher base Happy. Root cause: the candidate was **re-fitting the same historical empirical gains to the hypothetical higher Happy** through `cFactor(p)`. As the hypothesized unadjusted gain increased, the re-derived empirical factor decreased, invalidating the comparison.
+- **8 energy cans per day at 25 E, $4m each** yielded a naive `1,400 E/week / +100,618 Strength / $224m/week` without scheduling or booster cooldown limits. This was an upper-bound arithmetic illustration rather than a realistic model.
+
+**Corrections implemented in v0.11.1:**
+- Freeze the **same measured calibration factor** (derived from the actual, live gym and Happy) for both property scenarios. Increasing hypothetical Happy cannot cause a calibration inversion. The current property Happy is the baseline, not a second hypothetical sample.
+- Simulate energy-can use **within the existing regular training schedule**, respecting **2-hour base booster cooldown**, 24-hour booster cap, current booster cooldown, sleep hours, energy capacity and training after a can. Count only cans actually scheduled and Energy actually delivered, not all user-requested cans. Other future booster items, faction/company cooldown reductions, price changes and future item availability remain out of scope, clearly stated as assumptions; no purchases or game actions.
+- Compare the full seven-day plan with and without those scheduled cans; no longer assume a raw 1,400 E can simply be added to all training in ideal conditions.
+- Recalculate 50m projections in fractional weeks, display **days saved** rather than rounding away improvements under one full week. These remain long-run model estimates, not guaranteed dates.
+- Preserve the compact Today screen and in-page due indicator from v0.11.0. Preserve existing local settings and verified logs. Never clear storage.
+- Added regression tests for monotonic property gains under frozen empirical calibration, timed can limits/actual E and fractional milestones. All changes remain separate from confirmed stable v0.10.22.
+
+**Phone status:** v0.11.0 Upgrade Lab was confirmed to open; v0.11.1 requires phone confirmation. After disabling the previous preview instance (or updating it), enable only the single permanent preview with injection END. Do not enable stable and preview together. Check that the panel reports v0.11.1.
+
 ## v0.11.0 Training Command Centre — separate Android preview
 
-**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.0. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
+**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.1. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
 
 **Preview channel policy:** The permanent preview URL is updated only with a test-passing candidate and uses its own `@updateURL` and `@downloadURL`. Install **either** stable or preview in TornPDA at any one time. They share local HJ settings, so do not clear app storage between channels. A preview passing CI is not the same as phone-confirmed stability.
 
