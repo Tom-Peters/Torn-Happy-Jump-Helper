@@ -16,7 +16,7 @@ function boot(respond){
     getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null}};
   const localStorage={getItem(k){return store.get(k)||null},setItem(k,v){store.set(k,String(v))}};
   const window={setInterval(){}};
-  const instrumented=code.replace(/\}\)\(\);\s*$/, "window.__autoTests={readLog,scanGym,cgCard,getLogs:()=>al,getStatus:()=>ls};})();");
+  const instrumented=code.replace(/\}\)\(\);\s*$/, "window.__autoTests={readLog,scanGym,cgCard,getLogs:()=>al,getStatus:()=>ls,setFocus:stat=>{cfg.stat=stat}};})();");
   assert.notEqual(instrumented,code);
   const PDA_httpGet=async (url,headers)=>{calls.push({url,headers});const data=respond(url);
     return {status:200,responseText:JSON.stringify(data)}};
@@ -131,6 +131,7 @@ test("real Torn Gym category structure reads strength_increased, trains and ener
   assert.equal(a.core.getLogs().length,1);
   assert.deepEqual(a.core.getLogs().map(x=>({stat:x.stat,amount:x.amount,trains:x.trains,energy:x.energy})),
     [{stat:"strength",amount:40897,trains:3,energy:30}]);
+  a.core.setFocus("strength");
   assert.match(a.core.cgCard(),/40,897/);
   assert.match(a.core.cgCard(),/3 trains/);
   assert.match(a.core.getStatus(),/Gym category:1/);
@@ -158,6 +159,7 @@ test("54 real-format gym events are parsed once, never multiplied by repeated re
   await a.core.scanGym(true);
   assert.equal(a.core.getLogs().length,54);
   assert.match(a.core.getStatus(),/0 new/);
+  a.core.setFocus("strength");
   assert.match(a.core.cgCard(),/81,000/);
 });
 test("no fabricated events for zero or negative gains, or ambiguous multiple positive stats",()=>{
