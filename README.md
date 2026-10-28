@@ -1,10 +1,25 @@
-# Torn Happy Jump Helper — v0.10.6
+# Torn Happy Jump Helper — v0.10.7
 
-**Latest Android test release: v0.10.6 · Author: IamEEKY**
+**Latest Android test release: v0.10.7 · Author: IamEEKY**
 
 **[Install / update the main TornPDA userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
 
 This release fixes missed live training gains caused by quick consecutive API checks, accounts for off-schedule point refills, and supports staying awake later than the configured UK bedtime. It preserves the working floating HJ launcher, eight tabs, local records, approximate gym-gain model, budget and read-only gameplay.
+
+## v0.10.7 — HJ launcher recovery
+
+This is a **recovery build** after the HJ floating button failed to appear with v0.10.6 on Android TornPDA. The exact device-specific cause has **not** been confirmed. The two startup weaknesses addressed are:
+
+- A previous same-version injection could stop all subsequent initialisation, even if the launcher had disappeared. A reinjection now attempts to **remount the existing launcher**, and can retry after a failed previous boot.
+- Torn's page transitions could detach the full-screen panel while the helper still considered it open, leaving the floating button hidden. The periodic mount now **resets this detached state** and restores the button.
+- The main userscript was reduced from roughly **63.3 KB to 59,994 characters** without removing Copy Log imports, point-refill checks, saved history, the eight tabs, estimates, or sleep scheduling. The guard now enforces **under 60,000 characters**.
+- These paths are covered by **102/102 passing focused mock-TornPDA tests**, including simulated reinjection and page-panel replacement. The build still needs confirmation on an actual Android TornPDA device.
+
+**Install:** Disable any duplicate HJ user scripts, update the main script using the raw link above, then **fully reload the Torn page** (or restart its TornPDA WebView if needed). The floating **HJ ◉** button should reappear. Confirm the panel displays **READ ONLY · v0.10.7**.
+
+**Rollback:** If it still does not load, disable v0.10.7 and install the [v0.10.4 screenshot-confirmed release](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.4-screenshot-confirmed.user.js). Keep only one HJ script enabled. **Do not clear TornPDA storage**: the updated script uses the same local saved-settings and observation keys.
+
+## Existing v0.10.6 improvements retained
 
 ## What was wrong with the gym gain tracking?
 
