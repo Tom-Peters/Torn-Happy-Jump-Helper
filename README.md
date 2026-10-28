@@ -1,5 +1,21 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.18 — automatic activity recognition and cautious optimisation (Android trial)
+
+**[Install v0.10.18](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.18-compat.user.js)**
+
+The user requested **no manual “I did it”, “Missed it”, “Not sure” or “Mark refill used” buttons**, and approved automatic calibration, separate Happy Jump analysis, seven-day forecast accuracy and better-gym suggestions, while deferring a detailed per-gym history page. v0.10.16 was independently confirmed on Android TornPDA. v0.10.17 remains the immediately preceding compatibility baseline; **v0.10.18 is not yet confirmed on the phone**.
+
+Changes:
+- **Read-only automatic activity:** when opening/refeshing HJ, request the Torn personal log types 2290 (drug use) and 4900 (energy refill). Recognise time-stamped **Xanax**, **Ecstasy** and **energy refill** events by the log's details.id and title. Store only event ID, type and timestamp in local TornPDA storage. Do not expose or persist the API key.
+- **No completion buttons:** remove the old manual action notes and refill-marking controls. Gym TRAIN steps can be recognised from Torn gym logs within ten minutes of their scheduled time; Xanax within thirty minutes; daily refills from real logs or the authoritative daily refill API. A possible completed JUMP requires *both* Ecstasy and nearby gym training and is therefore an **inference**, not proof of a traditional Happy Jump stack. Unsupported actions remain unverified rather than being falsely marked done. The forward plan is based on live bars and cooldowns.
+- **Confidence-gated calibration:** compare only same-stat, same-energy-cost logs (and same recorded gym when that identifier is available). Trim per-train outliers beyond 70–130% of the initial median. Apply an automatic measured/model multiplier to **regular natural and Xanax forecasts only** if at least six consistent, comparable sessions are available and the ratio is within 0.65–1.35. No automatic Happy Jump multiplier. If not confident, retain existing formula untouched.
+- **Possible boosted/Happy Jump sessions:** report unusual per-train gains separately; this is only a *possible* boosted session, never a definitive jump classification without additional evidence.
+- **Limited seven-day forecast accuracy:** compare previously stored planned versus observed stat gains over matching short API snapshot intervals in the last seven days, requiring at least three matching intervals. Label partial coverage explicitly. Do not pretend this is a full seven-day audit.
+- **Better gym reminder:** suggest an estimated advantage for gyms **already locally verified owned or unlocked but not purchased**, and eligible for the user's stats; membership and unlocks are not directly available from the Torn API. Never treat locked/unknown gyms as accessible.
+- **Compactness and stability:** remains around 58 KB, preserving the known Android-compatible launcher, existing settings, gym log history, Progress chart and read-only behavior. Extensive tests cover action recognition, date boundaries, non-double-counting, calibration, unverified actions and gym eligibility.
+- Keep **v0.10.17 installed but disabled** as rollback. Enable exactly one main HJ helper with injection **END**. **Never clear TornPDA storage** as part of the update.
+
 ## v0.10.17 — compare measured gains against the gym model (Android trial)
 
 **[Install v0.10.17](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.17-compat.user.js)**
