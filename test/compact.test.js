@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const path=require("node:path");
 
 const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
-function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null,seedPartial=null,seedActions=null,seedRecovery=null){
+function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null,seedPartial=null,seedActions=null,seedRecovery=null,seedHistory=null){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
   function node(tag){return {tag,style:{},children:[],dataset:{},innerHTML:"",textContent:"",
@@ -24,6 +24,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
   if(typeof seedPartial==="boolean")map.set("hhj-compact-v1:show-partial",JSON.stringify(seedPartial));
   if(seedActions)map.set("hhj-compact-v1:action-notes",JSON.stringify(seedActions));
   if(seedRecovery)map.set("hhj-compact-v1:recovery",JSON.stringify(seedRecovery));
+  if(seedHistory)map.set("hhj-compact-v1:history",JSON.stringify(seedHistory));
   const localStorage={getItem(k){return map.has(k)?map.get(k):null;},
     setItem(k,v){map.set(k,String(v));}};
   const fixture={
@@ -1331,4 +1332,137 @@ test("Progress lets the user check for a later Torn gain without closing Happy J
  assert.match(html,/Latest recorded gain/);
  assert.match(html,/\+9,000/);
  assert.match(html,/API snapshot changes, not complete gym logs/);
+});
+
+test("cache-busted live API requests include latest battle stats bars cooldowns and refills",async()=>{
+ const a=setup(false,false,"2026-10-28T00:01:00Z",{stat:"strength"});
+ await a.btn.onclick();
+ for(const part of ["/user/battlestats","/user/bars","/user/cooldowns","/user/refills"]){
+  assert.ok(a.requests.some(url=>url.includes(part+"?timestamp=")),part+" should use a fresh uncached response");
+ }
+ assert.ok(a.requests.some(url=>url.includes("/market/pointsmarket")&&!url.includes("timestamp=")),"Market calls remain unchanged");
+ const old=a.requests.find(url=>url.includes("/user/battlestats?timestamp="));
+ a.advance(5);await a.refresh();
+ const calls=a.requests.filter(url=>url.includes("/user/battlestats?timestamp="));
+ assert.equal(calls.length,2);
+ assert.ok(calls[1]!==old,"A new stat check should not reuse the earlier cache key");
+});
+test("rapid consecutive genuine gym gains remain separate, even while sleeping and outside the plan",async()=>{
+ const a=setup(false,false,"2026-10-28T00:00:00Z",
+ {stat:"strength",sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00"},7);
+ await a.btn.onclick();
+ const baseline=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
+ a.advance(4);await a.refresh();
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan")).t,baseline.t,
+  "A 4s unchanged refresh must retain the earlier baseline");
+ assert.equal(a.storage.getItem("hhj-compact-v1:verification"),null);
+ a.advance(3);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=1500.75;
+ await a.refresh();
+ let samples=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"));
+ assert.equal(samples.length,1);
+ assert.ok(Math.abs(samples[0].observed.strength-1500.75)<.01);
+ a.advance(4);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=9800.25;
+ await a.refresh();
+ samples=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"));
+ assert.equal(samples.length,2,"Second gain within 30s must not disappear");
+ assert.ok(Math.abs(samples[1].observed.strength-9800.25)<.01);
+ assert.ok(Math.abs(samples.reduce((n,x)=>n+x.observed.strength,0)-11301)<.01);
+ assert.equal(a.core.sleeping(Date.parse("2026-10-28T00:00:11Z")/1000),true);
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=p.children[1].innerHTML;
+ assert.match(html,/Recorded today/);
+ assert.match(html,/\+11,301/);
+ assert.match(html,/Live strength · independent of schedule/);
+ assert.match(html,/Outside forecast/);
+});
+test("first reading after midnight stays as the daily anchor while later gym gains appear independently",async()=>{
+ const a=setup(false,false,"2026-10-27T23:59:45Z",{stat:"strength",sleepEnabled:false},7);
+ await a.btn.onclick();
+ a.advance(15);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=1400.5;
+ await a.refresh();
+ a.advance(6);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=9100.25;
+ await a.refresh();
+ const h=JSON.parse(a.storage.getItem("hhj-compact-v1:history")).find(x=>x.d==="2026-10-28");
+ assert.ok(h&&Number.isFinite(h.t));
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=p.children[1].innerHTML;
+ assert.match(html,/Since first check today:.*\+9,100/);
+ assert.match(html,/Recorded today/);
+ assert.match(html,/\+10,501/);
+ assert.match(html,/not added to checkpoint totals/);
+});
+test("legacy daily anchor reveals net stat increase even if an older checkpoint interval was lost",async()=>{
+ const day="2026-10-28",baseline=1600000,clock="2026-10-28T00:07:00Z";
+ const a=setup(false,false,clock,{stat:"strength"},7,"/index.php",null,null,null,null,
+ [{d:day,s:{strength:baseline,speed:2000000,defense:1180000,dexterity:1000000}}]);
+ a.fixture["/user/battlestats"].battlestats.strength.value=baseline+9300;
+ await a.btn.onclick();
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=p.children[1].innerHTML;
+ assert.match(html,/Current API value:<\/b> 1,609,300/);
+ assert.match(html,/Since first check today:.*\+9,300/);
+ assert.ok(!html.includes("Recorded today</span><strong>+9,300"),
+  "Net gain from legacy anchor is displayed independently, not forged into old checkpoint ledger");
+});
+test("midnight point refill is recognized by Torn and is not scheduled again at 08:00",async()=>{
+ const a=setup(false,false,"2026-10-27T23:59:00Z",
+ {stat:"strength",refills:true,sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00"},7);
+ await a.btn.onclick();
+ a.advance(120);
+ a.fixture["/user/refills"].refills.energy=true;
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.refresh();
+ assert.equal(a.core.refillStatus(true),"used");
+ const plans=a.core.plans();
+ assert.ok(plans.length>0);
+ for(const p of plans){
+  assert.ok(!p.events.some(e=>e.kind==="REFILL"&&new Date(e.t*1000).toISOString().slice(0,10)==="2026-10-28"),
+   "A consumed refill cannot be recommended again on the same UTC day");
+ }
+ const panel=a.document.getElementById("hhj-compact-panel");
+ assert.match(panel.children[1].innerHTML,/USED TODAY/);
+ assert.ok(!panel.children[1].innerHTML.includes("Mark today’s refill used"));
+ assert.match(panel.children[1].innerHTML,/23:00–08:00 UK time/);
+});
+test("off-plan midnight refill can be manually marked used even when API still says ready",async()=>{
+ const a=setup(false,false,"2026-10-28T00:01:00Z",
+ {stat:"strength",refills:true,sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00"},7);
+ await a.btn.onclick();
+ const panel=a.document.getElementById("hhj-compact-panel");
+ assert.match(panel.children[1].innerHTML,/Mark today’s refill used/);
+ const before=a.core.plans().find(x=>x.method==="natural");
+ assert.ok(before.events.some(e=>e.kind==="REFILL"&&new Date(e.t*1000).toISOString().slice(0,10)==="2026-10-28"));
+ panel.onclick({target:{closest(){return {dataset:{act:"mark-used"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),'"2026-10-28"');
+ assert.equal(a.core.refillStatus(false),"used");
+ const after=a.core.plans();
+ for(const p of after){
+  assert.ok(!p.events.some(e=>e.kind==="REFILL"&&new Date(e.t*1000).toISOString().slice(0,10)==="2026-10-28"));
+ }
+ assert.match(panel.children[1].innerHTML,/USED TODAY/);
+ assert.ok(!panel.children[1].innerHTML.includes("Mark today’s refill used"));
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("failed battle stat read never erases prior baseline, and next good response recovers gain",async()=>{
+ const a=setup(false,false,"2026-10-28T00:00:00Z",
+ {stat:"strength",sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00"},7);
+ await a.btn.onclick();
+ const initial=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan"));
+ const saved=a.fixture["/user/battlestats"];
+ a.advance(4);a.fixture["/user/battlestats"]={error:{code:21}};
+ await a.refresh();
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan")).t,initial.t);
+ a.advance(4);a.fixture["/user/battlestats"]=saved;
+ saved.battlestats.strength.value+=8000;
+ await a.refresh();
+ const entries=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"));
+ assert.equal(entries.length,1);
+ assert.equal(entries[0].observed.strength,8000);
 });
