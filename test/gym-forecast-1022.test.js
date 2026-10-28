@@ -99,7 +99,7 @@ test("matching gym and energy can automatically calibrate a moderate consistent 
 test("forecast accuracy requires three paired intervals and never claims full coverage",()=>{
  const a=boot();
  a.core.setFocus("strength");
- assert.match(a.core.fCard(),/Not enough matched/);
+ assert.match(a.core.fCard(),/Fewer than 3 matching intervals/);
  const t=now();
  a.core.setLedger(Array.from({length:3},(_,i)=>({t:t-i*3600,from:t-i*3600-600,
  forecastStat:"strength",method:"natural",observed:{strength:950},expected:1000})));
