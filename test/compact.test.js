@@ -61,7 +61,7 @@ test("CSP-safe installed script is compact, self-contained and includes no eval 
   const src=fs.readFileSync(S,"utf8");
   assert.ok(src.length<60000,"Keep the direct install far below the failed 78 KB preview size");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.10\.4/);
+  assert.match(src,/@version\s+0\.10\.5/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -72,7 +72,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.4");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.5");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -292,7 +292,7 @@ test("v0.10.3 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.10.4");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.5");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -626,7 +626,7 @@ test("changed stat cannot relabel a previous strength forecast as a speed foreca
  panel.onclick({target:{closest(){return {dataset:{act:"stat",val:"speed"}}}}});
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
  html=panel.children[1].innerHTML;
- assert.match(html,/No comparable plan/);
+ assert.match(html,/Outside forecast/);
  assert.match(html,/Recorded \+490/);
  assert.ok(!html.includes("Scheduled (matched)"),"No mismatched strength forecast can display as a speed forecast");
 });
@@ -639,7 +639,7 @@ test("legacy intervals without forecast focus keep observed totals but suppress 
  p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}}}}});
  const html=p.children[1].innerHTML;
  assert.match(html,/10-26 · Partial/);
- assert.match(html,/No comparable plan/);
+ assert.match(html,/Outside forecast/);
  assert.match(html,/Recorded \+611/);
  assert.ok(!html.includes("Scheduled (matched) +29,000"));
  assert.match(html,/str: 611/);
@@ -1245,4 +1245,71 @@ test("Not sure dismisses the overdue prompt without logging a missed action",asy
  assert.equal(a.storage.getItem("hhj-compact-v1:recovery"),null);
  assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
  assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),null);
+});
+
+
+test("observed gym training outside a scheduled window is not falsely paired with +0",async()=>{
+ const samples=[
+ {t:Date.parse("2026-10-27T20:00:00Z")/1000,
+ from:Date.parse("2026-10-27T19:00:00Z")/1000,stat:"strength",forecastStat:"strength",
+ expected:169433,observed:{strength:35316,speed:0,defense:0,dexterity:0}},
+ {t:Date.parse("2026-10-28T00:00:00Z")/1000,
+ from:Date.parse("2026-10-27T23:58:00Z")/1000,stat:"strength",forecastStat:"strength",
+ expected:0,observed:{strength:1678.95,speed:0,defense:0,dexterity:0}},
+ {t:Date.parse("2026-10-28T00:06:00Z")/1000,
+ from:Date.parse("2026-10-28T00:00:00Z")/1000,stat:"strength",forecastStat:"strength",
+ expected:0,observed:{strength:10110.05,speed:0,defense:0,dexterity:0}}
+ ];
+ const a=setup(false,false,"2026-10-28T00:07:00Z",{stat:"strength"},7,"/index.php",samples);
+ await a.btn.onclick();
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=p.children[1].innerHTML;
+ assert.match(html,/10-27 · Partial/);
+ assert.match(html,/Scheduled \(matched\) \+169,433/);
+ assert.match(html,/10-28 · Partial/);
+ assert.match(html,/Outside forecast/);
+ assert.match(html,/Outside matching forecast: \+11,789/);
+ assert.match(html,/Recorded \+11,789/);
+ assert.match(html,/str: 11,789/);
+ assert.ok(!html.includes("Scheduled (matched) +0"),"Zero-action periods cannot count as model comparison");
+ assert.match(html,/API snapshot changes, not complete gym logs/);
+ assert.match(html,/cross-midnight intervals use the refresh date/);
+});
+test("two separate observed 25E and 150E gym sessions retain both increments after successful API checks",async()=>{
+ const a=setup(false,false,"2026-10-27T23:58:00Z",
+ {stat:"strength",sleepEnabled:false},7);
+ a.fixture["/torn/gyms"].gyms[0].energy_cost=25;
+ await a.btn.onclick();
+ a.advance(120);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=1678.95;
+ await a.refresh();
+ a.advance(360);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=10110.05;
+ await a.refresh();
+ const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"));
+ assert.equal(notes.length,2);
+ assert.ok(Math.abs(notes[0].observed.strength-1678.95)<0.01);
+ assert.ok(Math.abs(notes[1].observed.strength-10110.05)<0.01);
+ assert.ok(Math.abs(notes.reduce((sum,x)=>sum+x.observed.strength,0)-11789)<0.01);
+ const panel=a.document.getElementById("hhj-compact-panel");
+ panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=panel.children[1].innerHTML;
+ assert.match(html,/Recorded today/);
+ assert.match(html,/\+11,789/);
+ assert.match(html,/checks, not individual gym trains/);
+});
+test("snapshot gain with no matching forecast focus stays recorded without a phantom planned comparison",async()=>{
+ const sample=[{t:Date.parse("2026-10-28T00:00:00Z")/1000,
+ from:Date.parse("2026-10-27T23:55:00Z")/1000,stat:"strength",forecastStat:"speed",
+ expected:25000,observed:{strength:1678.95,speed:0,defense:0,dexterity:0}}];
+ const a=setup(false,false,"2026-10-28T00:06:00Z",{stat:"strength"},7,"/index.php",sample);
+ await a.btn.onclick();
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=p.children[1].innerHTML;
+ assert.match(html,/Outside forecast/);
+ assert.match(html,/Outside matching forecast: \+1,679/);
+ assert.ok(!html.includes("Scheduled (matched) +25,000"));
+ assert.match(html,/str: 1,679/);
 });
