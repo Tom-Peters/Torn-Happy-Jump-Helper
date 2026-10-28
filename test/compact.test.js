@@ -1538,3 +1538,39 @@ test("Progress never turns a missing live stat API reading into a fake negative 
  assert.match(html,/No first-check baseline today/);
  assert.ok(!html.includes("-1,350,000"),"Missing data must not masquerade as actual stat loss");
 });
+
+test("staying awake after midnight permits optional immediate training without changing 23:00–08:00 settings",async()=>{
+ const t="2026-10-28T00:07:00Z",cfg={stat:"strength",sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00",refills:true,ownedPoints:10000};
+ const a=setup(true,false,t,cfg,7);
+ a.fixture["/user/bars"].bars.energy.current=150;
+ await a.btn.onclick();
+ const now=Date.parse(t)/1000;
+ assert.equal(a.core.sleeping(now),true);
+ let regular=a.core.plans().find(x=>x.method==="natural");
+ assert.ok(!regular.events.some(e=>e.t<now+3600),"Scheduled sleeping period should normally suppress immediate training");
+ const panel=a.document.getElementById("hhj-compact-panel");
+ assert.match(panel.children[1].innerHTML,/Still awake · next hour/);
+ panel.onclick({target:{closest(){return {dataset:{act:"awake-hour"}};}}});
+ assert.equal(a.core.sleeping(now),false);
+ assert.equal(a.storage.getItem("hhj-compact-v1:awake-until"),String(now+3600));
+ regular=a.core.plans().find(x=>x.method==="natural");
+ assert.ok(regular.events.some(e=>e.kind==="TRAIN"&&e.t>=now&&e.t<now+3600),"Current energy should be scheduled if awake");
+ assert.equal(a.core.sleeping(now+3601),true,"The override must expire automatically");
+ assert.match(panel.children[1].innerHTML,/Return to normal hours/);
+ assert.deepEqual(JSON.parse(a.storage.getItem("hhj-compact-v1:settings")),cfg,"Saved sleep settings should remain untouched");
+ panel.onclick({target:{closest(){return {dataset:{act:"awake-off"}};}}});
+ assert.equal(a.core.sleeping(now),true);
+ assert.equal(a.storage.getItem("hhj-compact-v1:awake-until"),"0");
+});
+test("awake override never invents actual gym progress or a used daily refill",async()=>{
+ const cfg={stat:"strength",sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00",refills:true};
+ const a=setup(false,false,"2026-10-28T00:15:00Z",cfg,7);
+ await a.btn.onclick();
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"awake-hour"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:verification"),null);
+ assert.equal(a.storage.getItem("hhj-compact-v1:used-day"),null);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+ assert.ok(a.core.plans().some(plan=>plan.events.some(e=>e.kind==="REFILL"&&new Date(e.t*1000).toISOString().slice(0,10)==="2026-10-28")),
+ "If refill still ready, waking exception must not automatically use it");
+});
