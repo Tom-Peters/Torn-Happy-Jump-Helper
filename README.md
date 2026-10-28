@@ -10,7 +10,9 @@ This unversioned path contains **phone-confirmed v0.10.22** and includes the per
 
 ## v0.11.0 Training Command Centre — separate Android preview
 
-**[Optional v0.11.0 preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js)**
+**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.0. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
+
+**Preview channel policy:** The permanent preview URL is updated only with a test-passing candidate and uses its own `@updateURL` and `@downloadURL`. Install **either** stable or preview in TornPDA at any one time. They share local HJ settings, so do not clear app storage between channels. A preview passing CI is not the same as phone-confirmed stability.
 
 **Unverified on a phone** (automated CI passes). Do not automatically promote this trial to stable. Based directly on phone-confirmed v0.10.22, preserving the original startup/bootstrap and existing user data.
 
