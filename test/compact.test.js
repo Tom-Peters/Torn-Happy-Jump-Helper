@@ -1252,13 +1252,13 @@ test("observed gym training outside a scheduled window is not falsely paired wit
  const samples=[
  {t:Date.parse("2026-10-27T20:00:00Z")/1000,
  from:Date.parse("2026-10-27T19:00:00Z")/1000,stat:"strength",forecastStat:"strength",
- expected:169433,observed:{strength:35316,speed:0,defense:0,dexterity:0}},
+ expected:120000,observed:{strength:27000,speed:0,defense:0,dexterity:0}},
  {t:Date.parse("2026-10-28T00:00:00Z")/1000,
  from:Date.parse("2026-10-27T23:58:00Z")/1000,stat:"strength",forecastStat:"strength",
- expected:0,observed:{strength:1678.95,speed:0,defense:0,dexterity:0}},
+ expected:0,observed:{strength:1400.75,speed:0,defense:0,dexterity:0}},
  {t:Date.parse("2026-10-28T00:06:00Z")/1000,
  from:Date.parse("2026-10-28T00:00:00Z")/1000,stat:"strength",forecastStat:"strength",
- expected:0,observed:{strength:10110.05,speed:0,defense:0,dexterity:0}}
+ expected:0,observed:{strength:9000.25,speed:0,defense:0,dexterity:0}}
  ];
  const a=setup(false,false,"2026-10-28T00:07:00Z",{stat:"strength"},7,"/index.php",samples);
  await a.btn.onclick();
@@ -1266,12 +1266,12 @@ test("observed gym training outside a scheduled window is not falsely paired wit
  p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
  const html=p.children[1].innerHTML;
  assert.match(html,/10-27 · Partial/);
- assert.match(html,/Scheduled \(matched\) \+169,433/);
+ assert.match(html,/Scheduled \(matched\) \+120,000/);
  assert.match(html,/10-28 · Partial/);
  assert.match(html,/Outside forecast/);
- assert.match(html,/Outside matching forecast: \+11,789/);
- assert.match(html,/Recorded \+11,789/);
- assert.match(html,/str: 11,789/);
+ assert.match(html,/Outside matching forecast: \+10,401/);
+ assert.match(html,/Recorded \+10,401/);
+ assert.match(html,/str: 10,401/);
  assert.ok(!html.includes("Scheduled (matched) +0"),"Zero-action periods cannot count as model comparison");
  assert.match(html,/API snapshot changes, not complete gym logs/);
  assert.match(html,/cross-midnight intervals use the refresh date/);
@@ -1282,36 +1282,36 @@ test("two separate observed 25E and 150E gym sessions retain both increments aft
  a.fixture["/torn/gyms"].gyms[0].energy_cost=25;
  await a.btn.onclick();
  a.advance(120);
- a.fixture["/user/battlestats"].battlestats.strength.value+=1678.95;
+ a.fixture["/user/battlestats"].battlestats.strength.value+=1400.75;
  await a.refresh();
  a.advance(360);
- a.fixture["/user/battlestats"].battlestats.strength.value+=10110.05;
+ a.fixture["/user/battlestats"].battlestats.strength.value+=9000.25;
  await a.refresh();
  const notes=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"));
  assert.equal(notes.length,2);
- assert.ok(Math.abs(notes[0].observed.strength-1678.95)<0.01);
- assert.ok(Math.abs(notes[1].observed.strength-10110.05)<0.01);
- assert.ok(Math.abs(notes.reduce((sum,x)=>sum+x.observed.strength,0)-11789)<0.01);
+ assert.ok(Math.abs(notes[0].observed.strength-1400.75)<0.01);
+ assert.ok(Math.abs(notes[1].observed.strength-9000.25)<0.01);
+ assert.ok(Math.abs(notes.reduce((sum,x)=>sum+x.observed.strength,0)-10401)<0.01);
  const panel=a.document.getElementById("hhj-compact-panel");
  panel.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
  const html=panel.children[1].innerHTML;
  assert.match(html,/Recorded today/);
- assert.match(html,/\+11,789/);
+ assert.match(html,/\+10,401/);
  assert.match(html,/checks, not individual gym trains/);
 });
 test("snapshot gain with no matching forecast focus stays recorded without a phantom planned comparison",async()=>{
  const sample=[{t:Date.parse("2026-10-28T00:00:00Z")/1000,
  from:Date.parse("2026-10-27T23:55:00Z")/1000,stat:"strength",forecastStat:"speed",
- expected:25000,observed:{strength:1678.95,speed:0,defense:0,dexterity:0}}];
+ expected:25000,observed:{strength:1400.75,speed:0,defense:0,dexterity:0}}];
  const a=setup(false,false,"2026-10-28T00:06:00Z",{stat:"strength"},7,"/index.php",sample);
  await a.btn.onclick();
  const p=a.document.getElementById("hhj-compact-panel");
  p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
  const html=p.children[1].innerHTML;
  assert.match(html,/Outside forecast/);
- assert.match(html,/Outside matching forecast: \+1,679/);
+ assert.match(html,/Outside matching forecast: \+1,401/);
  assert.ok(!html.includes("Scheduled (matched) +25,000"));
- assert.match(html,/str: 1,679/);
+ assert.match(html,/str: 1,401/);
 });
 
 test("Progress lets the user check for a later Torn gain without closing Happy Jump Helper",async()=>{
@@ -1323,12 +1323,12 @@ test("Progress lets the user check for a later Torn gain without closing Happy J
  assert.match(html,/Latest stat check: 28 Oct, 00:00 UTC/);
  assert.match(html,/↻ Check new gains/);
  a.advance(360);
- a.fixture["/user/battlestats"].battlestats.strength.value+=10110.05;
+ a.fixture["/user/battlestats"].battlestats.strength.value+=9000.25;
  panel.onclick({target:{closest(){return {dataset:{act:"refresh"}};}}});
  await settleRefresh(a);
  html=panel.children[1].innerHTML;
  assert.match(html,/Latest stat check: 28 Oct, 00:06 UTC/);
  assert.match(html,/Latest recorded gain/);
- assert.match(html,/\+10,110/);
+ assert.match(html,/\+9,000/);
  assert.match(html,/API snapshot changes, not complete gym logs/);
 });
