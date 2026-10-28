@@ -1,5 +1,21 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.19 — recovery after missing HJ launcher
+
+**[Install v0.10.19 launcher recovery](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.19-compat.user.js)**
+
+The user reported that **v0.10.18 did not show the floating HJ button** on Android TornPDA. This is a real phone-startup regression even though normal GitHub CI tests succeeded. The exact injection/runtime cause is not proven. **v0.10.16 is the last version confirmed to work on the phone**; v0.10.17 was not separately verified there.
+
+v0.10.19 is a separate lightweight recovery candidate built directly from that **v0.10.16** code rather than from either unconfirmed version. It:
+- Retains the original phone-confirmed launcher/bootstrap, live API refresh, eight dashboard tabs, full gym log scanning and verified Strength progress.
+- Removes all **I did it**, **Missed it**, **Not sure**, **Mark refill used** and similar manual completion buttons. Actions now show verified gym activity and next recommended plan steps; no automatic Torn actions are performed.
+- Adds bounded read-only lookups for personal drug and energy refill logs; a failed lookup does not assume completion. Confirms training only near the scheduled time and refills only on the correct UTC day. Possible jump inference needs Ecstasy and nearby training; it is not definitive proof of a complete Happy Jump stack.
+- Retains all local settings, gym logs, API snapshots and historical action-note data without clearing or rewriting them. The old manual notes are not used as action confirmations.
+- Is around **57.2 KB**, below the compact phone-injection size of the working v0.10.16. New regression tests validate the launcher and read-only activity detection, and CI passes.
+- Deliberately **defers** v0.10.18 automatic calibration, accuracy metrics and better-gym suggestion UI until this launcher is confirmed on the phone. Those unverified changes are not claimed available in v0.10.19.
+
+**Installation:** disable every other main Happy Jump Helper version, leave v0.10.16 installed but disabled as a rollback, set v0.10.19 to injection **END**, and reload a Torn page. Do **not** clear TornPDA storage. Confirm whether the HJ button appears before assessing dashboard features.
+
 ## v0.10.18 — automatic activity recognition and cautious optimisation (Android trial)
 
 **[Install v0.10.18](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.18-compat.user.js)**
