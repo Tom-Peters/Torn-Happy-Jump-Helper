@@ -1,5 +1,20 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.20 — minimum-change launcher isolation test
+
+**[Install v0.10.20](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.20-compat.user.js)**
+
+The user confirmed **v0.10.18 and v0.10.19 both fail to display the floating HJ launcher on Android TornPDA**. Do not treat syntax and unit-test success as real mobile compatibility.
+
+This conservative test is based **directly on v0.10.16, the most recently phone-confirmed working launcher**. Its original initialization, DOM mount, network calls, gym log parsing, persistence and planning are byte-identical until the Today panel. Only the UI is modified:
+- Hide the **I did it / Missed it / Not sure / Confirm** prompts and the user-facing manual refill controls.
+- Show verified recent Torn gym training, current daily refill status and the next future recommendation.
+- **No new API requests, startup state, callbacks or training-model changes.** It does **not yet implement the automatic drug-use detection, calibration, forecast accuracy or better-gym improvements** attempted in v0.10.18.
+- All preexisting local storage remains untouched, including old manual note records; those notes are not surfaced as new confirmations.
+- 57.9 KB userscript with automated regression checks for intact v0.10.16 startup and hidden manual-action controls. **Mobile confirmation pending.**
+
+Test with only **v0.10.20 enabled** as main HJ and injection **END**. Keep v0.10.16 installed as rollback. If HJ is still missing, **enable the existing HJ Startup Test diagnostic simultaneously** and reload Gym; check both startup and loaded markers. If both markers are `none`, TornPDA did not execute the main script. If the startup marker shows v0.10.20 but the loaded marker is missing, the script began but failed before mounting. Do not clear saved settings/data.
+
 ## v0.10.19 — recovery after missing HJ launcher
 
 **[Install v0.10.19 launcher recovery](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.19-compat.user.js)**
