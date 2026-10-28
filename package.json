@@ -1,8 +1,8 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.10.5",
+  "version": "0.10.6",
   "private": true,
-  "description": "TornPDA read-only Happy Jump helper: observed vs forecast intervals correctly separated, Progress stat refresh, overdue recovery",
+  "description": "TornPDA read-only gym planner with lossless rapid stat checkpoints, uncached refill/battle-stat reads, optional copied-log history and temporary awake scheduling",
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check Torn-Happy-Jump-Helper.user.js && node --check Torn-Happy-Jump-Helper.full.js && npm test"
