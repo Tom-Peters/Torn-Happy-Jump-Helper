@@ -1,5 +1,16 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## Confirmed stable on Android TornPDA — v0.10.22 (28 October 2026)
+
+The user confirmed **v0.10.22 loads and works** on Android TornPDA. This is now the phone-confirmed working baseline. Previous phone confirmation established that the v0.10.21 automatic gym training, Xanax, and refill detection, full dashboard, and no-manual-confirmation UI were working. The newer v0.10.22 gym-access controls and partial schedule alignment display were accepted as working.
+
+- **Preserve v0.10.22 as stable.** Continue future features in isolated versioned trial scripts; do not overwrite this release.
+- All future scripts must pass a **TornPDA smart-quote normalization/injection test** as well as Node.js syntax checks. Avoid smart single quotation marks inside JavaScript strings.
+- Forecast agreement is *partial schedule alignment*, not an all-session prediction-accuracy measure.
+- Gym suggestions must continue to be restricted to user-confirmed accessible gyms; unknown and locked gyms are not automatically considered available.
+- Changes remain read-only; no game actions or unapproved user-data storage clearing.
+- Next possible improvements: better verification of logged drug and booster use, separating actual Happy Jumps from normal/boosted training, per-session accuracy using known logged inputs, and forecasting based on verified gym availability.
+
 ## v0.10.22 — transparent gym access and partial forecast alignment (Android trial)
 
 **[Install optional v0.10.22](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.22-compat.user.js)**
