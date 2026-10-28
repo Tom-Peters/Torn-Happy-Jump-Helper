@@ -1,4 +1,21 @@
-# Torn Happy Jump Helper — startup investigation (v0.10.8)
+# Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
+
+## Current phone-tested recovery build
+
+**v0.10.9 compatibility trial: the floating HJ launcher is confirmed visible on Android TornPDA (28 October 2026).** The full dashboard, live API refresh, observed-gain accounting and sleep/refill controls still require separate on-device verification. This is **not** a claim of full feature stability.
+
+**[Install v0.10.9 compatibility script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.9-compat.user.js)**
+
+- Based on screenshot-confirmed v0.10.4, keeping the original startup structure and compact code size (58,695 characters).
+- Main v0.10.8 had no startup markers on the affected phone despite being enabled; v0.10.4 and the new v0.10.9 both displayed a floating HJ button.
+- Adds detection of rapid stat changes, cache-busting for four changing API endpoints, a one-hour awake override and a timestamped manually marked refill.
+- Keep v0.10.9 **separate** rather than replacing the known-working v0.10.4 rollback. Do not clear TornPDA saved storage.
+- The optional HJ Startup Test can be disabled after troubleshooting; avoid simultaneously enabling multiple main HJ variants.
+- Next: confirm full dashboard and live refresh on the phone, then restore copied training-log recovery and reliable off-schedule event reconciliation in small increments.
+
+The default main script remains experimental v0.10.8 and is **not** the recommended Android installer until its startup problem is resolved.
+
+---
 
 **v0.10.8: experimental startup build — NOT YET VERIFIED ON ANDROID · Author: IamEEKY**
 
