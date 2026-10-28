@@ -1,5 +1,15 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.11 automatic gym log search — trial, Android unverified
+
+**[Install v0.10.11 automatic logs trial](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.11-compat.user.js)**
+
+- Removes manual Copy Log pasting. Opening HJ triggers a read-only query of the player's Torn **Gym train** log type **5301** through **API v2** `/user/log`, searching the preceding **14 days**.
+- Scans up to eight 100-entry pages per opening, follows **Torn-only** pagination, rate-limits refreshes, stores only ID, timestamp, trained stat and positive gain locally (no raw personal logs or API keys committed or transmitted to third-party services).
+- The **Progress → Gym logs** card displays seven-day and current-day gains from recognized gym logs. They are **never added** to the existing API-snapshot gain totals, because those numbers can overlap.
+- Requires the API key provided by TornPDA to be permitted to read `user/log` (usually Full Access, or a custom key with Gym log access). If forbidden, missing or unfamiliar log fields are returned, the helper reports a status rather than inventing gains.
+- **Phone compatibility not verified yet**. Keep the confirmed-working v0.10.10 script installed but disabled; use only one main HJ version at a time. Do not clear TornPDA storage.
+
 ## v0.10.10 optional phone compatibility trial — recovered training logs
 
 **[Install v0.10.10 recovery trial](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.10-compat.user.js)**
