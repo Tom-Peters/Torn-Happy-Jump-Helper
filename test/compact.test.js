@@ -52,7 +52,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
     if(p.startsWith("/user/inventory"))value=category21&&p.includes("?cat=")?{error:{code:21}}:{inventory:{items:category21?[{id:206,amount:2,name:"Xanax",faction_owned:false}]:[]}};
     return {status:200,responseText:JSON.stringify(value||{error:{code:21}})};
   }
-  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison,sleeping,progressLog,watchSeen,oldDue,isBusy:()=>busy};})();");
+  const injected=source.replace(/\}\)\(\);\s*$/, "window.__HJTEST={refillStatus,refresh,plans,loadInput,simulate,gymDots,trainEstimate,summary,readGymResult,actualComparison,sleeping,progressLog,importCopiedLog,watchSeen,oldDue,isBusy:()=>busy};})();");
   new Function("document","location","window","localStorage","PDA_httpGet","Date",injected)(
     document,{hostname:"www.torn.com",pathname},w,localStorage,PDA_httpGet,date);
   return {source,document,window:w,storage:localStorage,requests,btn:document.getElementById("hhj-launch"),
@@ -1465,4 +1465,76 @@ test("failed battle stat read never erases prior baseline, and next good respons
  const entries=JSON.parse(a.storage.getItem("hhj-compact-v1:verification"));
  assert.equal(entries.length,1);
  assert.equal(entries[0].observed.strength,8000);
+});
+
+test("Torn Copy Log saves a multi-train gym result with exact energy and deduplicates repeats",async()=>{
+ const a=setup(false,false,"2026-10-28T00:10:00Z",{stat:"strength"},7);
+ await a.btn.onclick();
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const before=JSON.parse(a.storage.getItem("hhj-compact-v1:rolling-plan")).s.strength;
+ const text="You used 150 energy and 40 happiness training your strength 6 times in Example Fitness increasing it by 9,800.25 to 1,609,800.25";
+ p.children[1].querySelector=x=>x==="#hhj-copiedlog"?{value:text}:null;
+ p.onclick({target:{closest(){return {dataset:{act:"import-copied"}};}}});
+ let entries=JSON.parse(a.storage.getItem("hhj-compact-v1:copied-gym-logs"));
+ assert.equal(entries.length,1);
+ assert.equal(entries[0].energy,150);
+ assert.equal(entries[0].trains,6);
+ assert.equal(entries[0].stat,"strength");
+ assert.equal(entries[0].amount,9800.25);
+ assert.equal(entries[0].after,1609800.25);
+ assert.ok(!JSON.stringify(entries).includes("Example Fitness"),"Save only derived data, not raw private log text");
+ assert.equal(a.fixture["/user/battlestats"].battlestats.strength.value,before);
+ assert.equal(a.storage.getItem("hhj-compact-v1:verification"),null);
+ let html=p.children[1].innerHTML;
+ assert.match(html,/Torn Copy Log · historical recovery/);
+ assert.match(html,/\+9,800 strength · 150 E · 6 train\(s\)/);
+ assert.match(html,/NOT added to API snapshot totals/);
+ assert.equal(a.core.importCopiedLog(text),0,"Same Torn post-train stat + amount must not duplicate");
+ entries=JSON.parse(a.storage.getItem("hhj-compact-v1:copied-gym-logs"));
+ assert.equal(entries.length,1);
+});
+test("single train pasted from Torn Copy Log is parsed without invented repetitions",async()=>{
+ const a=setup(false,false,"2026-10-28T00:11:00Z",{stat:"strength"},7);
+ await a.btn.onclick();
+ const text="You used 25 energy and 8 happiness training your strength in Example Fitness increasing it by 1,400.50 to 1,600,000.50";
+ assert.equal(a.core.importCopiedLog(text),1);
+ const rows=JSON.parse(a.storage.getItem("hhj-compact-v1:copied-gym-logs"));
+ assert.equal(rows[0].trains,1);
+ assert.equal(rows[0].energy,25);
+ assert.equal(rows[0].amount,1400.5);
+ assert.equal(rows[0].after,1600000.5);
+ assert.equal(a.storage.getItem("hhj-compact-v1:action-notes"),null);
+});
+test("copied gym log stays separate from already recorded live API gain and can be undone",async()=>{
+ const a=setup(false,false,"2026-10-28T00:11:00Z",{stat:"strength",sleepEnabled:false},7);
+ await a.btn.onclick();
+ a.advance(31);
+ a.fixture["/user/battlestats"].battlestats.strength.value+=2000;
+ await a.refresh();
+ assert.equal(a.core.importCopiedLog("You used 50 energy training your strength 2 times in Example Fitness increasing it by 2,000.00 to 1,602,000.00"),1);
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=p.children[1].innerHTML;
+ assert.match(html,/Recorded today/);
+ assert.match(html,/\+2,000/);
+ assert.match(html,/NOT added to API snapshot totals/);
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:verification")).length,1);
+ p.onclick({target:{closest(){return {dataset:{act:"undo-copied"}};}}});
+ assert.equal(a.storage.getItem("hhj-compact-v1:copied-gym-logs"),"[]");
+ assert.equal(JSON.parse(a.storage.getItem("hhj-compact-v1:verification")).length,1);
+ assert.equal(a.fixture["/user/battlestats"].battlestats.strength.value,1352000);
+});
+test("Progress never turns a missing live stat API reading into a fake negative daily net",async()=>{
+ const history=[{d:"2026-10-28",t:Date.parse("2026-10-28T00:00:00Z")/1000,
+ s:{strength:1350000,defense:1180000,speed:2000000,dexterity:1000000}}];
+ const a=setup(false,false,"2026-10-28T00:06:00Z",{stat:"strength"},7,"/index.php",null,null,null,null,history);
+ a.fixture["/user/battlestats"]={error:{code:21}};
+ await a.btn.onclick();
+ const p=a.document.getElementById("hhj-compact-panel");
+ p.onclick({target:{closest(){return {dataset:{act:"tab",val:"progress"}};}}});
+ const html=p.children[1].innerHTML;
+ assert.match(html,/Current API value:<\/b> Unavailable/);
+ assert.match(html,/No first-check baseline today/);
+ assert.ok(!html.includes("-1,350,000"),"Missing data must not masquerade as actual stat loss");
 });
