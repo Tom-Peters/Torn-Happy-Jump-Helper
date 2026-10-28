@@ -17,6 +17,7 @@ jobs:
       - name: Syntax and unit tests
         run: |
           node --check Torn-Happy-Jump-Helper-v0.11.0-preview.user.js
+          node --check Torn-Happy-Jump-Helper-v0.11.1-preview.user.js
           node --check Torn-Happy-Jump-Helper-preview.user.js
           npm run check
           node --check Torn-Happy-Jump-Helper-v0.10.9-compat.user.js
@@ -34,6 +35,7 @@ jobs:
           node --check Torn-Happy-Jump-Helper-v0.10.21-compat.user.js
           node --check Torn-Happy-Jump-Helper-v0.10.22-compat.user.js
           node --check Torn-Happy-Jump-Helper-v0.11.0-preview.user.js
+          node --check Torn-Happy-Jump-Helper-v0.11.1-preview.user.js
       - name: Reject mutation-capable PDA request handlers
         run: |
           if grep -En 'PDA_http(Post|Put|Patch|Delete)\(' Torn-Happy-Jump-Helper.user.js; then
