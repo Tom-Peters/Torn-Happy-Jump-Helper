@@ -1,5 +1,20 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.21 feature confirmation and recommendation audit (28 October 2026)
+
+Phone follow-up confirmed:
+- The complete Happy Jump dashboard **opens**.
+- **Xanax and energy refills are automatically detected** without interaction.
+- The old **I did it / Missed it / Not sure** controls are **gone**.
+- Calibration **appears to work** but the precise multiplier/model-versus-observed numbers have **not** been independently verified.
+- Forecast accuracy and gym switching recommendations are **not yet verified** by the user. **Do not assume their displayed estimates are correct.**
+
+Current source audit:
+- `cMet` uses up to seven days of logged sessions, matching stat and cost per train, with a median/outlier rule; it uses **current** happiness/perks for the theoretical comparison rather than historical per-session conditions. Treat the adjustment as a provisional estimate.
+- `fCard` matches plan checkpoints to API deltas only where planned gain is positive and observed stat increased, with a maximum two-hour interval. Its percent-alignment score is **not a complete training-forecast accuracy measure**; nontraining/missed sessions are not included. It may be absent when not enough matched intervals exist.
+- `gymTip` and `gyms` compare candidate gyms only after their access has been manually locally verified as owned or unlockable, using gym modifier and energy cost from Torn. **No candidate displayed does not prove the current gym is optimal.**
+- Keep v0.10.21 unchanged as a phone-proven baseline while collecting Today, Gyms and Progress screenshots for validating recommendations. No need to reinstall or clear storage. Future changes must retain the new smart-quote normalization regression test.
+
 ## v0.10.21 confirmed launched on Android TornPDA — 28 October 2026 at 20:58 UK time
 
 User-supplied HJ Startup Test screenshot confirmed:
