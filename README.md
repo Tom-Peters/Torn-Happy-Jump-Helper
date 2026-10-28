@@ -1,5 +1,19 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.14 — recorded daily gym-gain chart (Android trial)
+
+**[Install v0.10.14 compact chart trial](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.14-compat.user.js)**
+
+The user confirmed **v0.10.13** launches in Android TornPDA and recovers gym logs without copy/paste. Screenshot evidence: **+42,576 Strength today, +90,675 in the rolling last seven days**, while the independent API baseline shows **+40,897 since first check**. Their difference **1,679** matches an earlier UTC-midnight training record. Four unrelated or unrecognisable Gym-category entries have only `gym` metadata and do not establish further stat gains.
+
+v0.10.14 preserves the working launcher, eight tabs, raw-log parser, local dedup and on-open refresh, while:
+- Replacing the potentially misleading mixed API-checkpoint versus plan chart on **Progress** with a separate daily chart of **actual log-derived gains**, along with sessions, trains and energy.
+- Keeping training **forecasts** in Compare and Schedule rather than presenting them as equal to confirmed observed actions.
+- Handling dates without confirmed gym logs as **No gym record** rather than assuming zero gain. The existing partial-days toggle controls visibility.
+- Clarifying log diagnostics as **without stat data** when the API returns a Gym entry with no stat gain.
+- Correcting mobile `justify-content` layout declarations introduced by prior size reduction.
+- Remaining under 60 KB as a standalone script; automated mock API tests pass. The new version is **not yet confirmed on Android**. Keep v0.10.13 installed but disabled for rollback; do not clear local storage.
+
 ## v0.10.13 — parse Torn's real Gym log fields (phone trial)
 
 **[Install v0.10.13 real Gym log parser](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.13-compat.user.js)**
