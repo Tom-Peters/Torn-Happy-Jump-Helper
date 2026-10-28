@@ -1,3 +1,30 @@
+# Torn Happy Jump Helper — Training Command Centre
+
+## Install once — stable channel
+
+**[Permanent stable userscript URL](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
+
+This unversioned path contains **phone-confirmed v0.10.22** and includes the permanent `@updateURL` / `@downloadURL`. It replaces the obsolete experimental v0.10.8 once served from the same path. Install it *once*, disable existing individually versioned main HJ variants, and set TornPDA injection to **END**. Never enable the stable and preview main helpers simultaneously, as both mount the same floating launcher. Saved settings and training history use the same `hhj-compact-v1` local storage keys; do not clear TornPDA storage.
+
+**Stable promotion policy:** Develop new releases at versioned preview URLs. Run all syntax, mobile smart-quote preprocessing, dashboard, API and read-only regression checks; require a successful phone test. Only then publish the confirmed candidate to the permanent URL. Until that point, the stable installer remains pinned at v0.10.22. The GitHub repository default branch can contain newer preview files without changing the stable installer.
+
+## v0.11.0 Training Command Centre — separate Android preview
+
+**[Optional v0.11.0 preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js)**
+
+**Unverified on a phone** (automated CI passes). Do not automatically promote this trial to stable. Based directly on phone-confirmed v0.10.22, preserving the original startup/bootstrap and existing user data.
+
+What's implemented:
+- **Due indicator without opening the dashboard:** the HJ launcher changes to e.g. `HJ 💊 10m`, `HJ 🏋️ NOW`, or `HJ ⚡ 5m` for upcoming forecast events. Only shows actionable, unconfirmed items in the next 30 minutes and respects sleep/awake overrides. Shows regular `HJ` when no event is due. A limited read-only data poll every 3 minutes while the Torn page is active refreshes bars/cooldowns/refills and the model; a full API session is not needed for every timer tick. It is **in-page**, not an Android background push notification; no device notification permissions and no automatic Torn actions.
+- **Compact Today:** shows next action, energy, Happy, per-train gain, 24h forecast. Forecast assumptions, calibration, overflow and data diagnostics are hidden in user-expandable sections. Existing Compare, Schedule, Supplies, Gyms, Perks, Progress and Settings remain.
+- **Upgrade Lab tab:** hypothetical base-Happy targets 3,475 (Castle), 4,500, 5,000 and 5,025 (PI variants); also supports a custom target Happy and manually entered one-time property cost. Compares regular seven-day forecasts and the current 50m projection against the existing base-Happy scenario. Property, staff and upgrades are never falsely inferred as purchased.
+- **Energy-can what-if:** configurable 5/10/15/20/25/30 base energy, cans/day (up to 12 before booster reductions), effect multiplier and manually entered unit price. Shows extra ideal weekly energy, approximate training gains and weekly cost. **Not a timed booster scheduler yet:** additional limits from cooldown competition, energy overflow, availability and sleep are explained and not silently ignored.
+- **Model boundaries:** property calculations assume the base Happy is full during training, using the current gym and regular selected method. The 50m timeline uses the inherited long-range training model and is approximate. It does not promise a date or factor future gym unlocks or perks into the scenario. Explicit caveats appear under expandable methodology.
+
+Still planned, not claimed implemented: per-event Happy and perk reconstruction, true Happy Jump vs regular training attribution, a time-aware energy-can scheduler with owned inventory and booster cap, cost-efficiency and time-to-target comparisons among full multi-step property upgrades, gym unlock probability and best-action confidence scoring. See the stable release and previous incident notes below.
+
+---
+
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
 ## Confirmed stable on Android TornPDA — v0.10.22 (28 October 2026)
