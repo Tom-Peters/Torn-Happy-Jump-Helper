@@ -8,6 +8,22 @@ This unversioned path contains **phone-confirmed v0.10.22** and includes the per
 
 **Stable promotion policy:** Develop new releases at versioned preview URLs. Run all syntax, mobile smart-quote preprocessing, dashboard, API and read-only regression checks; require a successful phone test. Only then publish the confirmed candidate to the permanent URL. Until that point, the stable installer remains pinned at v0.10.22. The GitHub repository default branch can contain newer preview files without changing the stable installer.
 
+## v0.11.2 — API property recognition, upgrade ranking and priority launcher (preview)
+
+**[Permanent Preview Installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently **v0.11.2**. The permanent stable installer remains pinned at phone-confirmed **v0.10.22**.
+
+What was approved: automatic current-property and upgrade detection; efficiency ranking by extra Strength per dollar; a single most important HJ button action. More advanced energy-can and forecast analytics are postponed.
+
+The preview calls the official **`/v2/user/property`** and **`/v2/torn/properties`** endpoints only during an explicit full helper refresh (not each minute). It reads the current home type, property Happy, installed modifications and staff, then looks up upgrades available for that property type. If no authoritative property or catalogue data is available, it does **not** infer ownership, price or availability from the current Happy bar. No personal property data or keys are committed.
+
+- The **Upgrades** page now displays the detected property and installed mods, with a collapsible **Rank upgrades by extra stat per $1m** section. It excludes already owned and catalogue-ineligible modifications, and avoids recommending downgrades within pool/vault tiers.
+- The comparisons use published **fixed estate-agency** upgrade prices from Torn Wiki (e.g. Open Bar $9,000 +50 Happy, Sauna $12,000 +25, Hot Tub $17,000 +25, small/medium/large pools, vault tiers, and Yacht where eligible). Higher-tier replacement pricing is **full purchase price**, not the difference from an existing tier. The price list is an indicative reference, not a live estate quote. Staff costs, upkeep, renting and buying a different property are **not** silently assumed included. Marketplace offers may differ; verify prices in Torn before purchasing.
+- Estimated weekly stat gain uses the current gym and **the same fixed empirical calibration multiplier** in the baseline and upgrade scenario. ROI is *estimated additional weekly training gain per $1,000,000 upfront cost*, not monetary profit or fully costed account optimisation. No Torn purchases or edits.
+- The floating launcher still shows just **one** upcoming action at a time. If actions fall within five minutes of each other, choose a higher-impact jump/Xanax/refill over a routine train; an action already due takes precedence over one in the future. The small icon and countdown stay on the button. Quiet hours, automatic activity confirmation and the 30-minute notification horizon remain. This is in-page UI, not Android push notifications.
+- The two postponed requests are **not implemented here**: optimising energy-can combinations against drugs/jumps, and auditing detailed prediction accuracy.
+- All earlier v0.11.1 scenario fixes remain, including timed can simulation, property what-if calibration and fractional goal dates.
+- **Android confirmation pending.** v0.11.2 has passed the full JavaScript/TornPDA injection/unit test suite. Enable only one main Happy Jump Helper (stable **or** preview) in TornPDA with injection END, and do not clear local storage.
+
 ## v0.11.1 — fix Upgrade Lab property gain inversion and energy-can overestimation
 
 **Permanent Preview:** [Torn-Happy-Jump-Helper-preview.user.js](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js), now at **v0.11.1**.
@@ -29,7 +45,7 @@ The user's v0.11.0 mobile screenshot confirmed the Upgrade Lab rendered correctl
 
 ## v0.11.0 Training Command Centre — separate Android preview
 
-**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.1. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
+**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.2. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
 
 **Preview channel policy:** The permanent preview URL is updated only with a test-passing candidate and uses its own `@updateURL` and `@downloadURL`. Install **either** stable or preview in TornPDA at any one time. They share local HJ settings, so do not clear app storage between channels. A preview passing CI is not the same as phone-confirmed stability.
 
