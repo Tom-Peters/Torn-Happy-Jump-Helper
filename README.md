@@ -1,8 +1,19 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.10 optional phone compatibility trial — recovered training logs
+
+**[Install v0.10.10 recovery trial](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.10-compat.user.js)**
+
+- Based only on v0.10.9's phone-confirmed working startup, not v0.10.8's failing startup.
+- The Progress tab includes **Recover missed gym gains**: paste a Torn Gym **Copy Log** training result. Supports multiple results, repeated-paste deduplication using resulting stat values, and undo. Saved in the existing `hhj-compact-v1:copied-gym-logs` local store.
+- **Live stat** card shows current API stat and net change since the day's first valid API reading. It does not assume you followed the suggested schedule.
+- Imported gym logs have no reliable original event timestamp and **are never summed with API-checkpoint totals**, preventing accidental double counting. A missed earlier +10k gain can be displayed from a copied result if Torn still exposes that log; a gain with no retained source cannot be reconstructed with certainty.
+- Below 60,000 characters, with tests for quick startup, representative +10,000 parsing, duplicate protection and failed imports.
+- **Not yet verified on the phone.** Disable v0.10.9 before enabling this new script, but preserve the v0.10.9 installation to revert without losing settings. Do not clear TornPDA local storage.
+
 ## Current phone-tested recovery build
 
-**v0.10.9 compatibility trial: the floating HJ launcher is confirmed visible on Android TornPDA (28 October 2026).** The full dashboard, live API refresh, observed-gain accounting and sleep/refill controls still require separate on-device verification. This is **not** a claim of full feature stability.
+**v0.10.9 compatibility trial: Android TornPDA confirmation received on 28 October 2026 — the HJ launcher appears, the full eight-tab dashboard opens and live API refresh succeeds.** Gain reconciliation and the new recovery import still require separate on-device verification.
 
 **[Install v0.10.9 compatibility script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.9-compat.user.js)**
 
