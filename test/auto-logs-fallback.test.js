@@ -66,14 +66,14 @@ test("no access to personal logs reports permission issue without fabricating ga
   const a=boot(()=>({error:{code:7,error:"Incorrect permissions"}}));
   await a.core.scanGym();
   assert.equal(a.core.getLogs().length,0);
-  assert.match(a.core.getStatus(),/Logs unavailable/);
-  assert.match(a.core.getStatus(),/log permission/);
+  assert.match(a.core.getStatus(),/Log scan failed/);
+  assert.match(a.core.getStatus(),/Torn error 7/);
 });
 test("unknown log format does not create imaginary stat gains",async()=>{
   const a=boot(()=>({log:[{id:"new-shape",timestamp:now-60,data:{energy_used:150}}]}));
   await a.core.scanGym();
   assert.equal(a.core.getLogs().length,0);
-  assert.match(a.core.getStatus(),/unrecognised/);
+  assert.match(a.core.getStatus(),/unknown/);
 });
 test("follows next-page links only on the Torn user-log endpoint",async()=>{
   const next="https://api.torn.com/v2/user/log?log=5301&limit=100&from=1700000000";
@@ -86,7 +86,7 @@ test("follows next-page links only on the Torn user-log endpoint",async()=>{
   const b=boot(()=>({log:[sample],_metadata:{links:{next:"https://evil.example/steal"}}}));
   await b.core.scanGym();
   assert.equal(b.calls.length,1,"never follow non-Torn pagination URLs");
-  assert.match(b.core.getStatus(),/Invalid page/);
+  assert.match(b.core.getStatus(),/Invalid log page/);
 });
 
 test("empty log 5301 response falls back to gym category 125",async()=>{
