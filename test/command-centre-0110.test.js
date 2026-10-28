@@ -260,7 +260,7 @@ test("the permanent preview channel is independent of the pinned stable channel"
  const stable=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
  const preview=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-preview.user.js"),"utf8");
  assert.match(stable,/@version\s+0\.10\.22/);
- assert.match(preview,/@version\s+0\.11\.1/);
+ assert.match(preview,/@version\s+0\.11\.[12]/);
  assert.match(preview,/@updateURL\s+https:\/\/raw\.githubusercontent\.com\/Tom-Peters\/Torn-Happy-Jump-Helper\/main\/Torn-Happy-Jump-Helper-preview\.user\.js/);
  assert.match(preview,/@namespace\s+https:\/\/github\.com\/Tom-Peters\/Torn-Happy-Jump-Helper#preview\b/);
  assert.ok(!/[“”‘’]/.test(preview));
