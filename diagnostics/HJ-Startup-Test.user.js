@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HJ Startup Test
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#diagnostic
-// @version      1.0.0
+// @version      1.0.1
 // @description  Tiny read-only TornPDA injection diagnostic. No keys, API calls, game actions, or data storage.
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -27,6 +27,8 @@ function show(){
  "Main HJ loaded marker: "+String(window.__TornHappyJumpLoaded??"none"),
  "Main HJ startup marker: "+String(window.__TornHappyJumpBooting??"none"),
  "Main HJ stage: "+(phase?JSON.stringify(phase):"none"),
+ "If the main HJ script is disabled, all NO/none results above are expected.",
+ "To test injection: enable one main Happy Jump Helper AND HJ TEST together, then reload Gym. Tap HJ TEST again.",
  "TornPDA HTTP bridge present: "+(typeof window.PDA_httpGet==="function"||!!window.flutter_inappwebview?"YES":"NO"),
  "No API requests made. No Torn actions taken."
  ];
