@@ -1,5 +1,18 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.13 — parse Torn's real Gym log fields (phone trial)
+
+**[Install v0.10.13 real Gym log parser](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.13-compat.user.js)**
+
+The v0.10.12 diagnostic confirmed that the Full Access API key can retrieve gym training logs through category **125**, despite the narrow log-type query returning none. Its parser was rejecting real `data` keys like `strength_increased`, `strength_before`, `strength_after`, `trains` and `energy_used`.
+
+- Recognizes `strength_increased`, `speed_increased`, `defense_increased`, and `dexterity_increased`, while retaining legacy `stat` + `stat_gain` compatibility. Discards ambiguous, zero, negative and malformed events.
+- Records the API's original event timestamp, ID, positive stat gain, number of gym trains, and energy used. The original raw log response is not stored.
+- Deduplicates by event ID and continues showing log-derived totals separately from snapshot-derived gains; those two totals overlap and **must not be added**.
+- Refreshes log queries on first launch after upgrading to this version, even if v0.10.12 queried logs recently.
+- Fixes a historical snapshot bookkeeping typo that could append multiple same-day baselines. Existing local settings/history keys remain unchanged.
+- Retains the compact Android-tested launcher architecture under 60,000 characters. **v0.10.13 has not yet been tested on the phone**; keep v0.10.12 installed but disabled as rollback.
+
 ## v0.10.12 — phone-tested foundation with log-filter diagnostics (trial)
 
 **[Install v0.10.12 log fallback trial](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.12-compat.user.js)**
