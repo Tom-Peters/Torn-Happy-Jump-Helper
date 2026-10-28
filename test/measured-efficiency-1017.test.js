@@ -16,7 +16,7 @@ function boot(respond){
     getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null}};
   const localStorage={getItem(k){return store.get(k)||null},setItem(k,v){store.set(k,String(v))}};
   const window={setInterval(){}};
-  const instrumented=code.replace(/\}\)\(\);\s*$/, "window.__autoTests={readLog,scanGym,cgCard,gCh,getLogs:()=>al,getStatus:()=>ls,setFocus:stat=>{cfg.stat=stat},setDays:v=>{sp=v},wSe,dAc,aFl,oldDue,setWatch:x=>{watch=x},setRefills:x=>{data.refills={refills:{energy:x}}},mCard};})();");
+  const instrumented=code.replace(/\}\)\(\);\s*$/, "window.__autoTests={readLog,scanGym,cgCard,gCh,getLogs:()=>al,getStatus:()=>ls,setFocus:stat=>{cfg.stat=stat},setSleep:value=>{cfg.sleepEnabled=value},setDays:v=>{sp=v},wSe,dAc,aFl,oldDue,setWatch:x=>{watch=x},setRefills:x=>{data.refills={refills:{energy:x}}},mCard};})();");
   assert.notEqual(instrumented,code);
   const PDA_httpGet=async (url,headers)=>{calls.push({url,headers});const data=respond(url);
     return {status:200,responseText:JSON.stringify(data)}};
@@ -238,7 +238,7 @@ test("off-schedule gym trains are recognised but do not complete an unrelated sc
  const t=Math.floor(Date.now()/1000),entry={id:"unscheduled",timestamp:t-1800,data:{strength_increased:10000,trains:6}};
  const a=boot(u=>u.includes("cat=125")?{log:[entry]}:{log:[]});
  await a.core.scanGym(true);
- a.core.setFocus("strength");
+ a.core.setFocus("strength");a.core.setSleep(false);
  const ev={kind:"TRAIN",t:t,stat:"strength",method:"natural",detail:"Train manually"};
  assert.equal(a.core.wSe(ev),false);
  assert.equal(a.core.dAc({method:"natural",events:[ev]},t)?.kind,"TRAIN");
@@ -253,7 +253,7 @@ test("used daily refill hides only today's refill, never tomorrow's",()=>{
 });
 test("a scheduled train with no matching log can still be confirmed manually",()=>{
  const a=boot(()=>({log:[]}));
- a.core.setFocus("strength");
+ a.core.setFocus("strength");a.core.setSleep(false);
  const t=Math.floor(Date.now()/1000);
  const ev={kind:"TRAIN",t,stat:"strength",method:"natural",detail:"Train normally"};
  assert.match(a.core.aFl({method:"natural",events:[ev]}),/Confirm TRAIN/);
