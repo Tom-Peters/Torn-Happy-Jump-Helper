@@ -1,12 +1,23 @@
-# Torn Happy Jump Helper — v0.10.4
+# Torn Happy Jump Helper — v0.10.5
 
-**Latest Android test release: v0.10.4 · IamEEKY**
+**Latest Android test release: v0.10.5 · IamEEKY**
 
 **[Install/update Happy Jump Helper in TornPDA](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
 
-v0.10.2 has been **confirmed working on Android**. v0.10.4 builds on the previous overdue-action tracking while preserving the working floating HJ launcher, full-screen interface, eight tabs, local history, UK-time sleep settings, gym calculations, saved budget and read-only Torn API usage.
+v0.10.4 was **shown running on Android** with the working launcher and Progress tab. This update preserves the v0.10.4 action recovery and existing eight tabs, UK sleep settings, gym formula, inventory logic and local history. v0.10.5 itself is awaiting on-phone confirmation.
 
-## Missed action recovery — new in v0.10.4
+## Progress chart clarification — new in v0.10.5
+
+The **Progress → 7-day observed vs planned** chart now distinguishes measured gains from actions that were **not scheduled in the matching forecast interval**.
+
+- A Torn API stat increase with a valid matching, positive planned gym gain continues to appear as observed-versus-forecast. The forecast assumes you carried out the simulated steps; a shortfall by itself does **not** prove you missed training.
+- Gains outside a matching scheduled forecast (including planned gain of **zero**, unknown/mismatched forecast focus, or changing your training priorities) now appear as **Outside forecast**, with a single observed bar and an explicit unpaired-gain amount. No misleading **0 scheduled** comparison or “comparable interval” count is created.
+- Checkpoint totals reflect **changes between API refreshes**, not a complete list of historical gym workouts. A recent gym session visible in Torn's activity log may not yet appear in the stored checkpoints if it happened after the last stat read or the API data has not caught up. The chart assigns multi-day intervals to the **refresh date (UTC)**, without claiming the workout happened on that exact date.
+- Progress now includes **Latest stat check** and a direct **↻ Check new gains** button, using the existing read-only refresh. This is useful immediately after a real Torn gym session. It does not create or assume gains while waiting for API data.
+
+All tests use **synthetic, non-player-specific gym gains**. The public repo contains no real activity-log records, imported individual player data, or API keys.
+
+## Missed action recovery — introduced in v0.10.4
 
 When an action from the **previous saved plan** is past due, the helper carefully labels it **Past due · unconfirmed**. It does **not** assume the action was missed: you may have completed it without opening HJ.
 
@@ -55,16 +66,16 @@ Every HJ opening refreshes Torn data; there is no background polling or automate
 ## Installation and rollback
 
 1. Keep only **one enabled main Happy Jump Helper** userscript. Turn off duplicate Preview/Advanced/Companion copies.
-2. Update from the [raw v0.10.4 script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js), retaining TornPDA injection **END**.
-3. Reload Torn. Tap **HJ ◉**, check the full-screen heading displays **v0.10.4**, then open Today or Schedule.
-4. When an old action is shown as **unconfirmed**, choose **I did it**, **Missed it · Replan**, or **Not sure** based on what actually happened. After marking one missed, check the updated forecast and optional better-plan recommendation.
+2. Update from the [raw v0.10.5 script](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js), retaining TornPDA injection **END**.
+3. Reload Torn. Tap **HJ ◉**, check the full-screen heading displays **v0.10.5**, then open Today or Schedule.
+4. When an old action is shown as **unconfirmed**, choose **I did it**, **Missed it · Replan**, or **Not sure** based on what actually happened. After marking one missed, check the updated forecast and optional better-plan recommendation. In **Progress**, tap **↻ Check new gains** to look for stat changes following recent gym training.
 
-If the new release fails to open or introduces a regression, disable it and use the previous **[v0.10.3 rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.3-rollback.user.js)** or the **[v0.10.2 phone-confirmed rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.2-known-good.user.js)**. Leave only one HJ script enabled and **do not clear its local storage**.
+If the new release fails to open or introduces a regression, disable it and use the screenshot-confirmed **[v0.10.4 rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.4-screenshot-confirmed.user.js)**, the previous **[v0.10.3 rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.3-rollback.user.js)** or the **[v0.10.2 phone-confirmed rollback](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.2-known-good.user.js)**. Leave only one HJ script enabled and **do not clear its local storage**.
 
 ## Validation
 
-**80/80 targeted simulated TornPDA regression tests passed**, covering existing features and: overdue manual Done/Not sure/Missed distinction; recovered 24-hour calculations from new live energy; no invented gains or refill spending; pending recovery after failed API load; undo; persistence; changing strategies only after the user's approval; no false Xanax confirmation from drug cooldown; and overnight review after waking.
+**84/84 targeted simulated TornPDA regression tests passed**, covering existing features and: overdue manual Done/Not sure/Missed distinction; recovered 24-hour calculations from new live energy; no invented gains or refill spending; pending recovery after failed API load; undo; persistence; changing strategies only after the user's approval; no false Xanax confirmation from drug cooldown; and overnight review after waking. Added tests cover observed gains with zero forecasted trainings, two successive independent gym stat increases, stat-focus mismatch, and the one-tap Progress refresh.
 
-Main userscript size: **58,766 characters**, under the new **60,000-character** compact guard and well below the earlier problematic ~78 KB preview. JavaScript parsing passed. **Live Android v0.10.4 and full GitHub Actions are not yet independently verified.**
+Main userscript size: **59,368 characters**, under the **60,000-character** compact guard and well below the earlier problematic ~78 KB preview. JavaScript parsing passed. **Live Android v0.10.5 and the full GitHub Actions suite are not yet independently verified.**
 
 MIT · IamEEKY · [Historical release notes](docs/legacy-release-notes.md).
