@@ -1,5 +1,21 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.16 — live action awareness (Android trial)
+
+**[Install v0.10.16](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.16-compat.user.js)**
+
+v0.10.15 is confirmed to open on the user's Android TornPDA. This update is built from that compact working code and changes the **Just happened → Next action** panel, not the gym formulas.
+
+- Shows the **latest confirmed training** directly from Torn gym logs (actual stat, gain, timestamp and number of trains). It no longer presents inferred API-checkpoint training as a confirmed individual event.
+- Recognizes logged training within **10 minutes either side** of a matching scheduled train (for the focused stat). Such a step is treated as *training observed near that time* rather than creating a false missed-step warning; no assumption about a specific Xanax/Happy Jump method is made.
+- Training outside the 10-minute window is still displayed as real training but is **not incorrectly used to complete another planned step**. Next-action recommendations use refreshed live bars, drug cooldown and other current inputs.
+- Filters completed/observed actions from the immediately due queue. Does not assume future steps or events happened.
+- When Torn reports today's 30-point energy refill as used (or the user manually marked it), shows **USED** without inventing its execution time. This status is only applied to **today's** scheduled refill, not tomorrow's.
+- Preserves the Progress page, real-log tracking, manual action notes, sleep settings, local saved history and read-only Torn actions. Prior v0.10.15 remains a rollback; **do not clear TornPDA data**.
+- This standalone version is under 60,000 characters. Automated checks cover duplicate-free log consumption, off-schedule actions and daily refill boundaries. **Not yet confirmed on phone.**
+
+Only one main Happy Jump Helper version should be enabled, with injection **END**.
+
 ## v0.10.15 — clearer Progress page (optional Android trial)
 
 **[Install v0.10.15](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.15-compat.user.js)**
