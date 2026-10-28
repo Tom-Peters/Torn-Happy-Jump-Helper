@@ -1,5 +1,11 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## 28 Oct 2026, 20:40 UTC — diagnostic confirms missing main startup
+
+User supplied an Android TornPDA Gym screenshot with **HJ Startup Test EXECUTED**, `Main HJ launcher in DOM: NO`, `Main HJ loaded marker: none`, `Main HJ startup marker: none`, `Main HJ stage: none`, `Document: complete` and `TornPDA HTTP bridge present: YES`. This follows **v0.10.20** installation/testing instructions and repeated non-launching versions **v0.10.18 and v0.10.19**. Assuming v0.10.20 is enabled as intended, the new main script is not reaching its first global startup marker, so changing the dashboard does not address the immediate issue.
+
+**Next diagnostic: use TornPDA built-in Dev Tools → Scripts tab while on Gym** to see if the `v0.10.20` script is active on the page at all. Official TornPDA v3.10.1 changelog confirms the Dev Tools Scripts tab, and v3.8.3 specifies opening Dev Tools by tapping the browser title/address bar → **Open Dev Tools**. If absent, investigate install/enabled/injection matching or global temporary-disable mode. If listed but not launching, inspect Dev Tools terminal/console for a parse/runtime error before the startup marker. Avoid blind rebuilds; the existing small HJ Startup Test already confirms scripts run on this page. Restore phone-confirmed v0.10.16 as the fallback, without clearing local storage.
+
 ## v0.10.20 — minimum-change launcher isolation test
 
 **[Install v0.10.20](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.20-compat.user.js)**
