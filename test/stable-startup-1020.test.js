@@ -36,7 +36,7 @@ test("confirmed gym gain displays without manual confirmation buttons",()=>{
  const a=boot(),now=Math.floor(Date.now()/1000);
  a.core.setFocus("strength");
  a.core.setLogs([{id:"g1",t:now-180,stat:"strength",amount:3452,trains:2,energy:50}]);
- const html=a.core.aFl({method:"natural",events:[{kind:"TRAIN",t:now+1800,detail:"Train next"}]});
+ const noon=Math.floor(now/86400)*86400+86400+43200; const html=a.core.aFl({method:"natural",events:[{kind:"TRAIN",t:noon,detail:"Train next"}]});
  assert.match(html,/3,452 strength/);assert.match(html,/2 trains/);
  assert.match(html,/Next recommendation/);
  for(const unwanted of ["I did it","Missed it","Not sure","Confirm TRAIN","Mark refill used","Clear manual mark"])
