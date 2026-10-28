@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 
-const S=path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js");
+const S=path.join(__dirname,"..","archive","Torn-Happy-Jump-Helper-v0.10.8-legacy.user.js");
 function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",settings=null,strengthDots=70,pathname="/index.php",seedVerification=null,seedPartial=null,seedActions=null,seedRecovery=null,seedHistory=null){
   const source=fs.readFileSync(S,"utf8").replace("###PDA-APIKEY###","safe-fixture-key");
   const elements=[];
