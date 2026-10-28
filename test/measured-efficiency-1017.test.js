@@ -217,7 +217,7 @@ test("confirmed Torn training in the action panel uses actual gym logs, not infe
  const t=Math.floor(Date.now()/1000),entry={id:"latest-gym",timestamp:t-45,data:{strength_increased:3452,trains:2,energy_used:20}};
  const a=boot(u=>u.includes("cat=125")?{log:[entry]}:{log:[]});
  await a.core.scanGym(true);
- const html=a.core.aFl({method:"natural",events:[{kind:"XANAX",t:t+3600,detail:"Take Xanax manually"}]});
+ const noon=Math.floor(t/86400)*86400+86400+43200; const html=a.core.aFl({method:"natural",events:[{kind:"XANAX",t:noon,detail:"Take Xanax manually"}]});
  assert.match(html,/Latest confirmed training/);
  assert.match(html,/3,452 strength/);
  assert.match(html,/2 trains/);
