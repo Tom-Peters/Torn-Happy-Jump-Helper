@@ -1,5 +1,19 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## Root cause found — TornPDA quote normalization (v0.10.21)
+
+**[Install v0.10.21](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.21-compat.user.js)**
+
+The user's 20:49 screenshot confirms v0.10.20 is enabled in TornPDA with a green key icon. Reading the current official TornPDA source reveals that a **green key means a dedicated API key is configured**, not that the key is missing; a blue-grey **War mode** button means war mode is not active. The enabled script therefore was not obviously excluded by those settings.
+
+**Definitive error:** TornPDA `UserScriptsProvider.adaptSource()` converts all U+2018/U+2019 smart single quotes to ASCII `'` before injecting. The scripts **v0.10.18**, **v0.10.19** and **v0.10.20** each contained exactly one U+2019 apostrophe in a single-quoted JavaScript HTML snippet: `'<p><b>Today’s refill...'`. After TornPDA's preprocessing, the apostrophe prematurely terminates the JavaScript string and the **entire script fails to parse**, before setting `window.__TornHappyJumpBooting`. This is why the tiny separate diagnostic works and the main script never records a startup marker. Version v0.10.16 (phone-confirmed working) and v0.10.17 had no smart quotes.
+
+The next version **v0.10.21** is based on feature-rich v0.10.18, replacing `Today’s refill` with ASCII-safe `Daily refill`, and removes every `“”‘’` smart quote. It includes the full automatic gym/Xanax/refill/Ecstasy activity, guarded calibration, separate possible Happy Jump analysis, partial forecast accuracy and verified-access gym suggestions. It **does not execute Torn actions** or ask for manual completion. No local data is cleared. Android display is awaiting user confirmation.
+
+A new `test/tornpda-injection-1021.test.js` mirrors TornPDA's actual `adaptSource` JavaScript transformation and wrapper, asserts that the resulting code parses, and verifies the HJ launcher and loaded marker. This directly guards against the actual failure mode that all previous ordinary `node --check` tests missed.
+
+**Installation:** Disable every other main HJ version, enable v0.10.21 with injection END, reload Torn Gym. Keep the startup diagnostic enabled optionally and verify `Main HJ loaded marker: 0.10.21`. Do not share or paste the dedicated API key and do not clear stored settings.
+
 ## 28 Oct 2026, 20:40 UTC — diagnostic confirms missing main startup
 
 User supplied an Android TornPDA Gym screenshot with **HJ Startup Test EXECUTED**, `Main HJ launcher in DOM: NO`, `Main HJ loaded marker: none`, `Main HJ startup marker: none`, `Main HJ stage: none`, `Document: complete` and `TornPDA HTTP bridge present: YES`. This follows **v0.10.20** installation/testing instructions and repeated non-launching versions **v0.10.18 and v0.10.19**. Assuming v0.10.20 is enabled as intended, the new main script is not reaching its first global startup marker, so changing the dashboard does not address the immediate issue.
