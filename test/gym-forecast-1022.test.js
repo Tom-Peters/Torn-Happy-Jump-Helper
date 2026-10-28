@@ -104,8 +104,8 @@ test("forecast accuracy requires three paired intervals and never claims full co
  a.core.setLedger(Array.from({length:3},(_,i)=>({t:t-i*3600,from:t-i*3600-600,
  forecastStat:"strength",method:"natural",observed:{strength:950},expected:1000})));
  const html=a.core.fCard();
- assert.match(html,/95\.0% agreement/);
- assert.match(html,/Partial snapshot coverage/);
+ assert.match(html,/95\.0% alignment/);
+ assert.match(html,/Not model accuracy/);
 });
 
 test("Ecstasy plus nearby verified gym training infers a jump; drug use alone does not",async()=>{
