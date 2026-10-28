@@ -1,5 +1,18 @@
 # Torn Happy Jump Helper — Android-compatible recovery (v0.10.9)
 
+## v0.10.15 — clearer Progress page (optional Android trial)
+
+**[Install v0.10.15](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.15-compat.user.js)**
+
+The user confirmed v0.10.14 on Android TornPDA with real training records: 27 October +48,099 Strength (17 sessions, 78 trains, 780 E) and 28 October +42,576 Strength (5 sessions, 25 trains, 625 E), summing to +90,675. The legacy partial-checkpoint section also displayed a lower +32,466 today; it only captures observations between API refreshes and must not be treated as an additional real gym total.
+
+Changes in v0.10.15:
+- Keeps the verified Torn gym-log totals and seven-day daily chart as the primary Progress display.
+- Retains the underlying **Observed stat gains** API checkpoint history, but places it inside a collapsed **Advanced · API snapshot history (partial)** section. Users can still inspect and clear that ledger; it is never added to the gym-log totals.
+- Collapses verbose scan counts and field-name diagnostics under **Scan diagnostics**, while preserving the **Scan logs** control and local deduplication.
+- No API permission, storage format, gym formula, scheduling or automatic Torn actions changed. No personal keys or raw training records have been committed.
+- Keeps the previous compact launcher strategy and stays under 60,000 characters. Automated tests pass; v0.10.15 is **not yet verified on phone**. Keep working v0.10.14 installed but disabled as rollback.
+
 ## v0.10.14 — recorded daily gym-gain chart (Android trial)
 
 **[Install v0.10.14 compact chart trial](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.10.14-compat.user.js)**
