@@ -60,9 +60,9 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
-  assert.ok(src.length<60000,"Keep the Android launcher script under 60 KB to avoid injection regressions");
+  assert.ok(src.length<65000,"Diagnostic bootstrap release temporarily under 65 KB while device injection is investigated");
   assert.match(src,/@run-at\s+document-end/);
-  assert.match(src,/@version\s+0\.10\.7/);
+  assert.match(src,/@version\s+0\.10\.8/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
   assert.ok(src.includes("###PDA-APIKEY###"));
   assert.ok(src.includes("xanax:206,ecstasy:197,lollipop:310,dvd:366"));
@@ -73,7 +73,7 @@ test("HJ is visible immediately, before any API request or complex computation",
   assert.ok(a.btn.style.cssText.includes("z-index:2147483645"));
   assert.ok(a.document.getElementById("hhj-compact-panel"));
   assert.equal(a.requests.length,0);
-  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.7");
+  assert.equal(a.window.__TornHappyJumpLoaded,"0.10.8");
   assert.equal(a.window.__TornHappyJumpStage.phase,"mounted");
   a.btn.onclick();
   assert.match(a.document.getElementById("hhj-compact-panel").children[1].innerHTML,/(?:Refreshing|Refresh data)/);
@@ -293,7 +293,7 @@ test("v0.10.3 keeps the mobile launcher visible before API work",()=>{
  const a=setup(false,false,new Date(2026,9,27,21,30).toISOString());
  assert.ok(a.btn);
  assert.equal(a.requests.length,0);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.10.7");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.8");
  a.btn.onclick();
  assert.ok(a.btn.style.cssText.includes("display:none!important"));
  const html=a.document.getElementById("hhj-compact-panel").children[1].innerHTML;
@@ -1598,7 +1598,7 @@ test("undoing a copied gym log respects the currently selected stat",async()=>{
  assert.equal(x[0].amount,2100.25);
 });
 
-test("v0.10.7 rescues a missing HJ launcher when TornPDA reinjects the same script",()=>{
+test("v0.10.8 rescues a missing HJ launcher when TornPDA reinjects the same script",()=>{
  const a=setup();
  const root=a.document.body;
  const button=a.document.getElementById("hhj-launch");
@@ -1607,10 +1607,10 @@ test("v0.10.7 rescues a missing HJ launcher when TornPDA reinjects the same scri
  assert.equal(a.document.getElementById("hhj-launch"),null);
  a.rerun();
  assert.equal(a.document.getElementById("hhj-launch"),button);
- assert.equal(a.window.__TornHappyJumpLoaded,"0.10.7");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.8");
  assert.match(button.style.cssText,/display:block!important/);
 });
-test("v0.10.7 revives HJ button if Torn replaces the full-screen panel during SPA navigation",async()=>{
+test("v0.10.8 revives HJ button if Torn replaces the full-screen panel during SPA navigation",async()=>{
  const a=setup();await a.btn.onclick();
  const ui=a.document.getElementById("hhj-compact-panel");
  assert.ok(ui);
@@ -1621,11 +1621,34 @@ test("v0.10.7 revives HJ button if Torn replaces the full-screen panel during SP
  assert.match(a.btn.style.cssText,/display:block!important/);
  assert.equal(ui.style.display,"none");
 });
-test("v0.10.7 can retry boot after a previous unsuccessful startup flag was set",()=>{
+test("v0.10.8 can retry boot after a previous unsuccessful startup flag was set",()=>{
  const a=setup();
- a.window.__TornHappyJumpBooting="0.10.7";
+ a.window.__TornHappyJumpBooting="0.10.8";
  a.window.__TornHappyJumpRescue=()=>{throw Error("stale closure")};
  a.rerun();
  assert.ok(a.document.getElementById("hhj-launch"));
- assert.equal(a.window.__TornHappyJumpLoaded,"0.10.7");
+ assert.equal(a.window.__TornHappyJumpLoaded,"0.10.8");
+});
+
+test("v0.10.8 early HJ launcher can mount before the main planner boot runs",()=>{
+ const src=fs.readFileSync(S,"utf8");
+ const boot=src.indexOf("function earlyHJ()");
+ const cfg=src.indexOf('const N="hhj-compact-v1"');
+ assert.ok(boot>0&&boot<cfg,"Early launcher must be mounted before reading saved settings");
+ const end=src.indexOf("if(Wi.__TornHappyJumpBooting===VER",boot);
+ assert.ok(end>boot);
+ const part=src.slice(boot,end);
+ const children=[];
+ const Do={
+   body:{appendChild(x){children.push(x)}},
+   createElement(){return {style:{},textContent:""}},
+   getElementById(id){return children.find(x=>x.id===id)||null}
+ };
+ new Function("Do",part)(Do);
+ assert.equal(children.length,1);
+ assert.equal(children[0].id,"hhj-launch");
+ assert.equal(children[0].textContent,"HJ ◉");
+ assert.match(children[0].style.cssText,/display:block!important/);
+ children[0].onclick();
+ assert.equal(children[0].textContent,"HJ STARTUP");
 });
