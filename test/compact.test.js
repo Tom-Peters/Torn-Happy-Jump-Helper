@@ -60,7 +60,7 @@ function setup(apiRefillUsed=true,category21=false,clock="2026-10-26T21:23:00Z",
 }
 test("CSP-safe installed script is compact, self-contained and includes no eval or external script loader",()=>{
   const src=fs.readFileSync(S,"utf8");
-  assert.ok(src.length<65000,"Keep the direct install far below the failed 78 KB preview size");
+  assert.ok(src.length<60000,"Keep the Android launcher script under 60 KB to avoid injection regressions");
   assert.match(src,/@run-at\s+document-end/);
   assert.match(src,/@version\s+0\.10\.7/);
   assert.ok(!/\beval\s*\(|\bnew\s+Function\s*\(|\bimport\s*\(|createObjectURL\s*\(/.test(src));
