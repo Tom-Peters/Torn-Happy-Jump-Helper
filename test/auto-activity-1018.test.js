@@ -107,3 +107,27 @@ test("forecast accuracy requires three paired intervals and never claims full co
  assert.match(html,/95\.0% agreement/);
  assert.match(html,/Partial snapshot coverage/);
 });
+
+test("Ecstasy plus nearby verified gym training infers a jump; drug use alone does not",async()=>{
+ const t=now(),entries=[{id:"ecstasy-1",timestamp:t-120,details:{id:2290,title:"Ecstasy use"},data:{}}];
+ const gymLog={id:"jump-train-1",timestamp:t-60,data:{strength_increased:24000,trains:1,energy_used:25}};
+ const a=boot(url=>url.includes("log=2290,4900")?{log:entries}:url.includes("cat=125")?{log:[gymLog]}:{log:[]});
+ a.core.setFocus("strength");
+ await a.core.scanActions();
+ assert.equal(a.core.actDone({kind:"JUMP",t:t-120}),false,"drug event alone is not a confirmed completed jump");
+ await a.core.scanGym(true);
+ assert.equal(a.core.actDone({kind:"JUMP",t:t-120}),true);
+ assert.equal(a.core.actDone({kind:"JUMP",t:t+5400}),false);
+ assert.equal(a.core.getActions()[0].kind,"ECSTASY");
+});
+test("better-gym recommendations only include previously verified access and respect eligibility",()=>{
+ const a=boot();
+ a.core.setFocus("strength");
+ const one={id:1,name:"Existing Gym",energy_cost:25,modifiers:{strength:20,speed:20,defense:20,dexterity:20}};
+ const better={id:2,name:"Higher Gym",energy_cost:25,modifiers:{strength:50,speed:20,defense:20,dexterity:20}};
+ a.core.setData({gym:{gym:{id:1}},gyms:{gyms:[one,better]},battlestats:{battlestats:{strength:{value:1452966},speed:{value:2000000},defense:{value:1000000},dexterity:{value:1000000}}},bars:{bars:{energy:{maximum:150},happy:{maximum:3500,current:3500}}}});
+ assert.equal(a.core.gymTip(),"","an unverified better gym must not be claimed accessible");
+ a.core.setVerifiedGyms({2:"owned"});
+ assert.match(a.core.gymTip(),/Better gym available/);
+ assert.match(a.core.gymTip(),/Higher Gym/);
+});
