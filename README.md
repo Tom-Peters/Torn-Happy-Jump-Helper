@@ -1,10 +1,30 @@
-# Torn Happy Jump Helper — v0.10.7
+# Torn Happy Jump Helper — startup investigation (v0.10.8)
 
-**Latest Android test release: v0.10.7 · Author: IamEEKY**
+**v0.10.8: experimental startup build — NOT YET VERIFIED ON ANDROID · Author: IamEEKY**
 
 **[Install / update the main TornPDA userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
 
-This release fixes missed live training gains caused by quick consecutive API checks, accounts for off-schedule point refills, and supports staying awake later than the configured UK bedtime. It preserves the working floating HJ launcher, eight tabs, local records, approximate gym-gain model, budget and read-only gameplay.
+## Missing HJ button: use the tiny standalone diagnostic first
+
+Both **v0.10.6 and v0.10.7 failed to show the HJ launcher** on the affected Android TornPDA. The exact reason remains unknown. Tests that run after injection cannot tell whether TornPDA rejected the userscript entirely.
+
+**[Install the HJ Startup Test userscript (2.5 KB)](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/diagnostics/HJ-Startup-Test.user.js)**. This is a separate, simple script with a green **HJ TEST** launcher. It never requests an API key, uses no network, saves no user data and performs no game actions.
+
+1. Temporarily **disable** the main Happy Jump Helper, without deleting it or clearing storage.
+2. Install or enable the standalone HJ Startup Test with injection **END**.
+3. Open/reload a Torn page in TornPDA. If green **HJ TEST** appears, tap it; the local panel reports whether the main HJ boot markers and launcher exist. Share a screenshot of that panel if needed.
+4. If **HJ TEST does not appear**, review TornPDA userscript enablement, domain matching and injection settings before investigating training calculations.
+5. **Disable the diagnostic script** after testing.
+
+**[Restore the screenshot-confirmed v0.10.4 userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.4-screenshot-confirmed.user.js)** if you need the familiar working button while this is investigated. Keep only one main HJ userscript enabled, and **do not clear TornPDA storage**.
+
+## v0.10.8 experimental early launcher
+
+Unlike previous builds, the main v0.10.8 userscript mounts a lightweight **HJ ◉** launcher before initialising user settings or the training planner. If the planner then stops, pressing the button shows **HJ STARTUP** instead of silently disappearing. A DOM replacement fallback also avoids relying entirely on `Element.replaceWith`.
+
+**103/103 focused mock tests pass**, including an isolated test proving the early launcher mounts before the planner. At **60,775 characters**, however, this experimental build is larger than the 58,580-character phone-confirmed v0.10.4 rollback. It is **not claimed fixed** until TornPDA device injection is verified. Do not treat a passed test as proof of phone compatibility.
+
+The main development script attempts to fix missed live training gains caused by quick consecutive API checks, accounts for off-schedule point refills, and supports staying awake later than the configured UK bedtime. It preserves the working floating HJ launcher, eight tabs, local records, approximate gym-gain model, budget and read-only gameplay.
 
 ## v0.10.7 — HJ launcher recovery
 
