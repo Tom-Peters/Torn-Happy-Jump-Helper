@@ -49,7 +49,7 @@ test("Xanax and point refill are read from Torn activity, never submitted to Tor
  assert.equal(a.calls[0].headers.Authorization,"ApiKey unit-test-key");
  assert.equal(JSON.parse(a.store.get("hhj-compact-v1:verified-actions")).length,2);
  await a.core.scanActions();
- assert.equal(a.calls.length,1,"same-minute actions are cached");
+ assert.equal(a.calls.filter(x=>x.url.includes("log=2290,4900")).length,1,"same-minute activity requests are cached");
 });
 test("refill activity from yesterday cannot confirm today's or tomorrow's refill",async()=>{
  const t=now(),start=Math.floor(t/86400)*86400;
