@@ -4,17 +4,17 @@
 
 **[Install / update the main TornPDA userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
 
-## Missing HJ button: use the tiny standalone diagnostic first
+## Missing HJ button: test the main script and tiny diagnostic together
 
 Both **v0.10.6 and v0.10.7 failed to show the HJ launcher** on the affected Android TornPDA. The exact reason remains unknown. Tests that run after injection cannot tell whether TornPDA rejected the userscript entirely.
 
 **[Install the HJ Startup Test userscript (2.5 KB)](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/diagnostics/HJ-Startup-Test.user.js)**. This is a separate, simple script with a green **HJ TEST** launcher. It never requests an API key, uses no network, saves no user data and performs no game actions.
 
-1. Temporarily **disable** the main Happy Jump Helper, without deleting it or clearing storage.
-2. Install or enable the standalone HJ Startup Test with injection **END**.
-3. Open/reload a Torn page in TornPDA. If green **HJ TEST** appears, tap it; the local panel reports whether the main HJ boot markers and launcher exist. Share a screenshot of that panel if needed.
-4. If **HJ TEST does not appear**, review TornPDA userscript enablement, domain matching and injection settings before investigating training calculations.
-5. **Disable the diagnostic script** after testing.
+1. **Enable exactly one main Happy Jump Helper** (v0.10.8 or the known-good v0.10.4 rollback). Keep other main HJ variants disabled. Do not clear saved storage.
+2. **Also enable** the standalone HJ Startup Test with injection **END**. Both the main script and the diagnostic must be enabled simultaneously for this test.
+3. Open/reload the Gym page in TornPDA. Tap the green **HJ TEST** to check whether the main script boot markers and actual launcher appeared. If the main helper was disabled, all `NO` / `none` results are expected and prove nothing about its compatibility.
+4. If HJ TEST appears but the main markers still show `none` with a main HJ version definitely enabled, verify its installed version, domain matching and injection **END**; try the phone-confirmed v0.10.4 rollback to isolate a regression in the larger builds.
+5. Disable the diagnostic after checking. Keep only the one working main HJ helper enabled.
 
 **[Restore the screenshot-confirmed v0.10.4 userscript](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/archive/Torn-Happy-Jump-Helper-v0.10.4-screenshot-confirmed.user.js)** if you need the familiar working button while this is investigated. Keep only one main HJ userscript enabled, and **do not clear TornPDA storage**.
 
