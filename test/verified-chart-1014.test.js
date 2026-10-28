@@ -73,7 +73,7 @@ test("unknown log format does not create imaginary stat gains",async()=>{
   const a=boot(()=>({log:[{id:"new-shape",timestamp:now-60,data:{energy_used:150}}]}));
   await a.core.scanGym();
   assert.equal(a.core.getLogs().length,0);
-  assert.match(a.core.getStatus(),/unknown/);
+  assert.match(a.core.getStatus(),/without stat data/);
 });
 test("follows next-page links only on the Torn user-log endpoint",async()=>{
   const next="https://api.torn.com/v2/user/log?log=5301&limit=100&from=1700000000";
@@ -109,7 +109,7 @@ test("empty gym category falls back to bounded unfiltered diagnostics",async()=>
 test("unknown gym log format reports field names without leaking values",async()=>{
   const a=boot(url=>url.includes("cat=125")?{log:[{id:"x",timestamp:now-60,data:{a_new_field:"private sample contents",value:999}}]}:{log:[]});
   await a.core.scanGym();
-  assert.match(a.core.getStatus(),/unknown/);
+  assert.match(a.core.getStatus(),/without stat data/);
   assert.match(a.core.getStatus(),/a_new_field/);
   assert.doesNotMatch(a.core.getStatus(),/private sample contents/);
   assert.equal(a.core.getLogs().length,0);
