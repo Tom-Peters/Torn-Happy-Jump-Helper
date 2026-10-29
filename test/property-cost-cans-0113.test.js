@@ -366,7 +366,7 @@ test("current PI exposes missing superior interior and ranks it ahead of Yacht",
  assert.deepEqual(target.names.slice().sort(),["Extra Large Vault","Private Yacht","Superior Interior Modification"].sort());
  assert.match(a.core.lab(),/Catalogue minimum: \$1,360,000,000/);
  a.store.set("hhj-compact-v1:lab-property-cost",JSON.stringify(250000000));
- assert.match(a.core.lab(),/Manual budget is below this minimum/);
+ assert.match(a.core.lab(),/Your manual budget is below this minimum/);
 });
 test("energy cans requested six per day never exceed 42 within rolling seven days",()=>{
  const a=boot(),stat=x=>({value:x});a.core.setFocus("strength");
