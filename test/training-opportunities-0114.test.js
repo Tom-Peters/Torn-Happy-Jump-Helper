@@ -423,6 +423,7 @@ test("education completion and prerequisites select focus-specific Sports Scienc
  const next=a.core.educationOpportunities();
  assert.equal(next[0].ready,true);
  assert.match(a.core.trainingAudit(),/Strength and Conditioning/);
+ a.core.setData({education:{education_completed:[100],education_current:0},educationCatalog:catalogue,stats:{battlestats:{strength:{value:1500000}}},gym:{gym:{id:1}},gyms:{gyms:[{id:1,name:"Gym",energy_cost:25,modifiers:{strength:75}}]},bars:{bars:{energy:{current:40,maximum:150,interval:600,increment:5},happy:{current:3400,maximum:3475}}},cooldowns:{cooldowns:{drug:0,booster:0}},refills:{refills:{energy:true}}});
  assert.match(a.core.getToday(),/Biggest training improvement/);
  a.core.setData({education:{education_completed:[100,101,102],education_current:0},educationCatalog:catalogue});
  assert.deepEqual(a.core.educationOpportunities(),[]);
