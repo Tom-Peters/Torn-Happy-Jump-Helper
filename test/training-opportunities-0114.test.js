@@ -16,7 +16,7 @@ function boot(reply){
  getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null}};
  const localStorage={getItem(k){return store.get(k)||null},setItem(k,v){store.set(k,String(v))}};
  const window={setInterval(){}};
- const injected=source.replace(/\}\)\(\);\s*$/, "window.__activity={scanActions,scanGym,actDone,refill,aFl,cMet,cFactor,mCard,boostCard,fCard,gymTip,gyms,getKnown:()=>vr,getActions:()=>acts,getLogs:()=>al,getInput:()=>loadInput(),setFocus:k=>{cfg.stat=k},setData:v=>{data=v},setVerifiedGyms:v=>{vr=v},setLedger:v=>{ledger=v},getToday:today,lab,propertyContext,propertyOptions,minimumPath,propertyCard,priorityAction,bookAssessment,educationOpportunities,enhancerRows,opportunityList,trainingAudit,getPerks:perks,simulate,cFactor,targetWeeks,realInput:()=>loadInput(),badge,miniRefresh,getButton:()=>button,setPlan:v=>{lp=v},setCurrent:time=>{updated=time},setMode:v=>{cfg.mode=v},getConfig:()=>cfg,getState:()=>data};})();");
+ const injected=source.replace(/\}\)\(\);\s*$/, "window.__activity={scanActions,scanGym,actDone,refill,aFl,cMet,cFactor,mCard,boostCard,fCard,gymTip,gyms,getKnown:()=>vr,getActions:()=>acts,getLogs:()=>al,getInput:()=>loadInput(),setFocus:k=>{cfg.stat=k},setData:v=>{data=v},setVerifiedGyms:v=>{vr=v},setLedger:v=>{ledger=v},getToday:today,lab,propertyContext,propertyOptions,minimumPath,propertyCard,priorityAction,bookAssessment,educationOpportunities,enhancerRows,opportunityList,trainingAudit,refresh,getPerks:perks,simulate,cFactor,targetWeeks,realInput:()=>loadInput(),badge,miniRefresh,getButton:()=>button,setPlan:v=>{lp=v},setCurrent:time=>{updated=time},setMode:v=>{cfg.mode=v},getConfig:()=>cfg,getState:()=>data};})();");
  assert.notEqual(injected,source);
  const PDA_httpGet=async(url,headers)=>({status:200,responseText:JSON.stringify((calls.push({url,headers}),reply?.(url)||{log:[]}))});
  new Function("document","location","window","localStorage","PDA_httpGet",injected)(
@@ -445,4 +445,33 @@ test("faction and company possibilities remain unlock suggestions, never active 
  assert.ok(rows.some(x=>x.kind==="faction"&&/could be unlocked|Ask faction leadership/i.test(x.detail)));
  assert.ok(rows.some(x=>x.kind==="company"&&/not an active bonus/i.test(x.detail)));
  assert.ok(!rows.some(x=>x.kind==="book"));
+});
+
+test("full refresh retrieves price listings and education, without assuming ownership",async()=>{
+ const edu={"100":{code:"SPT1430",name:"Introduction to Sports Science",prerequisites:[]},"101":{code:"SPT2440",name:"Strength and Conditioning",prerequisites:[100]}};
+ const a=boot(url=>{
+   if(url.includes("/user/education"))return {education_completed:[100],education_current:0};
+   if(url.includes("/torn/education"))return {education:edu};
+   if(url.includes("/market/331/itemmarket"))return {itemmarket:{listings:[{cost:441000000,quantity:1},{price:433000000,amount:3}]}};
+   if(url.includes("/market/330/itemmarket"))return {itemmarket:{listings:[{cost:446000000,quantity:1}]}};
+   if(url.includes("/market/329/itemmarket"))return {itemmarket:{listings:[{cost:421000000,quantity:1}]}};
+   if(url.includes("/market/106/itemmarket"))return {itemmarket:{listings:[{cost:438000000,quantity:1}]}};
+   if(url.includes("/user/battlestats"))return {battlestats:{strength:{value:1554824},speed:{value:2003873},defense:{value:1179842},dexterity:{value:1007916}}};
+   if(url.includes("/user/bars"))return {bars:{energy:{current:30,maximum:150,interval:600,increment:5},happy:{current:3475,maximum:3475}}};
+   if(url.includes("/user/gym"))return {gym:{id:1,name:"Frontline Fitness",energy_cost:25,modifiers:{strength:75}}};
+   if(url.includes("/torn/gyms"))return {gyms:[{id:1,name:"Frontline Fitness",energy_cost:25,modifiers:{strength:75}}]};
+   if(url.includes("/user/cooldowns"))return {cooldowns:{drug:0,booster:0}};
+   if(url.includes("/user/refills"))return {refills:{energy:true}};
+   if(url.includes("/user/perks"))return {perks:{education_perks:[],faction_perks:[],job_perks:[]}};
+   if(url.includes("/user/inventory?"))return {inventory:{items:[]}};
+   return {log:[]};
+ });
+ await a.core.refresh();
+ const endpoints=a.calls.map(x=>x.url);
+ for(const id of [331,330,329,106])assert.ok(endpoints.some(x=>x.includes("/market/"+id+"/itemmarket")),String(id));
+ assert.ok(endpoints.some(x=>x.includes("/user/education")));
+ assert.ok(endpoints.some(x=>x.includes("/torn/education")));
+ assert.equal(a.core.enhancerRows().find(x=>x.stat==="strength").price,433000000);
+ assert.equal(a.core.educationOpportunities("strength")[0].code,"SPT2440");
+ assert.ok(!a.core.opportunityList().some(x=>x.kind==="book"));
 });
