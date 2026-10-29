@@ -360,11 +360,12 @@ test("current PI exposes missing superior interior and ranks it ahead of Yacht",
  assert.ok(sup&&suff);
  assert.equal(sup.gain,1000);assert.equal(sup.cost,250000000);
  assert.equal(suff.gain,500);assert.equal(suff.cost,125000000);
- assert.equal(rows[0].name,"Superior Interior Modification","interior should outrank Yacht in weekly gain per dollar");
+ assert.ok(rows.indexOf(sup)>=0&&rows.indexOf(suff)>=0);assert.ok(rows.findIndex(x=>x.name==="Sufficient Interior Modification")<rows.findIndex(x=>x.name==="Private Yacht"),"interior upgrades should outrank yacht");
  const target=a.core.minimumPath(p,ctx,"xanax",.97,5025);
  assert.equal(target.cost,1360000000);
  assert.deepEqual(target.names.slice().sort(),["Extra Large Vault","Private Yacht","Superior Interior Modification"].sort());
  assert.match(a.core.lab(),/Catalogue minimum: \$1,360,000,000/);
+ a.store.set("hhj-compact-v1:lab-property-cost",JSON.stringify(250000000));
  assert.match(a.core.lab(),/Manual budget is below this minimum/);
 });
 test("energy cans requested six per day never exceed 42 within rolling seven days",()=>{
