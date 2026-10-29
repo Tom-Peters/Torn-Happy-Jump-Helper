@@ -8,9 +8,25 @@ This unversioned path contains **phone-confirmed v0.10.22** and includes the per
 
 **Stable promotion policy:** Develop new releases at versioned preview URLs. Run all syntax, mobile smart-quote preprocessing, dashboard, API and read-only regression checks; require a successful phone test. Only then publish the confirmed candidate to the permanent URL. Until that point, the stable installer remains pinned at v0.10.22. The GitHub repository default branch can contain newer preview files without changing the stable installer.
 
+## v0.11.3 — screenshot-verified Private Island upgrade and seven-day can corrections
+
+**[Permanent Preview Installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — now **v0.11.3**. Stable channel **v0.10.22 remains unchanged**.
+
+The user's **29 October 2026** v0.11.2 screenshot showed their live **Private Island with property and live Happy 3,475**, installed **Hot Tub, Advanced Shooting Range, Sauna, Medical Facility, Airstrip, Open Bar, Large Pool, Medium Vault** and current staff **Maid ×4, Guard ×5, Butler ×3, Doctor ×1, Pilot ×1**. Their old ranking omitted interior modifications and displayed **43 energy cans used of 42 requested** for a seven-day 6-cans/day scenario. It also displayed an unrelated manual **$250m** input for a 5,025-Happy scenario without indicating how much the remaining upgrades cost.
+
+Fixes:
+- Add the API-catalogue-supported **Sufficient Interior Modification** and **Superior Interior Modification** to property options. On Private Island they provide **+500 Happy at $125m** and **+1,000 Happy at $250m** respectively (when neither tier is installed). Interior, pool and vault tiers are treated as mutually exclusive alternatives, not additive.
+- Compute the **minimum indicative estate-agency purchase price** for a chosen target Happy by combining eligible, uninstalled upgrades through a grouped cost-minimising dynamic program. It excludes already installed modifications and lower-tier replacements; next-tier upgrades are charged at full price.
+- For the screenshot's 3,475-Happy Private Island, the documented shortest-cost route to **5,025** is **Superior Interior ($250m) + Private Yacht ($895m) + Extra Large Vault ($215m) = $1.36bn**, assuming the account may install all three catalogue-listed upgrades. There is no justification to present 5,025 Happy as attainable for the manually entered $250m. The app shows both the required bundle and an affordability warning.
+- Seven-day can simulation now caps the aggregate count at **7 × requested cans per day**, even when the rolling 168h period crosses 8 UTC calendar dates. Per-UTC-day limits, booster cooldown, energy capacity, sleep and other previously simulated constraints remain. The old **43 / 42** result is no longer possible.
+- Keep the original gym history, automatic activity, priority HJ button, scenario calculations, saved user settings and non-Torn-action behavior. The new regression fixture reproduces the screenshot's property upgrades and tests the **$1.36bn** minimum path and a hard **42-can ceiling**.
+- **Phone verification pending.** No source file or metadata from the stable installer was modified; the tested script is promoted only to the permanent preview URL.
+
+Pricing source: Torn's official Property wiki; catalogue/eligibility comes from API v2. All fixed estate-agency prices are estimates, not live quotes, and no purchases are performed.
+
 ## v0.11.2 — API property recognition, upgrade ranking and priority launcher (preview)
 
-**[Permanent Preview Installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently **v0.11.2**. The permanent stable installer remains pinned at phone-confirmed **v0.10.22**.
+**[Permanent Preview Installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently **v0.11.3**. The permanent stable installer remains pinned at phone-confirmed **v0.10.22**.
 
 What was approved: automatic current-property and upgrade detection; efficiency ranking by extra Strength per dollar; a single most important HJ button action. More advanced energy-can and forecast analytics are postponed.
 
@@ -45,7 +61,7 @@ The user's v0.11.0 mobile screenshot confirmed the Upgrade Lab rendered correctl
 
 ## v0.11.0 Training Command Centre — separate Android preview
 
-**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.2. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
+**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.3. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
 
 **Preview channel policy:** The permanent preview URL is updated only with a test-passing candidate and uses its own `@updateURL` and `@downloadURL`. Install **either** stable or preview in TornPDA at any one time. They share local HJ settings, so do not clear app storage between channels. A preview passing CI is not the same as phone-confirmed stability.
 
