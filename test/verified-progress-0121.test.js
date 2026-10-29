@@ -55,6 +55,7 @@ test("two actual stat snapshots show off-plan +10k, and are separate from gym-lo
 });
 test("baseline alone is not mislabelled as a gain and missing readings do not become zero",()=>{
  const a=boot(),t=now(),start={strength:1000000,speed:2000000,defense:1800000,dexterity:1900000};
+ a.core.getConfig().stat="strength";
  assert.equal(a.core.recordStatSnapshot(start,t-90),true);
  assert.equal(a.core.statEvidence().latest,null);
  assert.match(a.core.statSampleCard(),/Only one stat reading/);
