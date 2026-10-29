@@ -55,11 +55,11 @@ test("two actual stat snapshots show off-plan +10k, and are separate from gym-lo
 });
 test("baseline alone is not mislabelled as a gain and missing readings do not become zero",()=>{
  const a=boot(),t=now(),start={strength:1000000,speed:2000000,defense:1800000,dexterity:1900000};
- assert.equal(a.core.recordStatSnapshot(start,t),true);
+ assert.equal(a.core.recordStatSnapshot(start,t-90),true);
  assert.equal(a.core.statEvidence().latest,null);
  assert.match(a.core.statSampleCard(),/Only one stat reading/);
- assert.equal(a.core.recordStatSnapshot({strength:1000000,speed:0,defense:1800000,dexterity:1900000},t+90),false);
- assert.equal(a.core.recordStatSnapshot({...start,strength:1002000},t+90),true);
+ assert.equal(a.core.recordStatSnapshot({strength:1000000,speed:0,defense:1800000,dexterity:1900000},t),false);
+ assert.equal(a.core.recordStatSnapshot({...start,strength:1002000},t),true);
  assert.equal(a.core.statEvidence().latest.delta,2000);
 });
 test("activity pagination records a refill on second page and deduplicates IDs",async()=>{
@@ -79,11 +79,11 @@ test("activity pagination records a refill on second page and deduplicates IDs",
  assert.equal(a.calls.filter(x=>x.url.includes("/user/log?")).length,2,"successful activity scans are short-cached");
 });
 test("an invalid or cross-origin activity page does not leak the API key",async()=>{
- const t=now(),a=boot(url=>({log:[],_metadata:{links:{next:"https://evil.example/collect?key=stolen"}}}));
+ const t=now(),a=boot(url=>({log:[{id:"unrelated",timestamp:t-100,details:{id:1234,title:"Other"},data:{}}],_metadata:{links:{next:"https://evil.example/collect?key=stolen"}}}));
  await a.core.scanActions();
  assert.match(a.core.getActivityCoverage(),/Unavailable: Invalid activity cursor/);
- assert.equal(a.calls.length,1);
- assert.ok(a.calls[0].url.startsWith("https://api.torn.com/"));
+ assert.equal(a.calls.filter(x=>x.url.includes("/user/log?")).length,1);
+ assert.ok(a.calls.every(x=>x.url.startsWith("https://api.torn.com/")));
 });
 test("partial mini-refresh never upgrades full-state freshness or mutates only some fields",async()=>{
  const prev=state(1000000),a=boot(url=>{
