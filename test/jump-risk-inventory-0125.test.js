@@ -42,7 +42,7 @@ function configure(a,{stat=125000,budget=100000000,prices=true,own={}}={}){
  a.core.setUpdated(Date.now());
 }
 test("v0.12.5 boots on TornPDA with the HJ launcher and only read-only requests",()=>{
- const s=fs.readFileSync(FILE,"utf8");assert.match(s,/@version\s+0\.12\.4/);
+ const s=fs.readFileSync(FILE,"utf8");assert.match(s,/@version\s+0\.12\.5/);
  assert.ok(s.length<106000);assert.doesNotMatch(s,/[“”‘’]/);
  assert.doesNotMatch(s,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
  const a=boot();assert.equal(a.window.__TornHappyJumpLoaded,"0.12.5");
