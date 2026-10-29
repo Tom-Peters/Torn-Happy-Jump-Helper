@@ -33,7 +33,7 @@ function prepare(a,{budget=2000000,stock={},priceOverrides={}}={}){
  });
  a.core.setInventory(stock);
  a.core.setPrices({points:[{price:1000,amount:20000}],xanax:[{price:70000,amount:500}],...priceOverrides});
- const cfg=a.core.getConfig();cfg.stat="strength";cfg.budget=budget;cfg.refills=true;cfg.sleepEnabled=false;cfg.mode="training";
+ const cfg=a.core.getConfig();cfg.stat="strength";cfg.budget=budget;cfg.refills=true;cfg.sleepEnabled=false;cfg.mode="training";cfg.ownedPoints=stock.points||0;
 }
 test("v0.12.2 parses in the TornPDA wrapper, keeps floating HJ and remains read-only",()=>{
  const text=fs.readFileSync(FILE,"utf8");
