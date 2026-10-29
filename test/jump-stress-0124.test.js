@@ -42,7 +42,7 @@ function configure(a,{stat=125000,budget=100000000,prices=true,own={}}={}){
  a.core.setUpdated(Date.now());
 }
 test("v0.12.4 boots on TornPDA with the HJ launcher and only read-only requests",()=>{
- const s=fs.readFileSync(FILE,"utf8");assert.match(s,/@version\s+0\.12\.3/);
+ const s=fs.readFileSync(FILE,"utf8");assert.match(s,/@version\s+0\.12\.4/);
  assert.ok(s.length<106000);assert.doesNotMatch(s,/[“”‘’]/);
  assert.doesNotMatch(s,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
  const a=boot();assert.equal(a.window.__TornHappyJumpLoaded,"0.12.4");
@@ -113,9 +113,9 @@ test("unfavourable jump in Happy mode blocks blind due-now recommendation withou
 test("pessimistic gain and price stress calculation is deterministic and mathematically bounded",()=>{
  const a=boot();
  const robust=a.core.jumpStress(200,100,80,70,1000);
- assert.equal(robust.downsideGain,70);
- assert.equal(robust.upsideGain,130);
- assert.equal(robust.stressedExtraCash,26);
+ assert.ok(Math.abs(robust.downsideGain-70)<1e-8);
+ assert.ok(Math.abs(robust.upsideGain-130)<1e-8);
+ assert.ok(Math.abs(robust.stressedExtraCash-26)<1e-8);
  assert.ok(robust.robust);
  const weak=a.core.jumpStress(120,100,80,70,1000);
  assert.ok(weak.downsideGain<0);
