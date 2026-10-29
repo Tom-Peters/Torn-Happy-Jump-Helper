@@ -8,6 +8,21 @@ This unversioned path contains **phone-confirmed v0.10.22** and includes the per
 
 **Stable promotion policy:** Develop new releases at versioned preview URLs. Run all syntax, mobile smart-quote preprocessing, dashboard, API and read-only regression checks; require a successful phone test. Only then publish the confirmed candidate to the permanent URL. Until that point, the stable installer remains pinned at v0.10.22. The GitHub repository default branch can contain newer preview files without changing the stable installer.
 
+## v0.11.4 — focused Training Opportunity Audit (preview)
+
+**Permanent preview installer:** [Torn-Happy-Jump-Helper-preview.user.js](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js) now serves **v0.11.4**. Phone-confirmed **stable v0.10.22 remains pinned** and unchanged. A passing CI run confirms syntax, TornPDA text normalization, regression compatibility, and test fixtures. **v0.11.4 is not yet confirmed on Android.**
+
+Five user-approved decisions implemented:
+- **Education prioritises focused stat.** The helper requests read-only `/v2/user/education` and `/v2/torn/education` on a full refresh, checks the completed list and current course, then prioritises the appropriate Sports Science +1% gym-gain course (`SPT2440 / 2450 / 2460 / 2470`) followed by the `SPT3510` Bachelor giving +1% all gym gains. It identifies missing prerequisites from the official catalogue. It never assumes missing API data means no education is completed.
+- **Books must be owned and worth using.** Only positive-amount, non-faction-owned books found in the current API inventory are displayed. Permanent 5%-up-to-10m stat books (IDs 744–747) are not marked `ready` unless (i) the matching stat is at least 200m already, (ii) the item explicitly identifies itself as usable, and (iii) no other book perk is active. The full +10m cap is assessed at completion of the 31-day reading period. A predicted 31-day stat is displayed as a *rough forecast* for earlier planning but never silently triggers a use-now prompt. Unknown usability produces `Usability unverified`, and an explicitly used copy is excluded from a use recommendation. Used book display copies can still remain in the inventory. Training-boost books (757–761) and Energy book (784) are described only as worth reserving for a planned 31-day intensive period, not as automatic consume-now suggestions.
+- **Faction/company are potential unlocks only.** Missing Steadfast and a possible Fitness Center 10-star bonus are labelled as prospects requiring faction leadership/job qualification. They are **not inserted into forecast multipliers unless Torn reports an active perk**, preserving the existing active-perk calculation. All active relevant perks remain inspectable under a dropdown.
+- **Stat enhancer prices fetched from market.** The full refresh now calls read-only `/v2/market/{331,330,329,106}/itemmarket`, normalising listing `price/cost` and `amount/quantity`, and shows the cheapest available listing, the 1% stat increase, and dollars per stat point. No hard-coded market prices; prices are snapshots at refresh, not live streaming quotes. All enhancers add six hours of booster cooldown and availability can change.
+- **Only one high-value opportunity on Today**, with full education/book/perk/enhancer audit inside **Perks & Books**. Avoids spurious calls to use a rare book or buy expensive enhancers at low stats.
+
+**Safety and release constraints:** The preview remains read-only and does not use automation for Torn actions, change property/education/book ownership or prices, clear local data, or expose an API key in the repository. It retains the existing HJ button and on-page due indicator. Any missing key capability is described as unavailable, not silently inferred.
+
+Regression coverage was extended for a stat book below/above 200m, usable/unknown/used owned books, prerequisites, absent data, changing listing prices and full-read-only-refresh response handling. The user's stable URL stays pinned on v0.10.22 until the preview is confirmed working on the phone.
+
 ## v0.11.3 — screenshot-verified Private Island upgrade and seven-day can corrections
 
 **[Permanent Preview Installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — now **v0.11.3**. Stable channel **v0.10.22 remains unchanged**.
@@ -26,7 +41,7 @@ Pricing source: Torn's official Property wiki; catalogue/eligibility comes from 
 
 ## v0.11.2 — API property recognition, upgrade ranking and priority launcher (preview)
 
-**[Permanent Preview Installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently **v0.11.3**. The permanent stable installer remains pinned at phone-confirmed **v0.10.22**.
+**[Permanent Preview Installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently **v0.11.4**. The permanent stable installer remains pinned at phone-confirmed **v0.10.22**.
 
 What was approved: automatic current-property and upgrade detection; efficiency ranking by extra Strength per dollar; a single most important HJ button action. More advanced energy-can and forecast analytics are postponed.
 
@@ -61,7 +76,7 @@ The user's v0.11.0 mobile screenshot confirmed the Upgrade Lab rendered correctl
 
 ## v0.11.0 Training Command Centre — separate Android preview
 
-**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.3. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
+**[Permanent preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js)** — currently v0.11.4. The independently versioned [v0.11.0 archive](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.11.0-preview.user.js) remains available for rollback.
 
 **Preview channel policy:** The permanent preview URL is updated only with a test-passing candidate and uses its own `@updateURL` and `@downloadURL`. Install **either** stable or preview in TornPDA at any one time. They share local HJ settings, so do not clear app storage between channels. A preview passing CI is not the same as phone-confirmed stability.
 
