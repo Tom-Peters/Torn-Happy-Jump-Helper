@@ -30,6 +30,7 @@ jobs:
           node --check Torn-Happy-Jump-Helper-v0.12.6-preview.user.js
           node --check Torn-Happy-Jump-Helper-v0.12.7-preview.user.js
           node --check Torn-Happy-Jump-Helper-v0.12.8-preview.user.js
+          node --check Torn-Happy-Jump-Helper-v0.12.9-preview.user.js
           node --check Torn-Happy-Jump-Helper-preview.user.js
           npm run check
           node --check Torn-Happy-Jump-Helper-v0.10.9-compat.user.js
