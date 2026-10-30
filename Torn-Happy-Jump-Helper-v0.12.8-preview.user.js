@@ -394,8 +394,13 @@ function labelLastOD(drug){
 function rememberOD(item){
  if(!item)return false;
  const prior=lastOD(),confirmed=+(get("od-acknowledged-through",0)||0);
- if(prior&&prior.t>item.t)return false;
- if(prior&&prior.t===item.t&&item.drug==="unknown"&&prior.drug!=="unknown")item={...item,drug:prior.drug,drugSource:prior.drugSource};
+ const correctingManual=!!prior&&prior.source==="manual"&&item.source==="api"&&item.t<=prior.t&&prior.t-item.t<=1800;
+ if(prior&&prior.t>item.t&&!correctingManual)return false;
+ if(prior&&(prior.t===item.t||correctingManual)&&item.drug==="unknown"&&prior.drug!=="unknown")item={...item,drug:prior.drug,drugSource:"manual"};
+ if(correctingManual){
+  const oldHold=reportedOverdose();
+  if(oldHold&&oldHold.source==="manual"&&oldHold.t===prior.t)put("reported-overdose",{...item});
+ }
  const changed=!prior||prior.t!==item.t||prior.drug!==item.drug||prior.source!==item.source;
  if(changed)put("last-overdose",item);
  const held=reportedOverdose();
