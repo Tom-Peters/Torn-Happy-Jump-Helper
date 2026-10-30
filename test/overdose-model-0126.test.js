@@ -42,7 +42,7 @@ function configure(a,{stat=125000,budget=100000000,prices=true,own={}}={}){
  a.core.setUpdated(Date.now());
 }
 test("v0.12.6 boots on TornPDA with the HJ launcher and only read-only requests",()=>{
- const s=fs.readFileSync(FILE,"utf8");assert.match(s,/@version\s+0\.12\.5/);
+ const s=fs.readFileSync(FILE,"utf8");assert.match(s,/@version\s+0\.12\.6/);
  assert.ok(s.length<106000);assert.doesNotMatch(s,/[“”‘’]/);
  assert.doesNotMatch(s,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
  const a=boot();assert.equal(a.window.__TornHappyJumpLoaded,"0.12.6");
@@ -242,10 +242,10 @@ test("risk odds remain an optional setting and warnings disclose conservative fa
  assert.match(a.core.settings(),/Leave blank when unknown/);
  const html=a.core.jumpValueCard();
  assert.match(html,/Success chance needed for \+5% gains/);
- assert.match(html,/failed-attempt case conservatively/);
+ assert.match(html,/the first overdose/);
  assert.match(html,/buy-price proxy/);
  assert.match(html,/Energy trained by jump time/);
- assert.match(html,/not an official overdose rate/);
+ assert.match(html,/not official/);
 });
 
 test("overdose inputs default unknown, are independent, and reject invalid values",()=>{
@@ -318,7 +318,7 @@ test("real jump and Xanax models expose energy and happy at each potential overd
  const html=a.core.jumpValueCard();
  assert.match(html,/Overdose-aware comparison/);assert.match(html,/First OD on Xanax/);
  assert.match(html,/5,000 minutes of hospital time/);
- assert.match(html,/separate Xanax and Ecstasy OD/);
+ assert.match(html,/First OD on Ecstasy/);
 });
 test("risk memo invalidates when either drug-specific probability changes",()=>{
  const a=boot();configure(a);const c=a.core.getConfig();c.xanaxOdPct=0;c.ecstasyOdPct=0;
