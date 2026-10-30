@@ -163,3 +163,17 @@ test("wait-for-Happy strategy postpones purchases as well as gym trains",()=>{
   assert.ok(actions.every(e=>e.t>=Math.floor(p.now/60)*60+2500*60),"No consumption or gym training while happiness below minimum.");
  }
 });
+
+test("verified OD log corrects a recent manually approximated timestamp without losing drug identity",()=>{
+ const a=boot();setup(a);
+ a.core.noteOverdose("ecstasy");
+ const manual=a.core.lastOD();assert.equal(manual.source,"manual");
+ const verified=manual.t-120;
+ assert.ok(a.core.rememberOD({drug:"unknown",t:verified,source:"api",id:"od-api-id"}));
+ const saved=a.core.lastOD();
+ assert.equal(saved.t,verified);assert.equal(saved.source,"api");assert.equal(saved.drug,"ecstasy");
+ assert.equal(saved.drugSource,"manual");
+ assert.equal(a.core.reportedOverdose().t,verified);
+ assert.equal(a.core.reportedOverdose().source,"api");
+ assert.equal(a.core.reportedOverdose().drug,"ecstasy");
+});
