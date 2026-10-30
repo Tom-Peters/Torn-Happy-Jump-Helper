@@ -10,7 +10,7 @@ function boot(reply=()=>({log:[]})){
  const body=node("body"),head=node("head"),document={body,head,createElement:node,addEventListener(){},
  getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null}};
  const window={setInterval(){}},localStorage={getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,String(v))};
- const source2=source.replace(/\}\)\(\);\s*$/,"window.__test={lastOD,parseODLog,rememberOD,scanLastOD,odSource,drugOdOdds,happyRecoveryMath,recoveryFloors,simulateRecovery,happyRecoveryCard,overdoseRecoveryCard,reportedOverdose,noteOverdose,clearOverdose,jumpBreakEven,overdoseForecast,settings,loadInput,simulate,plans,plan,compare,today,nextDecision,setData:v=>{data=v},setUpdated:v=>{updated=v},setInventory:v=>{inv=v},setPrices:v=>{prices=v},getConfig:()=>cfg,odScanStatus:()=>lastOdStatus};})();");
+ const source2=source.replace(/\}\)\(\);\s*$/,"window.__test={lastOD,parseODLog,rememberOD,scanLastOD,labelLastOD,odSource,drugOdOdds,happyRecoveryMath,recoveryFloors,simulateRecovery,happyRecoveryCard,overdoseRecoveryCard,reportedOverdose,noteOverdose,clearOverdose,jumpBreakEven,overdoseForecast,settings,loadInput,simulate,plans,plan,compare,today,nextDecision,setData:v=>{data=v},setUpdated:v=>{updated=v},setInventory:v=>{inv=v},setPrices:v=>{prices=v},getConfig:()=>cfg,odScanStatus:()=>lastOdStatus};})();");
  assert.notEqual(source2,source,"test hooks must inject before userscript closure");
  new Function("document","location","window","localStorage","PDA_httpGet",source2)(document,
  {hostname:"www.torn.com",pathname:"/gym.php"},window,localStorage,
@@ -136,4 +136,30 @@ test("a known recent OD without identified drug never invents Xanax hospital tim
  const html=a.core.overdoseRecoveryCard();
  assert.match(html,/Drug type not identified/);
  assert.doesNotMatch(html,/Xanax hospital reference/);
+});
+
+test("unknown drug can be labelled manually without changing the verified Torn OD time",()=>{
+ const a=boot();setup(a,{happy:0});
+ const t=Date.now()/1000-600;
+ a.core.rememberOD({drug:"unknown",t,source:"api",id:"real-log-id"});
+ assert.equal(a.core.labelLastOD("cannabis"),false);
+ assert.match(a.core.overdoseRecoveryCard(),/It was Xanax/);
+ assert.equal(a.core.labelLastOD("xanax"),true);
+ assert.equal(a.core.lastOD().t,t);
+ assert.equal(a.core.reportedOverdose().t,t);
+ assert.equal(a.core.lastOD().drug,"xanax");
+ assert.equal(a.core.lastOD().drugSource,"manual");
+ a.core.rememberOD({drug:"unknown",t,source:"api",id:"real-log-id"});
+ assert.equal(a.core.lastOD().drug,"xanax");
+ assert.equal(a.core.labelLastOD("ecstasy"),false);
+});
+test("wait-for-Happy strategy postpones purchases as well as gym trains",()=>{
+ const a=boot();setup(a,{happy:0,energy:60});
+ const p=a.core.loadInput(),limit=875;
+ for(const mode of ["natural","xanax"]){
+  const model=a.core.simulate(mode,p,168,{refills:true,budget:100000000,minHappy:limit});
+  const actions=model.events.filter(e=>["TRAIN","XANAX","REFILL","CAN"].includes(e.kind));
+  assert.ok(actions.length>0);
+  assert.ok(actions.every(e=>e.t>=Math.floor(p.now/60)*60+2500*60),"No consumption or gym training while happiness below minimum.");
+ }
 });
