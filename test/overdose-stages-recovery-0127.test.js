@@ -132,3 +132,19 @@ test("actual overdose stage details appear only for confirmed hypothetical rate 
  assert.match(a.core.jumpValueCard(),/first overdose|FIRST overdose|First OD here/i);
  assert.ok(a.core.jumpBreakEven().rows.every(x=>x.odJump.expectedFailurePurchase>=0));
 });
+
+test("an overdose hold remains visible without gym data and hides due actions and stale progress forecasts",()=>{
+ const empty=boot();
+ empty.core.noteOverdose("xanax");
+ assert.match(empty.core.today(),/Overdose recovery hold/);
+ assert.match(empty.core.today(),/Live data unavailable/);
+ const a=boot();configure(a);
+ a.core.noteOverdose("xanax");
+ const html=a.core.today();
+ assert.match(html,/Forecast suspended/);
+ assert.match(html,/Paused/);
+ assert.doesNotMatch(html,/Verified activity → Next action/);
+ assert.doesNotMatch(html,/Next 7 days:/);
+ assert.doesNotMatch(html,/Energy, point refill and overnight waste/);
+ assert.match(a.core.plan(),/Schedule paused/);
+});
