@@ -15,7 +15,7 @@ function boot(){
  getElementById(id){return [...body.children,...head.children].find(x=>x.id===id)||null}};
  const localStorage={getItem(k){return store.get(k)||null},setItem(k,v){store.set(k,String(v))}};
  const window={setInterval(){}};
- const injected=source.replace(/\}\)\(\);\s*$/,"window.__test={drugOdOdds,overdoseForecast,jumpSuccessAssumption,jumpRiskAssessment,replacementCost,settings,jumpStress,jumpBreakEven,jumpValueCard,jumpValueBrief,jumpVerdictLabel,simulate,optimizerResults,nextDecision,compare,today,setData:v=>{data=v},setPrices:v=>{prices=v},setInventory:v=>{inv=v},getInput:loadInput,getConfig:()=>cfg,setUpdated:t=>{updated=t},setPlan:v=>{lp=v},setSelected:v=>{sm=v}};})();");
+ const injected=source.replace(/\}\)\(\);\s*$/,"window.__test={reportedOverdose,noteOverdose,clearOverdose,overdoseRecoveryCard,badge,drugOdOdds,overdoseForecast,jumpSuccessAssumption,jumpRiskAssessment,replacementCost,settings,jumpStress,jumpBreakEven,jumpValueCard,jumpValueBrief,jumpVerdictLabel,simulate,optimizerResults,nextDecision,compare,today,setData:v=>{data=v},setPrices:v=>{prices=v},setInventory:v=>{inv=v},getInput:loadInput,getConfig:()=>cfg,setUpdated:t=>{updated=t},setPlan:v=>{lp=v},setSelected:v=>{sm=v}};})();");
  assert.notEqual(injected,source);
  new Function("document","location","window","localStorage","PDA_httpGet",injected)(
   document,{hostname:"www.torn.com",pathname:"/gym.php"},window,localStorage,
@@ -245,7 +245,7 @@ test("risk odds remain an optional setting and warnings disclose conservative fa
  assert.match(html,/the first overdose/);
  assert.match(html,/buy-price proxy/);
  assert.match(html,/Energy trained by jump time/);
- assert.match(html,/not official/);
+ assert.match(html,/rather than official/);
 });
 
 test("overdose inputs default unknown, are independent, and reject invalid values",()=>{
@@ -334,4 +334,30 @@ test("per-dose OD settings are clearly labeled hypothetical, and leave the prior
  assert.match(html,/id="hhj-xanax-od"/);assert.match(html,/id="hhj-ecstasy-od"/);
  assert.match(html,/Leave blank if unknown/);assert.match(html,/faction/);
  assert.match(html,/id="hhj-jump-success"/);
+});
+
+test("a self-reported overdose pauses recommendations and replaces the floating training badge",()=>{
+ const a=boot();configure(a);a.core.getConfig().mode="happy";
+ assert.equal(a.core.reportedOverdose(),null);
+ assert.match(a.core.overdoseRecoveryCard(),/Report Xanax OD/);
+ assert.equal(a.core.noteOverdose("xanax"),true);
+ assert.equal(a.core.reportedOverdose().drug,"xanax");
+ const reason=a.core.nextDecision();
+ assert.equal(reason.kind,"overdose");
+ assert.match(reason.title,/pause drug planning/);
+ assert.match(a.core.overdoseRecoveryCard(),/XANAX overdose reported manually/);
+ a.core.badge();
+ assert.match(a.document.getElementById("hhj-launch").textContent,/⚠/);
+ assert.equal(a.core.noteOverdose("not-a-drug"),false);
+ a.core.clearOverdose();
+ assert.equal(a.core.reportedOverdose(),null);
+ assert.match(a.core.overdoseRecoveryCard(),/Report Ecstasy OD/);
+});
+test("Ecstasy overdose can be logged separately without declaring an API-detected event",()=>{
+ const a=boot();configure(a);
+ assert.equal(a.core.noteOverdose("ecstasy"),true);
+ const held=a.core.reportedOverdose();
+ assert.equal(held.drug,"ecstasy");assert.ok(held.t>0);
+ assert.match(a.core.overdoseRecoveryCard(),/reported manually/);
+ assert.equal(a.core.nextDecision().tab,"today");
 });
