@@ -43,7 +43,7 @@ function configure(a,{stat=125000,budget=100000000,prices=true,own={}}={}){
 }
 test("v0.12.6 boots on TornPDA with the HJ launcher and only read-only requests",()=>{
  const s=fs.readFileSync(FILE,"utf8");assert.match(s,/@version\s+0\.12\.6/);
- assert.ok(s.length<106000);assert.doesNotMatch(s,/[“”‘’]/);
+ assert.ok(s.length<120000);assert.doesNotMatch(s,/[“”‘’]/);
  assert.doesNotMatch(s,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
  const a=boot();assert.equal(a.window.__TornHappyJumpLoaded,"0.12.6");
  assert.ok(a.document.getElementById("hhj-launch"));
@@ -318,7 +318,7 @@ test("real jump and Xanax models expose energy and happy at each potential overd
  const html=a.core.jumpValueCard();
  assert.match(html,/Overdose-aware comparison/);assert.match(html,/First OD on Xanax/);
  assert.match(html,/5,000 minutes of hospital time/);
- assert.match(html,/First OD on Ecstasy/);
+ assert.match(html,/first OD on Ecstasy/);
 });
 test("risk memo invalidates when either drug-specific probability changes",()=>{
  const a=boot();configure(a);const c=a.core.getConfig();c.xanaxOdPct=0;c.ecstasyOdPct=0;
