@@ -1,5 +1,11 @@
 # Torn Happy Jump Helper — Training Command Centre
 
+## v0.22.0 preview — refresh from the unified StaxxHub
+
+- **Data on demand without opening the helper:** StaxxHub v2.6 sends a read-only refresh request when its drawer opens or its refresh control is pressed. The Happy Jump preview checks freshness and runs its existing lightweight verification flow when appropriate.
+- **Avoid duplicate API traffic:** Active full refreshes are not restarted, foreground-only checks are enforced, and short cooldowns prevent repeated requests. Gym activity, drug/refill observations, overdoses and off-plan stat snapshots remain subject to their existing verification rules.
+- **Manual Torn gameplay confirmation:** The script never automatically uses drugs, buys refills or trains; actual player actions remain deliberate.
+
 ## v0.21.0 preview — automatic real progress capture
 
 - **Off-plan gains are recorded without opening Happy Jump:** While Torn is visible, lightweight background reads refresh bars and cooldowns. Around every 12 minutes the helper also checks battle stats, keeps changed snapshots, and updates observed-versus-forecast verification instead of assuming the suggested schedule was followed.
