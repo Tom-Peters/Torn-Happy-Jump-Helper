@@ -13,7 +13,7 @@ test("auto-activity watches observed energy, real refills, new log IDs and overd
  assert.match(mini,/energyDrop\|\|usedRefill\|\|newActivity\|\|newOD/);
 });
 test("energy loss only triggers read-only gym rechecking and never becomes an invented training gain",()=>{
- assert.match(mini,/Energy loss alone does not prove a gym session/);
+ assert.match(mini,/Do not assume that an energy decrease means training/);
  assert.match(mini,/await scanGym\(\)/);
  assert.match(mini,/now-miniGymAtV210>=2\*60/);
  assert.match(mini,/lp=plans\(\)/);
