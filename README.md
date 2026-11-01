@@ -1,5 +1,11 @@
 # Torn Happy Jump Helper — Training Command Centre
 
+## v0.21.0 preview — automatic real progress capture
+
+- **Off-plan gains are recorded without opening Happy Jump:** While Torn is visible, lightweight background reads refresh bars and cooldowns. Around every 12 minutes the helper also checks battle stats, keeps changed snapshots, and updates observed-versus-forecast verification instead of assuming the suggested schedule was followed.
+- **Gym history is checked automatically:** Verified log scans run at a separately limited interval of about 15 minutes. Unchanged stats do not create repeated zero-change verification entries. Returning to a foreground tab triggers a stale-data check.
+- **Privacy and safety:** Only read-only Torn API data is used. A full plan refresh still happens when the panel opens; a lightweight status read never masquerades as a complete fresh snapshot. The separate stable v0.10.22 installer remains unchanged; the permanent preview and v0.21.0 snapshot match byte-for-byte.
+
 ## v0.20.0 preview — training adapted to observed history
 
 - **Verified gym habits:** Read the last 14 days of actually logged gym sessions (not forecast actions), count each verified session once, and find recurring UK-local hourly windows. Schedule adaptation starts only after **at least six completed sessions on three separate UTC dates** and a repeated-hour pattern. There is an opt-out in Settings.
