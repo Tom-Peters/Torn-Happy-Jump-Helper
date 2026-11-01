@@ -4,8 +4,8 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-preview.user.js"),"utf8");
-const snapshot=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.22.0-preview.user.js"),"utf8");
-test("v0.22 preview and immutable snapshot use the same advisor logic and Hub",()=>{
+const snapshot=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.23.0-preview.user.js"),"utf8");
+test("v0.23 preview and immutable snapshot use the same advisor logic and Hub",()=>{
   const body=s=>s.slice(s.indexOf("// ==/UserScript==")+"// ==/UserScript==".length);
   assert.equal(body(source),body(snapshot));
   assert.match(source,/\/\/ @version\s+0\.22\.0/);
@@ -75,4 +75,13 @@ test('v0.22 requests safe foreground refresh after StaxxHub opens',()=>{
  assert.match(source,/staxx:refresh-request/);
  assert.match(source,/Tm\(\)\/1000-miniLast>=60/);
  assert.match(source,/Do\.hidden\|\|busy\|\|miniBusy/);
+});
+
+
+test("bounded full data sync runs independently of opening the helper",()=>{
+  assert.match(source,/function autoFullRefreshV230\(\)/);
+  assert.match(source,/auto-full-attempt-v230/);
+  assert.match(source,/updated&&t-updated<45\*60000/);
+  assert.match(source,/Do\.hidden\|\|busy\|\|miniBusy/);
+  assert.match(source,/autoFullRefreshV230\(\)/);
 });
