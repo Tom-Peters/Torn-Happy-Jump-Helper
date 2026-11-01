@@ -629,7 +629,7 @@ function autoSignalCardV0260(){
       metrics:[{label:"Next action",value:e?e.kind+" · "+eta(e.t):"None due"},
         {label:"24h projected gains",value:r?fmt(r.gain):"Unavailable"},
         {label:"24h planned trains",value:r?String(r.trains):"Unavailable"}],
-      updated:updated||Tm()}}));}catch(_){}}
+      updated:freshAt||Tm()}}));}catch(_){}}
 function badge(){publishHubAlerts();if(opened){button.textContent="HJ";return}if(reportedOverdose()){button.textContent="HJ ⚠";button.title="Overdose recovery hold — open helper";return}const now=Tm()/1000;if(!Mx(updated||0,miniFresh||0)||Tm()-Mx(updated,miniFresh)>15*60000){button.textContent="HJ";button.title="Open to refresh training data";return}const p=aPl(),e=priorityAction(p?.events,now);if(!e){button.textContent="HJ";button.title="No training action due in the next 30 minutes";return}const icon=e.kind==="XANAX"?"💊":e.kind==="TRAIN"?"🏋️":e.kind==="REFILL"?"⚡":e.kind==="JUMP"?"✨":"⏰",mins=Mx(0,Ce((e.t-now)/60));button.textContent="HJ "+icon+(mins?" "+mins+"m":" !");button.title=e.kind+" "+(mins?"in "+mins+" minutes":"due now")+" · read-only forecast";}async function miniRefresh(){
  if(opened||busy||miniBusy||Do.hidden)return;
  miniBusy=true;const now=Tm()/1000;
