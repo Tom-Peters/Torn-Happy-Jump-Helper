@@ -27,3 +27,20 @@ test("read-only advisor never posts gameplay writes",()=>{
   assert.match(source,/staxx:actions/);
   assert.match(source,/staxx:panel/);
 });
+
+test("v0.19 read-only execution queue checks freshness, overdose, cooldowns and owned supplies",()=>{
+ assert.match(source,/function actionableQueueV190\(/);
+ assert.match(source,/function actionableQueueCardV190\(/);
+ assert.match(source,/updated>15\*60000/);
+ assert.match(source,/reportedOverdose\(\)/);
+ assert.match(source,/Current energy below one gym train/);
+ assert.match(source,/Drug cooldown active/);
+ assert.match(source,/Daily points refill/);
+ assert.match(source,/Full jump inventory not confirmed/);
+});
+test("v0.19 renders without resetting scroll position or draft fields on refresh",()=>{
+ assert.match(source,/hjScrollV190=Object\.create\(null\)/);
+ assert.match(source,/hjScrollV190\[lastHjTabV190\]=ct\.scrollTop/);
+ assert.match(source,/ct\.scrollTop=hjScrollV190\[tab\]\|\|0/);
+ assert.match(source,/focus\(\{preventScroll:true\}\)/);
+});
