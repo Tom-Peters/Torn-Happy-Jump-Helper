@@ -1,5 +1,13 @@
 # Torn Happy Jump Helper — Training Command Centre
 
+## v0.19.0 preview — next-four-action execution queue and smoother rendering
+
+- **Next four moves:** The Today view now gives the next four upcoming, unverified steps in the selected affordable training forecast, with exact planned UTC times, resource warnings, and manual Open Gym / Items / Points links.
+- **No stale or post-OD instructions:** Action queue is blocked if a reported overdose is still on hold, the gym input is unknown, the latest full API read is over 15 minutes old, or the plan is not affordable. When due, it flags observed drug/booster cooldowns, missing inventory and unavailable daily refills.
+- **Scrolling and edits:** The preview retains scroll positions per tab, in-progress input values, expanded sections and horizontal navigation position across refreshes.
+- **Release discipline:** The permanent preview installer remains unchanged; its v0.19.0 implementation is backed by a matching immutable versioned snapshot. The independently installed stable file remains v0.10.22 and has **not** been promoted.
+
+
 ## Install once — stable channel
 
 **[Permanent stable userscript URL](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js)**
