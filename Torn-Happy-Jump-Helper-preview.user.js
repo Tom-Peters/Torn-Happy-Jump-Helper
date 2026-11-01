@@ -608,9 +608,10 @@ function badge(){publishHubAlerts();if(opened){button.textContent="HJ";return}if
     const actual=stats();
     recordStatSnapshot(actual); // Capture off-schedule gym gains without opening the helper.
     const verified=checkpoint(actual);
+    lp=plans(); // Recalculate from the observed stats before recording the next forecast.
     if(verified&&rg){const p=aPl();rg.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));rg.method=p?.method||"none";put("rolling-plan",rg);}
-   }
-   lp=plans();miniFresh=Tm();
+   }else lp=plans();
+   miniFresh=Tm();
    await scanActions();await scanLastOD();
    if(now-miniGymAtV210>=15*60){
     miniGymAtV210=now;
