@@ -15,7 +15,7 @@ test("permanent preview installs tested v0.24.0 with its own unchanged update id
  const source=read(previewName),meta=header(source);
  assert.match(meta,/\/\/ @name\s+Torn Happy Jump Helper \(Preview\)/);
  assert.match(meta,/\/\/ @namespace\s+https:\/\/github\.com\/Tom-Peters\/Torn-Happy-Jump-Helper#preview\n/);
- assert.match(meta,/\/\/ @version\s+0\.23\.0\n/);
+ assert.match(meta,/\/\/ @version\s+0\.24\.0\n/);
  assert.ok(meta.includes("// @updateURL    "+base+previewName));
  assert.ok(meta.includes("// @downloadURL  "+base+previewName));
  assert.ok(!meta.includes(releaseName),"permanent preview should not switch to versioned updater");
