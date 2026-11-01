@@ -4,12 +4,12 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-preview.user.js"),"utf8");
-const snapshot=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.21.0-preview.user.js"),"utf8");
-test("v0.21 preview and immutable snapshot use the same advisor logic and Hub",()=>{
+const snapshot=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.22.0-preview.user.js"),"utf8");
+test("v0.22 preview and immutable snapshot use the same advisor logic and Hub",()=>{
   const body=s=>s.slice(s.indexOf("// ==/UserScript==")+"// ==/UserScript==".length);
   assert.equal(body(source),body(snapshot));
-  assert.match(source,/\/\/ @version\s+0\.21\.0/);
-  assert.match(source,/StaxxHub v2\.5/);
+  assert.match(source,/\/\/ @version\s+0\.22\.0/);
+  assert.match(source,/StaxxHub v2\.6/);
 });
 test("training improvements use existing observed state and planning models",()=>{
   assert.match(source,/function trainingEfficiencyV18\(/);
@@ -45,7 +45,7 @@ test("v0.19 renders without resetting scroll position or draft fields on refresh
  assert.match(source,/focus\(\{preventScroll:true\}\)/);
 });
 
-test('v0.21 personalised training uses actual gym sessions, local time and a data sufficiency gate',()=>{
+test('v0.22 personalised training uses actual gym sessions, local time and a data sufficiency gate',()=>{
  assert.match(source,/function observedGymPatternV200\(/);
  assert.match(source,/new Intl\.DateTimeFormat\("en-GB",\{timeZone:"Europe\/London"/);
  assert.match(source,/sessions\.length>=6&&days\.size>=3/);
@@ -53,20 +53,26 @@ test('v0.21 personalised training uses actual gym sessions, local time and a dat
  assert.match(source,/Your verified usual gym window/);
  assert.match(source,/cfg\.adaptHistory!==false/);
 });
-test('v0.21 has local, redacted diagnostics and shared dynamic StaxxHub v2.5',()=>{
+test('v0.22 has local, redacted diagnostics and shared dynamic StaxxHub v2.5',()=>{
  assert.match(source,/function safeHjDiagnosticsV200\(/);
  assert.match(source,/function hjDiagnosticsV200\(/);
  assert.match(source,/staxx:diagnostics-request/);
  assert.match(source,/staxx:diagnostics/);
- assert.match(source,/StaxxHub v2\.5/);
+ assert.match(source,/StaxxHub v2\.6/);
  assert.doesNotMatch(source,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
 });
 
-test('v0.21 automatically verifies off-plan training while Torn is visible',()=>{
+test('v0.22 automatically verifies off-plan training while Torn is visible',()=>{
  assert.match(source,/function miniRefresh\(\)/);
  assert.match(source,/if\(opened\|\|busy\|\|miniBusy\|\|Do\.hidden\)return/);
  assert.match(source,/recordStatSnapshot\(actual\)/);
  assert.match(source,/await scanGym\(\)/);
  assert.match(source,/now-miniGymAtV210>=15\*60/);
  assert.match(source,/Do\.addEventListener\?\.\("visibilitychange"/);
+});
+
+test('v0.22 requests safe foreground refresh after StaxxHub opens',()=>{
+ assert.match(source,/staxx:refresh-request/);
+ assert.match(source,/Tm\(\)\/1000-miniLast>=60/);
+ assert.match(source,/Do\.hidden\|\|busy\|\|miniBusy/);
 });
