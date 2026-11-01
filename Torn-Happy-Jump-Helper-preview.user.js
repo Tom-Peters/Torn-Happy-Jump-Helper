@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper (Preview)
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#preview
-// @version      0.13.0
+// @version      0.14.0
 // @description  Torn gym planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -11,118 +11,260 @@
 // @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js
 // @grant        none
 // ==/UserScript==
-/* Shared Staxx Hub v1 · bundled into each Torn PDA script · IamEEKY */
-(function(){
+/* StaxxHub v2.0 · shared Torn PDA launcher · IamEEKY · no external dependencies */
+(function () {
   "use strict";
-  if(typeof location==="undefined"||typeof document==="undefined"||!document.documentElement||typeof document.createElement!=="function"||!/^(www\.)?torn\.com$/i.test(location.hostname)||window.top!==window.self)return;
-  function boot(){
-    if(document.getElementById("staxx-hub-root"))return;
-    const root=document.createElement("div");
-    root.id="staxx-hub-root";
-    root.innerHTML='<button id="staxx-hub-toggle" aria-expanded="false" aria-label="Open Staxx tools and notifications"><b>S</b><span id="staxx-hub-count" hidden></span></button>'+
-      '<div id="staxx-hub-veil" hidden></div><aside id="staxx-hub-drawer" aria-label="Staxx tools and notifications" hidden>'+
-      '<header><div><strong>Staxx<span>Hub</span></strong><small>TORN COMMAND CENTRE</small></div><button data-hub-close aria-label="Close menu">×</button></header>'+
-      '<div class="staxx-scroll"><h3>YOUR TOOLS</h3><div id="staxx-hub-tools"></div>'+
-      '<div class="staxx-label"><h3>NOTIFICATIONS</h3><span id="staxx-hub-total"></span></div><div id="staxx-hub-alerts"></div>'+
-      '<p class="staxx-foot">Read-only alerts · No automatic game actions</p></div></aside>';
-    const css=document.createElement("style");
-    css.id="staxx-hub-css";
-    css.textContent=[
+  if (typeof location === "undefined" || typeof document === "undefined" ||
+      !document.documentElement || typeof document.createElement !== "function" ||
+      !/^(www\.)?torn\.com$/i.test(location.hostname) || window.top !== window.self) return;
+  function startHub() {
+    if (document.getElementById("staxx-hub-root")) return;
+    const root = document.createElement("div");
+    root.id = "staxx-hub-root";
+    root.innerHTML =
+      '<button type="button" id="staxx-hub-toggle" aria-label="Open Staxx tools" aria-expanded="false"><b>S</b><span id="staxx-hub-count" hidden></span></button>' +
+      '<div id="staxx-hub-veil" hidden></div>' +
+      '<aside id="staxx-hub-drawer" aria-label="Staxx tools and notifications" hidden>' +
+      '<header class="staxx-head"><div><strong>Staxx<span>Hub</span></strong><small>YOUR TORN COMMAND CENTRE</small></div><button type="button" data-hub-close aria-label="Close sidebar">×</button></header>' +
+      '<div class="staxx-scroll"><button class="staxx-overview-switch" type="button" data-overview>▦ &nbsp; Combined overview</button>' +
+      '<section id="staxx-hub-overview" hidden></section><h3>YOUR TOOLS</h3><div id="staxx-hub-tools"></div>' +
+      '<div class="staxx-label"><h3>NOTIFICATIONS</h3><span id="staxx-hub-total"></span></div>' +
+      '<div id="staxx-hub-alerts"></div><p class="staxx-foot">Read-only signals · Alerts use last known data · Drag the S tab vertically to reposition</p>' +
+      '</div></aside>';
+    const css = document.createElement("style");
+    css.id = "staxx-hub-css";
+    css.textContent = [
       '#staxx-hub-root{position:fixed!important;inset:0!important;z-index:2147483647!important;pointer-events:none!important;font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif!important;color:#e7f2ff!important}',
-      '#staxx-hub-root *{box-sizing:border-box}#staxx-hub-root button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}',
-      '#staxx-hub-root [hidden]{display:none!important}#staxx-hub-root button:focus-visible{outline:2px solid #73dfff;outline-offset:2px}',
-      '#staxx-hub-toggle{position:fixed;left:5px;top:43%;width:47px;height:54px;pointer-events:auto;display:flex;align-items:center;justify-content:center;border:1px solid #69dfff99;border-radius:0 15px 15px 0;background:linear-gradient(150deg,#0b74ba,#082a4a);box-shadow:0 6px 24px #000b}',
-      '#staxx-hub-toggle b{font-weight:900;font-size:24px;color:#baf1ff}#staxx-hub-count{position:absolute;top:-8px;right:-8px;background:#36d3a7;color:#052c25;border:2px solid #08192d;border-radius:20px;font-size:11px;font-weight:900;padding:2px 5px}',
-      '#staxx-hub-veil{position:fixed;inset:0;pointer-events:auto;background:#020a17b9}',
-      '#staxx-hub-drawer{position:fixed;inset:0 auto 0 0;width:min(360px,calc(100vw - 24px));height:100dvh;max-height:100vh;pointer-events:auto;background:#08192d;border-right:1px solid #28506e;box-shadow:10px 0 45px #000b;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}',
-      '#staxx-hub-drawer header{display:flex;align-items:center;justify-content:space-between;padding:16px;background:linear-gradient(120deg,#0c3358,#0b203b);border-bottom:1px solid #28506e}',
-      '#staxx-hub-drawer header strong{display:block;font-size:22px;font-weight:850;letter-spacing:-.5px}#staxx-hub-drawer header strong span{color:#54d7fa}',
-      '#staxx-hub-drawer header small{font-size:10px;letter-spacing:1.4px;color:#8fabca}#staxx-hub-drawer [data-hub-close]{background:#1c3b59;border:0;border-radius:9px;width:36px;height:36px;font-size:24px}',
-      '#staxx-hub-drawer .staxx-scroll{flex:1;overflow:auto;overscroll-behavior:contain;padding:14px 12px 30px}',
-      '#staxx-hub-drawer h3{color:#8faec9;font-size:11px;letter-spacing:1px;margin:5px 3px 10px}',
-      '#staxx-hub-drawer .staxx-tool{display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:#102844;border:1px solid #284b6b;border-radius:12px;padding:12px 10px;min-height:67px;margin-bottom:9px}',
-      '#staxx-hub-drawer .staxx-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(135deg,#0b79b9,#123c65);border:1px solid #4f9dc8;color:#cff6ff;font-weight:900;flex-shrink:0}',
-      '#staxx-hub-drawer .staxx-info{flex:1;min-width:0}#staxx-hub-drawer .staxx-info b{display:block;font-size:14px}#staxx-hub-drawer .staxx-info small{display:block;font-size:11px;color:#94b1c9;margin-top:3px}',
-      '#staxx-hub-drawer .staxx-pill{border-radius:14px;background:#1b486c;padding:2px 7px;font-size:11px;font-weight:800;color:#bdeaff}#staxx-hub-drawer .staxx-pill.on{background:#145f58;color:#89edca}',
-      '#staxx-hub-drawer .staxx-label{display:flex;align-items:center;justify-content:space-between;margin-top:18px}#staxx-hub-drawer .staxx-label span{color:#a4c1d8;font-size:11px}',
-      '#staxx-hub-drawer .staxx-alert{display:block;width:100%;text-align:left;background:#0e2945;border:1px solid #315977;border-radius:11px;padding:12px;margin-bottom:8px}',
-      '#staxx-hub-drawer .staxx-alert b{display:block;color:#81dbfa;font-size:12px}#staxx-hub-drawer .staxx-alert span{display:block;color:#daecf9;font-size:12px;margin:5px 0}#staxx-hub-drawer .staxx-alert small{display:block;color:#91aec6;font-size:11px;margin-top:3px}',
-      '#staxx-hub-drawer .staxx-empty{color:#9db7cd;background:#0c243e;border:1px dashed #305473;border-radius:10px;font-size:12px;padding:17px 12px}',
-      '#staxx-hub-drawer .staxx-foot{font-size:10px;color:#6d90ab;margin-top:20px}'
+      '#staxx-hub-root *{box-sizing:border-box}#staxx-hub-root [hidden]{display:none!important}#staxx-hub-root button{font:inherit;color:inherit;cursor:pointer}',
+      '#staxx-hub-root button:focus-visible{outline:2px solid #73dfff;outline-offset:2px}',
+      '#staxx-hub-toggle{position:fixed;left:5px;top:43%;width:43px;height:49px;pointer-events:auto;border:1px solid #69dfff99;border-radius:0 13px 13px 0;background:linear-gradient(150deg,#0b74ba,#082a4a);box-shadow:0 6px 24px #000b;align-items:center;justify-content:center;touch-action:none;user-select:none}',
+      '#staxx-hub-toggle b{font-size:22px;font-weight:900;color:#baf1ff}#staxx-hub-count{position:absolute;top:-8px;right:-8px;padding:2px 5px;min-width:20px;border-radius:14px;background:#38cfa9;border:2px solid #08192d;color:#062821;font-size:11px;font-weight:900}',
+      '#staxx-hub-toggle.staxx-urgent{border-color:#ff778d;background:linear-gradient(150deg,#a83b54,#4b1734)}#staxx-hub-toggle.staxx-urgent #staxx-hub-count{background:#ff6b83;color:#fff}',
+      '#staxx-hub-toggle.staxx-warning{border-color:#ffd17e;background:linear-gradient(150deg,#9b5b19,#433322)}#staxx-hub-toggle.staxx-warning #staxx-hub-count{background:#ffd17e;color:#32220a}',
+      '#staxx-hub-veil{position:fixed;inset:0;pointer-events:auto;background:#020a17ba}',
+      '#staxx-hub-drawer{position:fixed;inset:0 auto 0 0;width:min(302px,calc(100vw - 36px));height:100vh;height:100dvh;pointer-events:auto;background:#08192d;border-right:1px solid #28506e;box-shadow:10px 0 45px #000b;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}',
+      '#staxx-hub-drawer .staxx-head{display:flex;align-items:center;justify-content:space-between;padding:15px 13px;background:linear-gradient(120deg,#0c3358,#0b203b);border-bottom:1px solid #28506e;flex-shrink:0}',
+      '#staxx-hub-drawer .staxx-head strong{display:block;font-size:20px;font-weight:850;letter-spacing:-.4px}#staxx-hub-drawer .staxx-head strong span{color:#54d7fa}',
+      '#staxx-hub-drawer .staxx-head small{font-size:9px;letter-spacing:1px;color:#8fabca}',
+      '#staxx-hub-drawer [data-hub-close]{background:#1c3b59;border:0;border-radius:9px;width:34px;height:34px;font-size:24px}',
+      '#staxx-hub-drawer .staxx-scroll{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:12px 10px 26px}',
+      '#staxx-hub-drawer h3{color:#8faec9;font-size:10px;letter-spacing:1.1px;margin:9px 4px 10px}',
+      '#staxx-hub-drawer .staxx-overview-switch{width:100%;text-align:left;background:linear-gradient(120deg,#124a71,#0c2d4b);border:1px solid #4384ad;border-radius:10px;padding:11px;margin-bottom:10px;font-weight:750}',
+      '#staxx-hub-drawer .staxx-overview-switch.selected{border-color:#71d9fd;background:#19527b}',
+      '#staxx-hub-drawer .staxx-tool{display:flex;align-items:center;gap:8px;text-align:left;width:100%;background:#102844;border:1px solid #284b6b;border-radius:11px;padding:10px 8px;min-height:62px;margin-bottom:8px}',
+      '#staxx-hub-drawer .staxx-icon{width:35px;height:35px;display:grid;place-items:center;border-radius:9px;background:linear-gradient(135deg,#0b79b9,#123c65);border:1px solid #4f9dc8;color:#cff6ff;font-weight:900;flex-shrink:0;font-size:12px}',
+      '#staxx-hub-drawer .staxx-info{flex:1;min-width:0}#staxx-hub-drawer .staxx-info b{display:block;font-size:13px}#staxx-hub-drawer .staxx-info small{display:block;font-size:10px;color:#94b1c9;margin-top:3px;overflow-wrap:anywhere}',
+      '#staxx-hub-drawer .staxx-pill{border-radius:14px;background:#1b486c;padding:2px 6px;font-size:11px;font-weight:800;color:#bdeaff}#staxx-hub-drawer .staxx-pill.on{background:#145f58;color:#89edca}',
+      '#staxx-hub-drawer .staxx-label{display:flex;align-items:center;justify-content:space-between;margin-top:15px}#staxx-hub-drawer .staxx-label span{color:#a4c1d8;font-size:10px}',
+      '#staxx-hub-drawer .staxx-alert{background:#0e2945;border:1px solid #315977;border-radius:10px;padding:10px;margin-bottom:9px}',
+      '#staxx-hub-drawer .staxx-alert.urgent{border-color:#e56785}#staxx-hub-drawer .staxx-alert.warning{border-color:#ae8450}',
+      '#staxx-hub-drawer .staxx-alert-title{border:0;background:none;padding:0;text-align:left;width:100%;font-size:12px;font-weight:750;color:#81dbfa!important}',
+      '#staxx-hub-drawer .staxx-alert.urgent .staxx-alert-title{color:#ff9bad!important}',
+      '#staxx-hub-drawer .staxx-alert span{display:block;color:#daecf9;font-size:12px;margin:5px 0;overflow-wrap:anywhere}',
+      '#staxx-hub-drawer .staxx-alert small{display:block;color:#91aec6;font-size:11px;margin:4px 0}',
+      '#staxx-hub-drawer .staxx-alert-actions{display:flex;gap:7px;margin-top:10px}',
+      '#staxx-hub-drawer .staxx-alert-actions button{background:#1c3e5b;border:1px solid #365978;border-radius:8px;padding:6px 9px;font-size:11px;flex:1;min-height:32px}',
+      '#staxx-hub-drawer .staxx-empty{color:#9db7cd;background:#0c243e;border:1px dashed #305473;border-radius:10px;font-size:11px;padding:14px 10px}',
+      '#staxx-hub-drawer .staxx-overview-card{background:#0d2945;border:1px solid #2d5574;border-radius:11px;padding:11px;margin-bottom:8px}',
+      '#staxx-hub-drawer .staxx-overview-card b{color:#83dbfa;font-size:12px}#staxx-hub-drawer .staxx-overview-card p{margin:5px 0;color:#d4eafa;font-size:11px}',
+      '#staxx-hub-drawer .staxx-overview-card dl{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0 0}',
+      '#staxx-hub-drawer .staxx-overview-card dt{font-size:10px;color:#96b6cf}#staxx-hub-drawer .staxx-overview-card dd{font-size:13px;font-weight:750;margin:0;overflow-wrap:anywhere}',
+      '#staxx-hub-drawer .staxx-foot{font-size:10px;color:#6d90ab;margin-top:17px}'
     ].join("");
-    document.documentElement.append(css,root);
-    const catalog=[{id:"profit",label:"ProfitStaxx",icon:"PS",desc:"Market · Museum · Ledger"},
+    document.documentElement.append(css, root);
+
+    const entries = [
+      {id:"profit",label:"ProfitStaxx",icon:"PS",desc:"Markets · Museum · Ledger"},
       {id:"company",label:"Company Helper",icon:"CO",desc:"Staff · Training · Growth"},
-      {id:"happy",label:"Happy Jump",icon:"HJ",desc:"Gym · Schedule · Recovery"}];
-    const active=Object.create(null),notices=Object.create(null);
-    // Keep recent read-only notifications while navigating between Torn pages.
-    // Cached statuses are explicitly identified as previous observations.
-    try {
-      const saved=JSON.parse(sessionStorage.getItem("staxx-hub-notifications-v1")||"null");
-      if(saved&&typeof saved==="object"&&Date.now()-saved.time<4*3600000&&saved.byTool){
-        for(const id of ["profit","company","happy"]){
-          const a=saved.byTool[id];
-          if(a&&typeof a==="object"&&Number(a.count)>0)notices[id]={
-            count:Math.min(99,Math.max(0,Math.floor(Number(a.count)||0))),
-            summary:"Previously seen · "+String(a.summary||"Needs attention").slice(0,120),
-            items:Array.isArray(a.items)?a.items.slice(0,3).map(v=>String(v).slice(0,120)):[]
-          };
-        }
-      }
-    }catch(_){}
-    function rememberNotices(){
-      try{sessionStorage.setItem("staxx-hub-notifications-v1",JSON.stringify({time:Date.now(),byTool:notices}));}catch(_){}
-    }
+      {id:"happy",label:"Happy Jump",icon:"HJ",desc:"Gym · Schedule · Recovery"}
+    ];
+    const active = Object.create(null), notices = Object.create(null), summaries = Object.create(null), controls = Object.create(null);
     const toggle=root.querySelector("#staxx-hub-toggle"),veil=root.querySelector("#staxx-hub-veil"),drawer=root.querySelector("#staxx-hub-drawer");
     const tools=root.querySelector("#staxx-hub-tools"),alerts=root.querySelector("#staxx-hub-alerts"),bubble=root.querySelector("#staxx-hub-count");
-    let expanded=false;
-    function el(tag,cls,value){const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=String(value);return n;}
-    function expand(value){expanded=!!value;veil.hidden=drawer.hidden=!expanded;toggle.hidden=expanded;toggle.setAttribute("aria-expanded",String(expanded));}
+    const overview=root.querySelector("#staxx-hub-overview"),overviewButton=root.querySelector("[data-overview]");
+    let expanded=false, panelOpen=false, overviewShown=false, moving=null, suppressClick=false;
+    const openPanels=new Set();
+    const idOk = v=>typeof v==="string" && /^[a-z][a-z0-9-]{0,31}$/.test(v);
+    function node(tag,cls,value) {const e=document.createElement(tag);if(cls)e.className=cls;if(value!==undefined)e.textContent=String(value);return e;}
+    function safeRead(key, fallback) {try {const v=JSON.parse(localStorage.getItem(key)||"null");return v===null?fallback:v;}catch(_){return fallback;}}
+    function saveLocal(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch(_){}}
+    function remember(){
+      try{sessionStorage.setItem("staxx-hub-state-v2",JSON.stringify({at:Date.now(),notices,summaries}));}catch(_){}
+    }
+    try {
+      const known=safeRead("staxx-hub-registry-v2",[]);
+      if(Array.isArray(known))for(const e of known.slice(0,25)){
+        if(idOk(e.id)&&!entries.some(x=>x.id===e.id))entries.push({id:e.id,label:String(e.label||e.id).slice(0,40),icon:String(e.icon||"S").slice(0,3),desc:String(e.desc||"Staxx tool").slice(0,70)});
+      }
+    }catch(_){}
+    try {
+      const old=JSON.parse(sessionStorage.getItem("staxx-hub-state-v2")||"null");
+      if(old&&Date.now()-old.at<4*3600000){
+        for(const id of Object.keys(old.notices||{}))if(idOk(id)){const n=old.notices[id];if(n&&Number(n.count)>=0)notices[id]=Object.assign({},n,{cached:true});}
+        for(const id of Object.keys(old.summaries||{}))if(idOk(id)){const d=old.summaries[id];if(d&&typeof d==="object")summaries[id]=d;}
+      }
+    }catch(_){}
+    for(const e of entries)controls[e.id]=safeRead("staxx-hub-alert-control-"+e.id,{});
+    const pos=safeRead("staxx-hub-position-v2",0.43);
+    function position(value) {
+      const height=Math.max(160,window.innerHeight||600),buttonHeight=49;
+      const top=Math.max(18,Math.min(height-buttonHeight-18,Math.round(height*Math.max(0,Math.min(1,Number(value)||0)))));
+      toggle.style.top=top+"px";
+      return top/height;
+    }
+    position(typeof pos==="number"?pos:0.43);
+    function launcherVisibility(){
+      const hide=expanded||panelOpen;
+      toggle.hidden=hide;
+      toggle.style.setProperty("display",hide?"none":"flex","important");
+      toggle.style.setProperty("pointer-events",hide?"none":"auto","important");
+      toggle.setAttribute("aria-expanded",String(expanded));
+    }
+    function setExpanded(value){
+      expanded=Boolean(value);veil.hidden=drawer.hidden=!expanded;launcherVisibility();
+    }
+    function activeNotice(id){
+      const n=notices[id];if(!n||!(n.count>0))return null;
+      const control=controls[id]||{};
+      if(control.dismissed===n.fingerprint || Number(control.snoozeUntil)>Date.now())return null;
+      return n;
+    }
     function openTool(id){
       if(id==="company"&&!/^\/companies\.php$/i.test(location.pathname)){
         try{sessionStorage.setItem("staxx-open-company","1");}catch(_){}
         location.assign(location.origin+"/companies.php");return;
       }
-      if(!active[id]){const info=catalog.find(x=>x.id===id);alerts.replaceChildren(el("p","staxx-empty",(info?info.label:"Script")+" is not running. Enable it in Torn PDA, then reload this page."));return;}
-      expand(false);
+      if(!active[id]){
+        alerts.replaceChildren(node("p","staxx-empty","This tool is not active on this page. Enable its script in Torn PDA and reload."));
+        return;
+      }
+      panelOpen=true;setExpanded(false);launcherVisibility();
       document.dispatchEvent(new CustomEvent("staxx:closeall"));
-      document.dispatchEvent(new CustomEvent("staxx:open",{detail:{id:id}}));
+      document.dispatchEvent(new CustomEvent("staxx:open",{detail:{id}}));
+    }
+    function showOverview(){
+      overview.replaceChildren();
+      for(const e of entries){
+        const s=summaries[e.id],card=node("article","staxx-overview-card");
+        card.append(node("b","",e.label),node("p","",s?.headline || (active[e.id]?"No verified figures yet":"Open tool for the latest figures")));
+        const d=node("dl");
+        for(const m of (Array.isArray(s?.metrics)?s.metrics:[]).slice(0,4)){
+          const group=node("div");group.append(node("dt","",m.label),node("dd","",m.value));d.append(group);
+        }
+        if(d.childElementCount)card.append(d);
+        const btn=node("button","staxx-overview-switch","Open "+e.label);btn.dataset.openStaxx=e.id;card.append(btn);
+        overview.append(card);
+      }
+      overview.hidden=!overviewShown;
+      overviewButton.classList.toggle("selected",overviewShown);
+      overviewButton.setAttribute("aria-expanded",String(overviewShown));
     }
     function render(){
       tools.replaceChildren();alerts.replaceChildren();
-      let total=0;
-      for(const info of catalog){
-        const n=Math.min(99,Math.max(0,Number(notices[info.id]?.count)||0));total+=n;
-        const btn=el("button","staxx-tool");btn.type="button";btn.dataset.openStaxx=info.id;
-        const txt=el("span","staxx-info");txt.append(el("b","",info.label),el("small","",active[info.id]?info.desc:"Not loaded · enable in Torn PDA"));
-        btn.append(el("span","staxx-icon",info.icon),txt,el("span","staxx-pill"+(n?" on":""),n||"›"));tools.append(btn);
+      let total=0,maxLevel=0,visible=0,muted=0;
+      for(const e of entries){
+        const n=activeNotice(e.id),count=n?Math.min(99,Number(n.count)||0):0;
+        total+=count;visible+=Number(count>0);
+        if(n)maxLevel=Math.max(maxLevel,n.level==="urgent"?2:n.level==="warning"?1:0);
+        if(!n && notices[e.id]?.count>0)muted++;
+        const btn=node("button","staxx-tool");btn.type="button";btn.dataset.openStaxx=e.id;
+        const info=node("span","staxx-info");info.append(node("b","",e.label),node("small","",active[e.id]?e.desc:"Enable script to open"));
+        btn.append(node("span","staxx-icon",e.icon),info,node("span","staxx-pill"+(count?" on":""),count||"›"));tools.append(btn);
       }
-      bubble.hidden=total<1;bubble.textContent=total>=100?"99+":String(total);
-      root.querySelector("#staxx-hub-total").textContent=total?total+" active":"All clear";
-      let any=false;
-      for(const info of catalog){
-        const d=notices[info.id];if(!d||!(d.count>0))continue;any=true;
-        const btn=el("button","staxx-alert");btn.type="button";btn.dataset.openStaxx=info.id;
-        btn.append(el("b","",info.label+" · "+d.count+" alert"+(d.count===1?"":"s")),el("span","",d.summary||"Needs attention"));
-        for(const item of d.items.slice(0,3))btn.append(el("small","",item));alerts.append(btn);
+      toggle.classList.toggle("staxx-urgent",maxLevel===2);
+      toggle.classList.toggle("staxx-warning",maxLevel===1);
+      bubble.hidden=total===0;bubble.textContent=total>=100?"99+":String(total);
+      toggle.setAttribute("aria-label",total?total+" Staxx notifications; open tools":"Open Staxx tools");
+      root.querySelector("#staxx-hub-total").textContent=visible?visible+" tools":muted?muted+" muted":"All clear";
+      for(const e of entries){
+        const n=activeNotice(e.id);if(!n)continue;
+        const card=node("div","staxx-alert "+n.level);
+        const title=node("button","staxx-alert-title",e.label+" · "+n.count+" alert"+(n.count===1?"":"s"));
+        title.type="button";title.dataset.openStaxx=e.id;card.append(title);
+        card.append(node("span","",n.summary||"Needs attention"));
+        for(const item of n.items.slice(0,2))card.append(node("small","",item));
+        if(n.cached)card.append(node("small","","Last observed on a previous page"));
+        const buttons=node("div","staxx-alert-actions");
+        const dismiss=node("button","","Dismiss"),snooze=node("button","","Snooze 1h");
+        dismiss.type=snooze.type="button";dismiss.dataset.dismissStaxx=e.id;snooze.dataset.snoozeStaxx=e.id;
+        buttons.append(dismiss,snooze);card.append(buttons);alerts.append(card);
       }
-      if(!any)alerts.append(el("p","staxx-empty","Nothing needs your attention right now."));
+      if(!visible)alerts.append(node("p","staxx-empty",muted?"Alerts dismissed or snoozed. New alerts will still appear.":"Nothing needs your attention right now."));
+      showOverview();
+      launcherVisibility();
     }
-    root.addEventListener("click",e=>{const target=e.target.closest("button[data-open-staxx]");if(target)openTool(target.dataset.openStaxx);else if(e.target.closest("#staxx-hub-toggle"))expand(true);else if(e.target===veil||e.target.closest("[data-hub-close]"))expand(false);});
-    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&expanded)expand(false);});
-    document.addEventListener("staxx:register",e=>{const id=e.detail?.id;if(catalog.some(x=>x.id===id)){active[id]=true;render();}});
-    document.addEventListener("staxx:notice",e=>{const d=e.detail||{},id=d.id;if(!catalog.some(x=>x.id===id))return;
-      const clean={count:Math.min(99,Math.max(0,Math.floor(Number(d.count)||0))),summary:String(d.summary||"").slice(0,160),
-        items:Array.isArray(d.items)?d.items.slice(0,5).map(v=>String(v).slice(0,160)):[]};
-      if(JSON.stringify(clean)!==JSON.stringify(notices[id])){notices[id]=clean;rememberNotices();render();}
+    root.addEventListener("click",e=>{
+      const b=e.target.closest("button");if(!b)return;
+      if(b.dataset.dismissStaxx){const id=b.dataset.dismissStaxx,n=notices[id];if(n){controls[id]={...controls[id],dismissed:n.fingerprint,snoozeUntil:0};saveLocal("staxx-hub-alert-control-"+id,controls[id]);render();}return;}
+      if(b.dataset.snoozeStaxx){const id=b.dataset.snoozeStaxx;controls[id]={...controls[id],snoozeUntil:Date.now()+3600000};saveLocal("staxx-hub-alert-control-"+id,controls[id]);render();return;}
+      if(b.dataset.openStaxx){openTool(b.dataset.openStaxx);return;}
+      if(b.hasAttribute("data-overview")){overviewShown=!overviewShown;render();return;}
+      if(b===toggle){if(suppressClick){suppressClick=false;return;}setExpanded(true);return;}
+      if(b.hasAttribute("data-hub-close"))setExpanded(false);
     });
+    veil.addEventListener("click",()=>setExpanded(false));
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&expanded)setExpanded(false);});
+    toggle.addEventListener("pointerdown",e=>{
+      if(e.button!==undefined&&e.button!==0)return;
+      moving={id:e.pointerId,startY:e.clientY,top:toggle.getBoundingClientRect().top,dragged:false};
+      try{toggle.setPointerCapture?.(e.pointerId);}catch(_){}
+    });
+    toggle.addEventListener("pointermove",e=>{
+      if(!moving||e.pointerId!==moving.id)return;
+      if(Math.abs(e.clientY-moving.startY)>7)moving.dragged=true;
+      if(moving.dragged){const height=Math.max(160,window.innerHeight||600);
+        const y=Math.max(18,Math.min(height-67,moving.top+e.clientY-moving.startY));
+        toggle.style.top=Math.round(y)+"px";}
+    });
+    function endMove(e){if(!moving||e.pointerId!==moving.id)return;
+      if(moving.dragged){suppressClick=true;saveLocal("staxx-hub-position-v2",position((parseFloat(toggle.style.top)||0)/Math.max(1,window.innerHeight)));
+        // Prevent a post-drag synthetic click from reopening the drawer.
+        e.preventDefault?.();}
+      moving=null;
+    }
+    toggle.addEventListener("pointerup",endMove);toggle.addEventListener("pointercancel",endMove);
+    window.addEventListener("resize",()=>position((parseFloat(toggle.style.top)||0)/Math.max(1,window.innerHeight)));
+    document.addEventListener("staxx:panel",e=>{
+      if(!e.detail||!idOk(e.detail.id))return;
+      if(e.detail.open){openPanels.add(e.detail.id);panelOpen=true;setExpanded(false);}
+      else{openPanels.delete(e.detail.id);panelOpen=openPanels.size>0;launcherVisibility();}
+    });
+    document.addEventListener("staxx:register",e=>{
+      const d=e.detail||{},id=d.id;if(!idOk(id))return;
+      let entry=entries.find(x=>x.id===id);
+      if(!entry && entries.length<25){
+        entry={id,label:String(d.label||id).slice(0,40),icon:String(d.icon||"S").slice(0,3),desc:String(d.desc||"Staxx tool").slice(0,70)};
+        entries.push(entry);controls[id]=safeRead("staxx-hub-alert-control-"+id,{});
+        saveLocal("staxx-hub-registry-v2",entries.slice(3));
+      }
+      if(entry){active[id]=true;render();}
+    });
+    document.addEventListener("staxx:notice",e=>{
+      const d=e.detail||{},id=d.id;if(!idOk(id)||!entries.some(x=>x.id===id))return;
+      const count=Math.min(99,Math.max(0,Math.floor(Number(d.count)||0)));
+      const n={count,summary:String(d.summary||"").slice(0,180),
+        items:Array.isArray(d.items)?d.items.slice(0,5).map(x=>String(x).slice(0,160)):[],
+        level:["urgent","warning","info"].includes(d.level)?d.level:"info",cached:false};
+      n.fingerprint=JSON.stringify([n.count,n.summary,n.items,n.level]);
+      if(JSON.stringify(notices[id])!==JSON.stringify(n)){notices[id]=n;remember();render();}
+    });
+    document.addEventListener("staxx:summary",e=>{
+      const d=e.detail||{},id=d.id;if(!idOk(id)||!entries.some(x=>x.id===id))return;
+      const entry={headline:String(d.headline||"").slice(0,90),
+        metrics:Array.isArray(d.metrics)?d.metrics.slice(0,4).map(x=>({label:String(x.label||"").slice(0,36),value:String(x.value??"—").slice(0,45)})):[],
+        updated:Number(d.updated)||Date.now()};
+      if(JSON.stringify(summaries[id])!==JSON.stringify(entry)){summaries[id]=entry;remember();if(expanded&&overviewShown)showOverview();}
+    });
+    window.setInterval(()=>{if(!document.hidden&&entries.some(e=>Number(controls[e.id]?.snoozeUntil)>0&&Number(controls[e.id]?.snoozeUntil)<=Date.now())){for(const e of entries){if(Number(controls[e.id]?.snoozeUntil)>0&&Number(controls[e.id]?.snoozeUntil)<=Date.now()){controls[e.id]={...controls[e.id],snoozeUntil:0};saveLocal("staxx-hub-alert-control-"+e.id,controls[e.id]);}}render();}},60000);
+    // Older v1 notifications cannot be trusted for dismiss-state comparisons.
     render();
     document.dispatchEvent(new CustomEvent("staxx:ping"));
   }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",startHub,{once:true});else startHub();
 })();
 
-(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.13.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
+
+(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.14.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Fi(n)?Ro(n).toLocaleString("en-US"):"—";const cash=n=>Fi(n)?"$"+fmt(n):"Price unknown";const esc=x=>St(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const cu=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Ce((t-Tm()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Fl(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,jumpSuccessPct:null,xanaxOdPct:null,ecstasyOdPct:null,odEstimateMode:"community",odFactionReduction:0,odNightclub:false,manualPrices:{},sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00"};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lp=null,sm="auto",hs=get("history",[]),vr=get("gyms",{}),ledger=get("verification",[]),rg=get("rolling-plan",null),sp=get("show-partial",true),an=get("action-notes",[]),watch=get("watch",null),rc=get("recovery",null),start=Tm()/1000,awakeUntil=+get("awake-until",0)||0,al=get("gym-api-logs",[]),lc=+get("gym-log-checked-13",0)||0,ls="Not checked",acts=get("verified-actions",[]),actChecked=0,statSamples=get("stat-samples",[]),activityCoverage="Not checked";const rSt=(raw,t=Tm()/1000)=>acts.some(x=>x.kind==="REFILL"&&day(x.t)===day(t))?"used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>rSt(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Fr(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}function mins(v,back){return validClock(v)?Nu(v.slice(0,2))*60+Nu(v.slice(3)):back}let ukYear=0,ukStart=0,ukEnd=0;function slp(t){if(!cfg.sleepEnabled||t>=awakeUntil-3600&&t<awakeUntil)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),y=d.getUTCFullYear();if(y!==ukYear){ ukYear=y; const sunday=month=>{const last=new Date(Ut(y,month+1,0));return last.getUTCDate()-last.getUTCDay()}; ukStart=Ut(y,2,sunday(2),1)/1000;ukEnd=Ut(y,9,sunday(9),1)/1000;}const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;return a<b?m>=a&&m<b:m>=a||m<b;}function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" UK time":"Disabled"}
 function gymDots(raw){const dots=Nu(raw);if(!Fi(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}const perkRows=()=>En(data.perks?.perks||{}).flatMap(([type,entries])=>
 (Ar(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));const bonus=stat=>perkRows().reduce((n,r)=>{const d=r.description, p=+(d.match(/(\d+(?:\.\d+)?)\s*%/)||[])[1];const scoped=d.match(/\b(strength|speed|defen[cs]e|dexterity)\b/i)?.[1]?.toLowerCase().replace("defence","defense");return n+(p>0&&p<=200&&/gym.{0,12}gains?|gains?.{0,12}gym/i.test(d)&&!/decreas|reduc|lower|penalty/i.test(d)&&(!scoped||scoped===stat)?p/100:0);},1+Mx(0,+cfg.gymBonus||0)/100);function gain(e,h,s,dots,cost=10,m=1){let steps=Fl(e/cost),sum=0,ss=s,hh=h;while(steps-->0){const g=Mx(0,((3.480061091e-7*Math.log(hh+250)+3.091619094e-6)*ss+6.82775184551527e-5*(hh+250)-0.0301431777)*dots*cost*m);sum+=g;ss+=g;hh=Mx(0,hh-cost*0.5)}return sum;}function basket(item,n,stock=0){const buy=Mx(0,n-stock);if(!buy)return 0;const rows=[...(prices[item]||[])].filter(x=>Fi(+x.price)&&+x.price>0&&+x.amount>0).sort((a,b)=>a.price-b.price);let remaining=buy,total=0;for(const r of rows){const take=Mn(remaining,r.amount);remaining-=take;total+=take*r.price;if(!remaining)return total}const manual=+cfg.manualPrices?.[item];return manual>0&&Fi(manual)?total+remaining*manual:Infinity;}
@@ -134,7 +276,13 @@ function aPl(){const list=lp||[];if(!list.length)return null;if(sm!=="auto"){con
 await Wi.flutter_inappwebview.callHandler("PDA_httpGet",url,headers);if(r.status!==200)throw Error("HTTP "+r.status);const body=JSON.parse(r.responseText);if(body.error)throw Error("Torn error "+body.error.code);return body;}async function refresh(){if(busy)return;busy=true;errs=[];draw();const paths={bars:"/user/bars",cooldowns:"/user/cooldowns",stats:"/user/battlestats",gym:"/user/gym",gyms:"/torn/gyms",refills:"/user/refills",perks:"/user/perks",property:"/user/property",propertyCatalog:"/torn/properties",education:"/user/education",educationCatalog:"/torn/education",odFactionUpgrades:"/faction/upgrades",odJob:"/user/job"};for(const [k,id] of En(ITEMS))paths["m_"+k]="/market/"+id+"/itemmarket?limit=100";paths.m_points="/market/pointsmarket";for(const [stat,id] of En({strength:331,defense:330,speed:329,dexterity:106}))paths["enh_"+stat]="/market/"+id+"/itemmarket?limit=15";let next={enhancerOffers:{}};inv={};prices={};const jobs=En(paths);let index=0;const worker=async()=>{while(index<jobs.length){const [name,path]=jobs[index++];try{const v=await api(/^(bars|cooldowns|stats|refills)$/.test(name)?path+"?timestamp="+Fl(Tm()/1000):path);if(name.startsWith("enh_")){const rows=v.itemmarket?.listings||v.itemmarket||[];next.enhancerOffers[name.slice(4)]=Ar(rows)?rows.map(x=>({price:Nu(x.price??x.cost??x.listing_price),amount:Nu(x.amount??x.quantity)})).filter(x=>x.price>0&&x.amount>0):[];}else if(name.startsWith("m_"))prices[name.slice(2)]=name==="m_points"?
 (v.pointsmarket||[]).map(x=>({price:x.cost,amount:x.quantity})):
 v.itemmarket?.listings||[];else next[name]=v;}catch(err){errs.push(name+": "+St(err.message).slice(0,70))}}};await Promise.all([worker(),worker(),worker()]);data=next;data.priceUpdated=Tm();let allInventory=null;for(const cat of ["Drug","Candy","Book","Booster"]){try{let items;try{items=(await api("/user/inventory?cat="+cat+"&limit=250")).inventory?.items}catch(e){if(!/\b21\b/.test(St(e.message)))throw e;try{items=(await api("/user/inventory?cat="+cat.toLowerCase()+"&limit=250")).inventory?.items}catch(e2){if(!/\b21\b/.test(St(e2.message)))throw e2;if(!allInventory){allInventory=[];for(let offset=0;offset<2000;offset+=250){const page=(await api("/user/inventory?limit=250&offset="+offset)).inventory?.items;if(!Ar(page))throw Error("Unfiltered inventory unavailable");allInventory.push(...page);if(page.length<250)break;if(offset===1750)throw Error("Inventory exceeds safe page limit");}}const ids=cat==="Drug"?[206,197]:cat==="Candy"?[310]:cat==="Booster"?[366]:[];items=allInventory.filter(x=>cat==="Book"?(x.id>=744&&x.id<=787):ids.includes(x.id));errs.push("Inventory "+cat+": category 21; unfiltered fallback used");}}if(!Ar(items))throw Error("Missing inventory items");if(cat==="Book")data.books=items;else for(const row of items)for(const [name,id] of En(ITEMS))
-if(row.id===id&&!row.faction_owned)inv[name]=(inv[name]||0)+(+row.amount||0);}catch(e){if(cat==="Book")data.books=null;errs.push("Inventory "+cat+": "+St(e.message).slice(0,70))}}updated=next.bars?.bars?.energy&&next.bars?.bars?.happy&&next.cooldowns?.cooldowns&&next.stats?.battlestats&&next.gym?.gym&&Ar(next.gyms?.gyms)&&next.refills?.refills?Tm():0;if(!updated)errs.push("Essential Torn data incomplete: recommendations require a successful full refresh");const st=stats();recordStatSnapshot(st);if(Object.values(st).some(x=>x>0)){const today=day(Tm()/1000),last=hs[hs.length-1];if(!last||last.d!==today){hs.push({d:today,s:st});hs=hs.slice(-90);put("history",hs)}}let checkpointed=false;try{checkpointed=checkpoint(st)}catch(e){errs.push("Verification: "+St(e.message).slice(0,70))}try{lp=plans()}catch(e){lp=null;errs.push("Planner: "+St(e.message).slice(0,90))}if(checkpointed&&rg){const p=aPl();rg.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));rg.method=p?.method||"none";const g=gym(),h=happy();rg.gymId=g?.id??null;rg.single=g?Fr(ST.map(k=>[k,sGa(g,k,g.energy_cost||10,h.current??h.maximum??0,st)])):null;put("rolling-plan",rg);}if(rc?.pending&&checkpointed&&lp?.length&&data.bars?.bars?.energy&&data.cooldowns?.cooldowns){const p=aPl(),t=Tm()/1000;rc={...rc,pending:false,replanned:t,methodNow:p.method,g24:summary(p,24,t).gain};put("recovery",rc)}await Promise.all([scanGym(),scanActions()]);await scanLastOD(true);busy=false;draw();}function save(){put("settings",cfg);try{lp=plans()}catch(e){lp=null;errs.push("Planner: "+St(e.message).slice(0,90))}draw()}const ui=Do.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed!important;z-index:2147483646!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;background:#091622;color:#f4f8fb;font:14px/1.5 system-ui;overflow:hidden;box-sizing:border-box;border:0!important;box-shadow:none!important";const ct=Do.createElement("div");ct.style.cssText="height:calc(100% - 62px);overflow-y:auto;overflow-x:hidden;padding:12px 14px 30px;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch";const CQ=s=>ct.querySelector(s);const header=Do.createElement("div");header.style.cssText="height:62px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;background:#12283b;border-bottom:1px solid #355568";header.innerHTML="<b>⚡ HAPPY JUMP</b><span class='sub'>READ ONLY · v"+VER+"</span><button type='button' data-act='close' aria-label='Close Happy Jump Helper'>✕</button>";ui.append(header,ct);const button=Do.createElement("button");button.id="hhj-launch";button.textContent="HJ ◉";button.type="button";button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483645!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";button.style.setProperty("display","none","important");const launcherStyle=button.style.cssText;function sLa(visible){const desired=launcherStyle.replace("display:block!important","display:"+(visible?"block":"none")+"!important");button.style.cssText=desired;const mounted=Do.getElementById("hhj-launch");if(mounted&&mounted!==button)mounted.style.cssText=desired;const duplicates=Do.querySelectorAll?.('[id="hhj-launch"]')||[];for(const el of duplicates)if(el!==button&&el!==mounted){if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}if(!visible){const otherLaunchers=Do.querySelectorAll?.("button")||[];for(const el of otherLaunchers){if(el===button||ui.contains?.(el))continue;if(el.id==="hhj-launch"||/^HJ\s*[◉⦿]/i.test(St(el.textContent||"").trim())){if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}}}}const css=Do.createElement("style");css.textContent="~ button,~ select,~ input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}~ button.on{background:#087e74;border-color:#4be6cf}~ button:disabled{opacity:.45}~ .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}~ .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}~ .card{border:1px solid #426078;border-radius:12px}~ .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}~ .choices{justify-content:flex-start;gap:8px}~ .choices button{min-width:90px}~ .sub{opacity:.75;font-size:12px}~ h3{margin:6px 0 12px;font-size:16px}~ .good{color:#86f1d7}~ .warn{color:#ffd598}";css.textContent+=""+"~{box-sizing:border-box!important}"+"~ .card{margin:10px 0;padding:13px 14px;background:#142a3c;border-color:#304e65}"+"~ .hero{border-color:#1dd6cb;background:#133546}"+"~ .tabs{margin:0 -14px 14px;padding:10px 14px 12px;top:0;border-bottom:1px solid #24465b;scrollbar-width:none;isolation:isolate;transform:translateZ(0)}"+"~ .tabs button{min-height:42px}"+"~ .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}"+"~ .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin:10px 0}"+"~ .metric-grid>div{background:#0e2332;border:1px solid #304a5c;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0}"+"~ .metric-grid span{font-size:12px;color:#acc3d0}"+"~ .metric-grid strong{font-size:clamp(17px,4vw,25px);line-height:1.2;color:#8cf1df;overflow-wrap:anywhere}"+"~ .metric-grid small{color:#b8c8d4;font-size:11px}"+"~ .timeline-row{display:grid;grid-template-columns:95px 70px minmax(0,1fr);gap:7px;align-items:start;padding:10px 8px;border-bottom:1px solid #324a5a}"+"~ .timeline-row span{overflow-wrap:anywhere}"+"~ .timeline-row small{grid-column:3;font-size:11px;color:#8cf1df}"+"~ .day-header{position:sticky;top:62px;background:#0d2333;padding:12px;margin:14px -14px 0;z-index:1}"+"~ button{min-height:41px;touch-action:manipulation}"+"~ .choices{gap:6px}"+"~ .choices button{min-width:0}"+"~ .row>*{min-width:0;overflow-wrap:anywhere}"+"~ .alert{padding:10px;border-left:3px solid #59e7d7;background:#173444;border-radius:7px}"+"@media(max-width:380px){~ .timeline-row{grid-template-columns:83px 58px minmax(0,1fr)}~ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}";css.textContent=css.textContent.replace(/~/g,"#hhj-compact-panel");css.textContent += "#hhj-compact-panel{background:#08192d!important;color:#e7f2ff!important}#hhj-compact-panel > div:first-child{background:linear-gradient(120deg,#0c3358,#0b203b)!important;border-color:#28506e!important}#hhj-compact-panel > div:first-child b{color:#77ddff!important;font-size:16px}#hhj-compact-panel .tabs{background:#0b223b!important;border-color:#294b69!important}#hhj-compact-panel .tabs button{background:#153655!important;border-color:#2c5575!important;border-radius:9px!important;color:#b2cee5!important}#hhj-compact-panel .tabs button.on{background:#1c5080!important;border-color:#68d8fc!important;color:#fff!important}#hhj-compact-panel .card{background:#0d2945!important;border-color:#284b6b!important;border-radius:12px!important;box-shadow:none!important}#hhj-compact-panel .card.hero{background:linear-gradient(130deg,#103c60,#0c2945)!important;border-color:#3e84a9!important}#hhj-compact-panel .metric-grid>div{background:#102844!important;border-color:#294661!important}#hhj-compact-panel .metric-grid strong{color:#75ddff!important}#hhj-compact-panel button{border-radius:9px!important;background:#1e4465;color:#edf7ff;border:1px solid #36678c}#hhj-compact-panel button.on,#hhj-compact-panel button[data-act=refresh]{background:#0879bd!important;border-color:#56bde9!important;color:#fff!important}#hhj-compact-panel input,#hhj-compact-panel select{background:#061b31;color:#fff;border-color:#325c79;border-radius:8px}#hhj-compact-panel .good{color:#49e2ad!important}#hhj-compact-panel .warn{color:#ffc687!important}#hhj-compact-panel .timeline-row{border-color:#2b506d!important}#hhj-compact-panel .day-header{background:#0c2945!important}#hhj-compact-panel .alert{background:#163752!important;border-color:#54d7fa!important}";let miniBusy=false,miniLast=0,miniFresh=0;function priorityAction(events,now){const due=(events||[]).filter(x=>x&&x.t>=now-180&&x.t<=now+1800&&!slp(x.t)&&!actDone(x)),ranks={JUMP:5,XANAX:4,REFILL:3,TRAIN:2};due.sort((a,b)=>{const activeA=a.t<=now?1:0,activeB=b.t<=now?1:0;if(activeA!==activeB)return activeB-activeA;const near=Ab(a.t-b.t)<=300;if(near&&ranks[a.kind]!==ranks[b.kind])return (ranks[b.kind]||0)-(ranks[a.kind]||0);return a.t-b.t});return due[0]||null}function publishHubAlerts(){try{const od=reportedOverdose(),t=Tm()/1000,e=!od&&updated?priorityAction(aPl()?.events,t):null,mins=e?Mx(0,Ce((e.t-t)/60)):0;Do.dispatchEvent(new CustomEvent("staxx:notice",{detail:{id:"happy",count:od||e?1:0,summary:od?"Overdose recovery: training plan needs review":e?e.kind+(mins?" in "+mins+" minutes":" due now"):"No training actions due",items:od?["Recovery plan is active"]:e?[e.kind==="XANAX"?"Xanax":e.kind==="TRAIN"?"Train":e.kind==="REFILL"?"Points refill":"Happy jump"]:[]}}));}catch(_){}}
+if(row.id===id&&!row.faction_owned)inv[name]=(inv[name]||0)+(+row.amount||0);}catch(e){if(cat==="Book")data.books=null;errs.push("Inventory "+cat+": "+St(e.message).slice(0,70))}}updated=next.bars?.bars?.energy&&next.bars?.bars?.happy&&next.cooldowns?.cooldowns&&next.stats?.battlestats&&next.gym?.gym&&Ar(next.gyms?.gyms)&&next.refills?.refills?Tm():0;if(!updated)errs.push("Essential Torn data incomplete: recommendations require a successful full refresh");const st=stats();recordStatSnapshot(st);if(Object.values(st).some(x=>x>0)){const today=day(Tm()/1000),last=hs[hs.length-1];if(!last||last.d!==today){hs.push({d:today,s:st});hs=hs.slice(-90);put("history",hs)}}let checkpointed=false;try{checkpointed=checkpoint(st)}catch(e){errs.push("Verification: "+St(e.message).slice(0,70))}try{lp=plans()}catch(e){lp=null;errs.push("Planner: "+St(e.message).slice(0,90))}if(checkpointed&&rg){const p=aPl();rg.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));rg.method=p?.method||"none";const g=gym(),h=happy();rg.gymId=g?.id??null;rg.single=g?Fr(ST.map(k=>[k,sGa(g,k,g.energy_cost||10,h.current??h.maximum??0,st)])):null;put("rolling-plan",rg);}if(rc?.pending&&checkpointed&&lp?.length&&data.bars?.bars?.energy&&data.cooldowns?.cooldowns){const p=aPl(),t=Tm()/1000;rc={...rc,pending:false,replanned:t,methodNow:p.method,g24:summary(p,24,t).gain};put("recovery",rc)}await Promise.all([scanGym(),scanActions()]);await scanLastOD(true);busy=false;draw();}function save(){put("settings",cfg);try{lp=plans()}catch(e){lp=null;errs.push("Planner: "+St(e.message).slice(0,90))}draw()}const ui=Do.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed!important;z-index:2147483646!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;background:#091622;color:#f4f8fb;font:14px/1.5 system-ui;overflow:hidden;box-sizing:border-box;border:0!important;box-shadow:none!important";const ct=Do.createElement("div");ct.style.cssText="height:calc(100% - 62px);overflow-y:auto;overflow-x:hidden;padding:12px 14px 30px;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch";const CQ=s=>ct.querySelector(s);const header=Do.createElement("div");header.style.cssText="height:62px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;background:#12283b;border-bottom:1px solid #355568";header.innerHTML="<b>⚡ HAPPY JUMP</b><span class='sub'>READ ONLY · v"+VER+"</span><button type='button' data-act='close' aria-label='Close Happy Jump Helper'>✕</button>";ui.append(header,ct);const button=Do.createElement("button");button.id="hhj-launch";button.textContent="HJ ◉";button.type="button";button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483645!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";button.style.setProperty("display","none","important");const launcherStyle=button.style.cssText;function sLa(visible){const desired=launcherStyle.replace("display:block!important","display:none!important");button.style.cssText=desired;const mounted=Do.getElementById("hhj-launch");if(mounted&&mounted!==button)mounted.style.cssText=desired;const duplicates=Do.querySelectorAll?.('[id="hhj-launch"]')||[];for(const el of duplicates)if(el!==button&&el!==mounted){if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}if(!visible){const otherLaunchers=Do.querySelectorAll?.("button")||[];for(const el of otherLaunchers){if(el===button||ui.contains?.(el))continue;if(el.id==="hhj-launch"||/^HJ\s*[◉⦿]/i.test(St(el.textContent||"").trim())){if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}}}}const css=Do.createElement("style");css.textContent="~ button,~ select,~ input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}~ button.on{background:#087e74;border-color:#4be6cf}~ button:disabled{opacity:.45}~ .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}~ .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}~ .card{border:1px solid #426078;border-radius:12px}~ .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}~ .choices{justify-content:flex-start;gap:8px}~ .choices button{min-width:90px}~ .sub{opacity:.75;font-size:12px}~ h3{margin:6px 0 12px;font-size:16px}~ .good{color:#86f1d7}~ .warn{color:#ffd598}";css.textContent+=""+"~{box-sizing:border-box!important}"+"~ .card{margin:10px 0;padding:13px 14px;background:#142a3c;border-color:#304e65}"+"~ .hero{border-color:#1dd6cb;background:#133546}"+"~ .tabs{margin:0 -14px 14px;padding:10px 14px 12px;top:0;border-bottom:1px solid #24465b;scrollbar-width:none;isolation:isolate;transform:translateZ(0)}"+"~ .tabs button{min-height:42px}"+"~ .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}"+"~ .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin:10px 0}"+"~ .metric-grid>div{background:#0e2332;border:1px solid #304a5c;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0}"+"~ .metric-grid span{font-size:12px;color:#acc3d0}"+"~ .metric-grid strong{font-size:clamp(17px,4vw,25px);line-height:1.2;color:#8cf1df;overflow-wrap:anywhere}"+"~ .metric-grid small{color:#b8c8d4;font-size:11px}"+"~ .timeline-row{display:grid;grid-template-columns:95px 70px minmax(0,1fr);gap:7px;align-items:start;padding:10px 8px;border-bottom:1px solid #324a5a}"+"~ .timeline-row span{overflow-wrap:anywhere}"+"~ .timeline-row small{grid-column:3;font-size:11px;color:#8cf1df}"+"~ .day-header{position:sticky;top:62px;background:#0d2333;padding:12px;margin:14px -14px 0;z-index:1}"+"~ button{min-height:41px;touch-action:manipulation}"+"~ .choices{gap:6px}"+"~ .choices button{min-width:0}"+"~ .row>*{min-width:0;overflow-wrap:anywhere}"+"~ .alert{padding:10px;border-left:3px solid #59e7d7;background:#173444;border-radius:7px}"+"@media(max-width:380px){~ .timeline-row{grid-template-columns:83px 58px minmax(0,1fr)}~ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}";css.textContent=css.textContent.replace(/~/g,"#hhj-compact-panel");css.textContent += "#hhj-compact-panel{background:#08192d!important;color:#e7f2ff!important}#hhj-compact-panel > div:first-child{background:linear-gradient(120deg,#0c3358,#0b203b)!important;border-color:#28506e!important}#hhj-compact-panel > div:first-child b{color:#77ddff!important;font-size:16px}#hhj-compact-panel .tabs{background:#0b223b!important;border-color:#294b69!important}#hhj-compact-panel .tabs button{background:#153655!important;border-color:#2c5575!important;border-radius:9px!important;color:#b2cee5!important}#hhj-compact-panel .tabs button.on{background:#1c5080!important;border-color:#68d8fc!important;color:#fff!important}#hhj-compact-panel .card{background:#0d2945!important;border-color:#284b6b!important;border-radius:12px!important;box-shadow:none!important}#hhj-compact-panel .card.hero{background:linear-gradient(130deg,#103c60,#0c2945)!important;border-color:#3e84a9!important}#hhj-compact-panel .metric-grid>div{background:#102844!important;border-color:#294661!important}#hhj-compact-panel .metric-grid strong{color:#75ddff!important}#hhj-compact-panel button{border-radius:9px!important;background:#1e4465;color:#edf7ff;border:1px solid #36678c}#hhj-compact-panel button.on,#hhj-compact-panel button[data-act=refresh]{background:#0879bd!important;border-color:#56bde9!important;color:#fff!important}#hhj-compact-panel input,#hhj-compact-panel select{background:#061b31;color:#fff;border-color:#325c79;border-radius:8px}#hhj-compact-panel .good{color:#49e2ad!important}#hhj-compact-panel .warn{color:#ffc687!important}#hhj-compact-panel .timeline-row{border-color:#2b506d!important}#hhj-compact-panel .day-header{background:#0c2945!important}#hhj-compact-panel .alert{background:#163752!important;border-color:#54d7fa!important}";let miniBusy=false,miniLast=0,miniFresh=0;function priorityAction(events,now){const due=(events||[]).filter(x=>x&&x.t>=now-180&&x.t<=now+1800&&!slp(x.t)&&!actDone(x)),ranks={JUMP:5,XANAX:4,REFILL:3,TRAIN:2};due.sort((a,b)=>{const activeA=a.t<=now?1:0,activeB=b.t<=now?1:0;if(activeA!==activeB)return activeB-activeA;const near=Ab(a.t-b.t)<=300;if(near&&ranks[a.kind]!==ranks[b.kind])return (ranks[b.kind]||0)-(ranks[a.kind]||0);return a.t-b.t});return due[0]||null}function publishHubAlerts(){try{const od=reportedOverdose(),t=Tm()/1000,p=updated?aPl():null,e=!od&&p?priorityAction(p.events,t):null,mins=e?Mx(0,Ce((e.t-t)/60)):0;Do.dispatchEvent(new CustomEvent("staxx:notice",{detail:{id:"happy",count:od||e?1:0,level:od||e&&e.t<=t?"urgent":e?"warning":"info",summary:od?"Overdose recovery: training plan needs review":e?e.kind+(mins?" in "+mins+" minutes":" due now"):"No training actions due",items:od?["Recovery plan is active"]:e?[e.kind==="XANAX"?"Xanax":e.kind==="TRAIN"?"Train":e.kind==="REFILL"?"Points refill":"Happy jump"]:[]}}));
+    const r=p?summary(p,24,t):null;
+    Do.dispatchEvent(new CustomEvent("staxx:summary",{detail:{id:"happy",headline:od?"Overdose recovery":"Training forecast · "+(cfg.stat||"Gym"),
+      metrics:[{label:"Next action",value:e?e.kind+" · "+eta(e.t):"None due"},
+        {label:"24h projected gains",value:r?fmt(r.gain):"Unavailable"},
+        {label:"24h planned trains",value:r?String(r.trains):"Unavailable"}],
+      updated:Tm()}}));}catch(_){}}
 function badge(){publishHubAlerts();if(opened){button.textContent="HJ";return}if(reportedOverdose()){button.textContent="HJ ⚠";button.title="Overdose recovery hold — open helper";return}const now=Tm()/1000;if(!updated||Tm()-Mx(updated,miniFresh)>15*60000){button.textContent="HJ";button.title="Open to refresh training data";return}const p=aPl(),e=priorityAction(p?.events,now);if(!e){button.textContent="HJ";button.title="No training action due in the next 30 minutes";return}const icon=e.kind==="XANAX"?"💊":e.kind==="TRAIN"?"🏋️":e.kind==="REFILL"?"⚡":e.kind==="JUMP"?"✨":"⏰",mins=Mx(0,Ce((e.t-now)/60));button.textContent="HJ "+icon+(mins?" "+mins+"m":" !");button.title=e.kind+" "+(mins?"in "+mins+" minutes":"due now")+" · read-only forecast";}async function miniRefresh(){
  if(opened||busy||miniBusy)return;
  miniBusy=true;const now=Tm()/1000;
@@ -682,9 +830,9 @@ function settings(){return card("Planner settings",'<label>Weekly budget <input 
 '<p><label><input id="hhj-od-nightclub" type="checkbox"'+(cfg.odNightclub?' checked':'')+'> Legacy manual Nightclub flag — not used by automatic estimate</label></p>'+
 '<p class="sub">Automatic estimates use the faction Overdosing level and Nightclub rating returned by Torn when accessible. Missing values are explicitly unverified; manual per-drug odds override the estimate. The two legacy controls above are retained for settings compatibility but are not applied.</p>'+'<p class="sub">Fallback prices:</p>'+["points","xanax","ecstasy","lollipop","dvd"].map(k=>'<p><label>'+esc(k)+' price <input data-price="'+k+'" type="number" min="0" value="'+(+cfg.manualPrices?.[k]||0)+'"></label></p>').join("")+'<button data-act="save">Save settings</button><p class="sub">Budget and prices are estimates.</p>')}const labels=[["today","Today"],["compare","Compare"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["lab","Upgrades"],["settings","Settings"]];function draw(){if(!opened)return;const scroll=ct.scrollTop||0;try{ct.innerHTML='<nav class="tabs">'+labels.map(([k,v])=>
 '<button class="'+(k===tab?'on':'')+'" data-act="tab" data-val="'+k+'">'+v+'</button>').join("")+'</nav>'+(tab==="today"?today():tab==="compare"?compare():tab==="plan"?plan():
-tab==="supplies"?supplies():tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():tab==="lab"?lab():settings())+'<p class="sub">IamEEKY · Forecast only · No automated Torn actions · v'+VER+'</p>';}catch(e){ct.innerHTML='<section class="card"><h3>Panel recovery</h3><p>Rendering failed: '+esc(e.message)+'</p><button data-act="refresh">Retry refresh</button></section>';}ct.scrollTop=scroll;const tabs=ct.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");if(tabs&&selected)tabs.scrollLeft=Mx(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);}Do.addEventListener("staxx:open",e=>{if(e.detail?.id==="happy"){opened=true;ui.style.display="block";sLa(false);draw();refresh();}else if(opened){opened=false;ui.style.display="none";sLa(true);badge();}});
-Do.addEventListener("staxx:closeall",()=>{if(opened){opened=false;ui.style.display="none";sLa(true);badge();}});
+tab==="supplies"?supplies():tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():tab==="lab"?lab():settings())+'<p class="sub">IamEEKY · Forecast only · No automated Torn actions · v'+VER+'</p>';}catch(e){ct.innerHTML='<section class="card"><h3>Panel recovery</h3><p>Rendering failed: '+esc(e.message)+'</p><button data-act="refresh">Retry refresh</button></section>';}ct.scrollTop=scroll;const tabs=ct.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");if(tabs&&selected)tabs.scrollLeft=Mx(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);}Do.addEventListener("staxx:open",e=>{if(e.detail?.id==="happy"){opened=true;ui.style.display="block";sLa(false);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:true}}));draw();refresh();}else if(opened){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge();}});
+Do.addEventListener("staxx:closeall",()=>{if(opened){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge();}});
 Do.addEventListener("staxx:ping",()=>Do.dispatchEvent(new CustomEvent("staxx:register",{detail:{id:"happy"}})));
 Do.dispatchEvent(new CustomEvent("staxx:register",{detail:{id:"happy"}}));
-button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";sLa(!opened);if(opened){draw();return refresh()}badge()});ui.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;const act=b.dataset.act,val=b.dataset.val;if(act==="close"){opened=false;ui.style.display="none";sLa(true);badge()}if(act==="refresh")refresh();if(act==="od-report"){if(noteOverdose(val)){draw();refresh()}}if(act==="od-label"){if(labelLastOD(val))draw()}if(act==="od-clear"){odClearPending=true;draw()}if(act==="od-cancel-clear"){odClearPending=false;draw()}if(act==="od-confirm-clear"){if(odClearPending&&reportedOverdose()){clearOverdose();draw();refresh()}}if(act==="tab"){tab=val;ct.scrollTop=0;draw()}if(act==="stat"){cfg.stat=val;sm="auto";save()}if(act==="mode"){cfg.mode=val;sm="auto";save()}if(act==="choose"){sm=val;tab="plan";draw()}if(act==="optimizer-choose"){const [method,flag]=St(val||"").split(":");const r=optimizerResults();if(r.scenarios.some(x=>x.feasible&&x.method===method&&x.refills===(flag==="1"))){cfg.refills=flag==="1";cfg.mode="training";sm=method;tab="plan";save()}}if(act==="choose-supply"){sm=val;draw()}if(act==="horizon"){cfg.horizon=+val;save()}if(act==="lab-happy"){put("lab-happy",+val);draw()}if(act==="lab-save"){for(const [key,id] of [["lab-happy","lab-happy"],["lab-property-cost","lab-property-cost"],["lab-can-energy","lab-can-energy"],["lab-cans-per-day","lab-cans-per-day"],["lab-can-mult","lab-can-mult"],["lab-can-price","lab-can-price"]]){const input=CQ("#"+id);if(input)put(key,Mx(0,+input.value||0))}draw()}if(act==="awake-hour"||act==="awake-off"){awakeUntil=act==="awake-hour"?Tm()/1000+3600:0;put("awake-until",awakeUntil);lp=plans();draw()}if(act==="scan-logs")scanGym(true);if(act==="clearhistory"){hs=[];put("history",[]);draw()}if(act==="clearverification"){ledger=[];rg=null;put("verification",[]);put("rolling-plan",null);draw()}if(act==="partial"){sp=!sp;put("show-partial",sp);draw()}if(["gym-owned","gym-buy","gym-clear"].includes(act)){const id=+CQ("#hhj-gymlist")?.value;if(id&&/\/gym\.php$/.test(location.pathname||"")){if(act==="gym-clear")delete vr[id];else vr[id]=act==="gym-owned"?"owned":"buy";put("gyms",vr);draw()}}if(act==="save"){cfg.budget=Mx(0,+CQ("#hhj-budget")?.value||0);cfg.refills=!!CQ("#hhj-refills")?.checked;cfg.sleepEnabled=!!CQ("#hhj-sleepenabled")?.checked;const bed=CQ("#hhj-sleepstart")?.value,wake=CQ("#hhj-sleepend")?.value;cfg.sleepStart=validClock(bed)?bed:"22:00";cfg.sleepEnd=validClock(wake)?wake:"08:00";if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;cfg.gymBonus=Mn(200,Mx(0,+CQ("#hhj-gymbonus")?.value||0));cfg.ownedPoints=Mx(0,+CQ("#hhj-points")?.value||0);const guessed=CQ("#hhj-jump-success")?.value;cfg.jumpSuccessPct=guessed!==undefined&&St(guessed).trim()!==""&&Fi(+guessed)&&+guessed>=0&&+guessed<=100?+guessed:null;for(const [name,id] of [["xanaxOdPct","#hhj-xanax-od"],["ecstasyOdPct","#hhj-ecstasy-od"]]){const v=CQ(id)?.value;cfg[name]=v!==undefined&&St(v).trim()!==""&&Fi(+v)&&+v>=0&&+v<=100?+v:null;}cfg.odEstimateMode=CQ("#hhj-od-community")?.checked?"community":"manual";cfg.odFactionReduction=Mn(30,Mx(0,+CQ("#hhj-od-faction")?.value||0));cfg.odNightclub=!!CQ("#hhj-od-nightclub")?.checked;cfg.manualPrices=Fr(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
+button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";sLa(!opened);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:opened}}));if(opened){draw();return refresh()}badge()});ui.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;const act=b.dataset.act,val=b.dataset.val;if(act==="close"){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge()}if(act==="refresh")refresh();if(act==="od-report"){if(noteOverdose(val)){draw();refresh()}}if(act==="od-label"){if(labelLastOD(val))draw()}if(act==="od-clear"){odClearPending=true;draw()}if(act==="od-cancel-clear"){odClearPending=false;draw()}if(act==="od-confirm-clear"){if(odClearPending&&reportedOverdose()){clearOverdose();draw();refresh()}}if(act==="tab"){tab=val;ct.scrollTop=0;draw()}if(act==="stat"){cfg.stat=val;sm="auto";save()}if(act==="mode"){cfg.mode=val;sm="auto";save()}if(act==="choose"){sm=val;tab="plan";draw()}if(act==="optimizer-choose"){const [method,flag]=St(val||"").split(":");const r=optimizerResults();if(r.scenarios.some(x=>x.feasible&&x.method===method&&x.refills===(flag==="1"))){cfg.refills=flag==="1";cfg.mode="training";sm=method;tab="plan";save()}}if(act==="choose-supply"){sm=val;draw()}if(act==="horizon"){cfg.horizon=+val;save()}if(act==="lab-happy"){put("lab-happy",+val);draw()}if(act==="lab-save"){for(const [key,id] of [["lab-happy","lab-happy"],["lab-property-cost","lab-property-cost"],["lab-can-energy","lab-can-energy"],["lab-cans-per-day","lab-cans-per-day"],["lab-can-mult","lab-can-mult"],["lab-can-price","lab-can-price"]]){const input=CQ("#"+id);if(input)put(key,Mx(0,+input.value||0))}draw()}if(act==="awake-hour"||act==="awake-off"){awakeUntil=act==="awake-hour"?Tm()/1000+3600:0;put("awake-until",awakeUntil);lp=plans();draw()}if(act==="scan-logs")scanGym(true);if(act==="clearhistory"){hs=[];put("history",[]);draw()}if(act==="clearverification"){ledger=[];rg=null;put("verification",[]);put("rolling-plan",null);draw()}if(act==="partial"){sp=!sp;put("show-partial",sp);draw()}if(["gym-owned","gym-buy","gym-clear"].includes(act)){const id=+CQ("#hhj-gymlist")?.value;if(id&&/\/gym\.php$/.test(location.pathname||"")){if(act==="gym-clear")delete vr[id];else vr[id]=act==="gym-owned"?"owned":"buy";put("gyms",vr);draw()}}if(act==="save"){cfg.budget=Mx(0,+CQ("#hhj-budget")?.value||0);cfg.refills=!!CQ("#hhj-refills")?.checked;cfg.sleepEnabled=!!CQ("#hhj-sleepenabled")?.checked;const bed=CQ("#hhj-sleepstart")?.value,wake=CQ("#hhj-sleepend")?.value;cfg.sleepStart=validClock(bed)?bed:"22:00";cfg.sleepEnd=validClock(wake)?wake:"08:00";if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;cfg.gymBonus=Mn(200,Mx(0,+CQ("#hhj-gymbonus")?.value||0));cfg.ownedPoints=Mx(0,+CQ("#hhj-points")?.value||0);const guessed=CQ("#hhj-jump-success")?.value;cfg.jumpSuccessPct=guessed!==undefined&&St(guessed).trim()!==""&&Fi(+guessed)&&+guessed>=0&&+guessed<=100?+guessed:null;for(const [name,id] of [["xanaxOdPct","#hhj-xanax-od"],["ecstasyOdPct","#hhj-ecstasy-od"]]){const v=CQ(id)?.value;cfg[name]=v!==undefined&&St(v).trim()!==""&&Fi(+v)&&+v>=0&&+v<=100?+v:null;}cfg.odEstimateMode=CQ("#hhj-od-community")?.checked?"community":"manual";cfg.odFactionReduction=Mn(30,Mx(0,+CQ("#hhj-od-faction")?.value||0));cfg.odNightclub=!!CQ("#hhj-od-nightclub")?.checked;cfg.manualPrices=Fr(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
 [k,Mx(0,+CQ('[data-price="'+k+'"]')?.value||0)]));save()}});mount();Do.addEventListener?.("DOMContentLoaded",mount,{once:true});Wi.setInterval(()=>{if(Tm()/1000-miniLast>180)miniRefresh();else badge()},60000);miniRefresh();Wi.setInterval(()=>{mount();},5000);if(typeof window!=="undefined"){Wi.__TornHappyJumpLoaded=VER;Wi.__TornHappyJumpStage={version:VER,phase:"mounted"};}})();
