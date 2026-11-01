@@ -6,12 +6,12 @@ const path=require("node:path");
 const root=path.join(__dirname,"..");
 const read=name=>fs.readFileSync(path.join(root,name),"utf8");
 const previewName="Torn-Happy-Jump-Helper-preview.user.js";
-const releaseName="Torn-Happy-Jump-Helper-v0.23.0-preview.user.js";
+const releaseName="Torn-Happy-Jump-Helper-v0.24.0-preview.user.js";
 const base="https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/";
 const header=source=>source.slice(0,source.indexOf("// ==/UserScript==")+"// ==/UserScript==".length);
 const body=source=>source.slice(header(source).length);
 
-test("permanent preview installs tested v0.23.0 with its own unchanged update identity",()=>{
+test("permanent preview installs tested v0.24.0 with its own unchanged update identity",()=>{
  const source=read(previewName),meta=header(source);
  assert.match(meta,/\/\/ @name\s+Torn Happy Jump Helper \(Preview\)/);
  assert.match(meta,/\/\/ @namespace\s+https:\/\/github\.com\/Tom-Peters\/Torn-Happy-Jump-Helper#preview\n/);
