@@ -1,3 +1,9 @@
+## Preview v0.24.0 — Training Records and personal bests
+
+- A new Training Records card appears in Today and Progress, with available 7-day gym-log gains, largest observed gym session, best recorded per-train gain when Torn supplies a train count, a four-stat leaderboard and observed active-day chain.
+- Uses only parsed, deduplicated locally stored Torn gym logs. Gaps in log coverage are reported, and logged gains are not added to separately observed battle-stat changes.
+- Focus any stat with one tap, refresh the log from Torn, or jump to the existing training comparison. The stable installer is unchanged; permanent preview and versioned v0.24.0 snapshot share the same body.
+
 ## Preview v0.23.0 — full planning data refresh without opening Happy Jump
 
 - While TornPDA is visible, a bounded background read refreshes full planning inputs (including owned consumables/books and market reference prices) when the last full snapshot is at least 45 minutes old.
