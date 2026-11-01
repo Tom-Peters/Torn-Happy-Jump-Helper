@@ -44,3 +44,20 @@ test("v0.19 renders without resetting scroll position or draft fields on refresh
  assert.match(source,/ct\.scrollTop=hjScrollV190\[tab\]\|\|0/);
  assert.match(source,/focus\(\{preventScroll:true\}\)/);
 });
+
+test('v0.20 personalised training uses actual gym sessions, local time and a data sufficiency gate',()=>{
+ assert.match(source,/function observedGymPatternV200\(/);
+ assert.match(source,/new Intl\.DateTimeFormat\("en-GB",\{timeZone:"Europe\/London"/);
+ assert.match(source,/sessions\.length>=6&&days\.size>=3/);
+ assert.match(source,/t%3600===0&&observed\.hours\.includes\(ukHourV200\(t\)\)/);
+ assert.match(source,/Your verified usual gym window/);
+ assert.match(source,/cfg\.adaptHistory!==false/);
+});
+test('v0.20 has local, redacted diagnostics and shared dynamic StaxxHub v2.5',()=>{
+ assert.match(source,/function safeHjDiagnosticsV200\(/);
+ assert.match(source,/function hjDiagnosticsV200\(/);
+ assert.match(source,/staxx:diagnostics-request/);
+ assert.match(source,/staxx:diagnostics/);
+ assert.match(source,/StaxxHub v2\.5/);
+ assert.doesNotMatch(source,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
+});
