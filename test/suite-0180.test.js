@@ -4,11 +4,11 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const source=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-preview.user.js"),"utf8");
-const snapshot=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.18.0-preview.user.js"),"utf8");
+const snapshot=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.18.1-preview.user.js"),"utf8");
 test("v0.18 preview and immutable snapshot use the same advisor logic and Hub",()=>{
   const body=s=>s.slice(s.indexOf("// ==/UserScript==")+"// ==/UserScript==".length);
   assert.equal(body(source),body(snapshot));
-  assert.match(source,/\/\/ @version\s+0\.18\.0/);
+  assert.match(source,/\/\/ @version\s+0\.18\.1/);
   assert.match(source,/StaxxHub v2\.4/);
 });
 test("training improvements use existing observed state and planning models",()=>{
