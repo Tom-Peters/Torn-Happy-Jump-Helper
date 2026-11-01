@@ -8,7 +8,7 @@ const snapshot=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-
 test("v0.23 preview and immutable snapshot use the same advisor logic and Hub",()=>{
   const body=s=>s.slice(s.indexOf("// ==/UserScript==")+"// ==/UserScript==".length);
   assert.equal(body(source),body(snapshot));
-  assert.match(source,/\/\/ @version\s+0\.22\.0/);
+  assert.match(source,/\/\/ @version\s+0\.23\.0/);
   assert.match(source,/StaxxHub v2\.6/);
 });
 test("training improvements use existing observed state and planning models",()=>{
