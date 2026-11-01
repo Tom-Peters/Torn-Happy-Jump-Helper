@@ -1,5 +1,13 @@
 # Torn Happy Jump Helper — Training Command Centre
 
+## v0.20.0 preview — training adapted to observed history
+
+- **Verified gym habits:** Read the last 14 days of actually logged gym sessions (not forecast actions), count each verified session once, and find recurring UK-local hourly windows. Schedule adaptation starts only after **at least six completed sessions on three separate UTC dates** and a repeated-hour pattern. There is an opt-out in Settings.
+- **Real schedule changes:** When adequate history exists, the regular natural/Xanax forecast tries those observed hours for training, still respecting sleep, current energy, cooldown models, budget and overdose recovery. Sparse history uses the original simulation unchanged. The Today view shows samples, confidence and chosen hours.
+- **Diagnostics:** Dedicated tab to inspect API freshness, actual log coverage, inventory availability, selected observed pattern, recovery holds and UI state; safe report is status-only, with no personal key, battle stats or event contents.
+- **StaxxHub v2.5:** Multi-tool daily priorities and the shared safe diagnostics panel automatically support future registered Staxx scripts. Preview has a matching v0.20.0 snapshot; the separate phone-confirmed stable installer remains unchanged.
+
+
 ## v0.19.0 preview — next-four-action execution queue and smoother rendering
 
 - **Next four moves:** The Today view now gives the next four upcoming, unverified steps in the selected affordable training forecast, with exact planned UTC times, resource warnings, and manual Open Gym / Items / Points links.
