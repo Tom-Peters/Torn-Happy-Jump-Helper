@@ -606,8 +606,8 @@ function badge(){publishHubAlerts();if(opened){button.textContent="HJ";return}if
    if(pending.stats){
     miniStatsAtV210=now;
     const actual=stats();
-    recordStatSnapshot(actual); // Capture off-schedule gym gains without opening the helper.
-    const verified=checkpoint(actual);
+    const changed=recordStatSnapshot(actual); // Capture off-schedule gains without opening the helper.
+    const verified=changed&&checkpoint(actual); // Avoid zero-change verification entries every 12 minutes.
     lp=plans(); // Recalculate from the observed stats before recording the next forecast.
     if(verified&&rg){const p=aPl();rg.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));rg.method=p?.method||"none";put("rolling-plan",rg);}
    }else lp=plans();
