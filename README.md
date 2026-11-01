@@ -1,3 +1,9 @@
+## Preview v0.23.0 — full planning data refresh without opening Happy Jump
+
+- While TornPDA is visible, a bounded background read refreshes full planning inputs (including owned consumables/books and market reference prices) when the last full snapshot is at least 45 minutes old.
+- A persisted 45-minute attempt cooldown prevents repeated large API reads across page reloads. Short foreground updates continue between full refreshes. Nothing automatically trains, takes drugs or spends points.
+- The permanent preview URL is unchanged. Stable v0.10.22 remains separate, and the v0.23.0 immutable snapshot matches the permanent preview file.
+
 # Torn Happy Jump Helper — Training Command Centre
 
 ## v0.22.0 preview — refresh from the unified StaxxHub
