@@ -1,3 +1,10 @@
+## Preview v0.26.0 — event-aware foreground automation
+
+- A light refresh now detects observed energy decreases, refill transitions, newly verified activity log entries and overdoses while TornPDA is visible.
+- Those changes immediately recalculate the forecast; energy decreases prompt an accelerated read-only gym-log check (at most every two minutes). Energy loss alone is NEVER counted as verified training.
+- Today and Progress show the latest detected activity transition; no purchase, refill, Xanax, training or other gameplay write is automated.
+- Keeps the permanent preview installer and the pinned stable installer unchanged.
+
 ## Preview v0.25.0 — automatically verified points owned
 
 - Happy Jump now reads the real **owned points balance** from Torn API v2 `user/money` as part of its already approved foreground full refresh and bounded light refresh.
