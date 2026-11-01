@@ -7,8 +7,8 @@
 // @match        https://www.torn.com/*
 // @match        https://torn.com/*
 // @run-at       document-end
-// @updateURL    https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.19.0-preview.user.js
-// @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-v0.19.0-preview.user.js
+// @updateURL    https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js
+// @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js
 // @grant        none
 // ==/UserScript==
 /* StaxxHub v2.4 · shared Torn PDA launcher · IamEEKY · no external dependencies */
