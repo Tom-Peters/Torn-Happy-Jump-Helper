@@ -1,3 +1,10 @@
+## Preview v0.25.0 — automatically verified points owned
+
+- Happy Jump now reads the real **owned points balance** from Torn API v2 `user/money` as part of its already approved foreground full refresh and bounded light refresh.
+- A verified nonnegative points value is used for supply shortfall and refill-cost planning for up to 30 minutes, including a real zero balance. Manual points remain a fallback if the API selection is unavailable or stale.
+- The Settings panel explicitly distinguishes verified automatic points from fallback input. It does not modify or spend points.
+- Stable installer remains pinned. Permanent preview and v0.25.0 snapshot share one implementation; other cooldown, overdose, inventory and gym-log automatic checks remain active.
+
 ## Preview v0.24.0 — Training Records and personal bests
 
 - A new Training Records card appears in Today and Progress, with available 7-day gym-log gains, largest observed gym session, best recorded per-train gain when Torn supplies a train count, a four-stat leaderboard and observed active-day chain.
