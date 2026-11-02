@@ -9,7 +9,7 @@ test("v0.31.0 preview and immutable snapshot use the same advisor logic and Hub"
   const body=s=>s.slice(s.indexOf("// ==/UserScript==")+"// ==/UserScript==".length);
   assert.equal(body(source),body(snapshot));
   assert.match(source,/\/\/ @version\s+0\.31\.0/);
-  assert.match(source,/StaxxHub v3\.0/);
+  assert.match(source,/StaxxHub v3\.1/);
 });
 test("training improvements use existing observed state and planning models",()=>{
   assert.match(source,/function trainingEfficiencyV18\(/);
@@ -53,12 +53,12 @@ test('v0.22 personalised training uses actual gym sessions, local time and a dat
  assert.match(source,/Your verified usual gym window/);
  assert.match(source,/cfg\.adaptHistory!==false/);
 });
-test('v0.22 has local, redacted diagnostics and shared dynamic StaxxHub v3.0',()=>{
+test('v0.22 has local, redacted diagnostics and shared dynamic StaxxHub v3.1',()=>{
  assert.match(source,/function safeHjDiagnosticsV200\(/);
  assert.match(source,/function hjDiagnosticsV200\(/);
  assert.match(source,/staxx:diagnostics-request/);
  assert.match(source,/staxx:diagnostics/);
- assert.match(source,/StaxxHub v3\.0/);
+ assert.match(source,/StaxxHub v3\.1/);
  assert.doesNotMatch(source,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
 });
 
