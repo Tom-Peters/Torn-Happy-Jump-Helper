@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper (Preview)
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#preview
-// @version      0.29.1
+// @version      0.30.0
 // @description  Torn gym planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -11,7 +11,7 @@
 // @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js
 // @grant        none
 // ==/UserScript==
-/* StaxxHub v2.9 · shared Torn PDA launcher · IamEEKY · no external dependencies */
+/* StaxxHub v3.0 · shared Torn PDA launcher · IamEEKY · no external dependencies */
 (function () {
   "use strict";
   if (typeof location === "undefined" || typeof document === "undefined" ||
@@ -25,8 +25,9 @@
       '<button type="button" id="staxx-hub-toggle" aria-label="Open Staxx tools" aria-expanded="false"><b>S</b><span id="staxx-hub-count" hidden></span></button>' +
       '<div id="staxx-hub-veil" hidden></div>' +
       '<aside id="staxx-hub-drawer" aria-label="Staxx tools and notifications" hidden>' +
-      '<header class="staxx-head"><div><strong>Staxx<span>Hub</span></strong><small>YOUR TORN COMMAND CENTRE</small></div><button type="button" data-hub-close aria-label="Close sidebar">×</button></header>' +
+      '<header class="staxx-head"><div><strong>Staxx<span>Hub</span></strong><small>YOUR TORN COMMAND CENTRE</small></div><div class="staxx-head-actions"><button type="button" data-hub-find aria-label="Find tools, sections and actions" aria-expanded="false" title="Find tools and actions">⌕</button><button type="button" data-hub-close aria-label="Close sidebar">×</button></div></header>' +
       '<nav class="staxx-main-tabs" aria-label="StaxxHub sections"><button type="button" data-hub-view="today" aria-pressed="true">Today</button><button type="button" data-hub-view="tools" aria-pressed="false">Tools</button><button type="button" data-hub-view="alerts" aria-pressed="false">Alerts</button><button type="button" data-hub-view="more" aria-pressed="false">More</button></nav>' +
+      '<section id="staxx-hub-find" aria-label="Find Staxx tools and actions" hidden><label for="staxx-hub-find-input">FIND TOOLS, ACTIONS &amp; ALERTS</label><input id="staxx-hub-find-input" type="search" maxlength="100" autocomplete="off" spellcheck="false" placeholder="e.g. trains, stocks, gym" aria-controls="staxx-hub-find-results"><p id="staxx-hub-find-status" role="status" aria-live="polite"></p><div id="staxx-hub-find-results" role="group" aria-label="Search results"></div></section>' +
       '<div class="staxx-scroll">' +
       '<section data-hub-section="today"><section id="staxx-hub-welcome" hidden></section><div class="staxx-label"><h3>WHAT TO DO NEXT</h3><span>Highest priority first</span></div><section id="staxx-hub-tasks" aria-label="Prioritised Torn actions"></section><div class="staxx-label"><h3>OPEN A TOOL</h3><span>One tap</span></div><div id="staxx-hub-quick-tools"></div><p class="staxx-trendnote">Recommendations update from verified information while TornPDA is open.</p></section>' +
       '<section data-hub-section="tools" hidden><div class="staxx-label"><h3>YOUR TOOLS</h3><button type="button" data-arrange aria-pressed="false">Reorder</button></div><div id="staxx-hub-tools"></div></section>' +
@@ -95,6 +96,23 @@
       '#staxx-hub-drawer [data-hub-section]>.staxx-label:first-child{margin-top:2px}'
     ].join("");
     css.textContent += '#staxx-hub-welcome{border:1px solid #367194;background:#103552;border-radius:11px;padding:11px;margin:0 0 12px}#staxx-hub-welcome strong{display:block;color:#9ce7ff;font-size:13px}#staxx-hub-welcome p{font-size:11px;line-height:1.45;color:#c4dfed;margin:7px 0}#staxx-hub-welcome button{background:#0879bd;border:1px solid #64c6ea;border-radius:8px;padding:8px 10px;min-height:36px;font-size:11px;font-weight:800;width:100%}';
+    css.textContent += [
+      '#staxx-hub-drawer .staxx-head-actions{display:flex;align-items:center;gap:7px}',
+      '#staxx-hub-drawer [data-hub-find]{background:#125074;color:#d1f5ff;border:1px solid #4a99bd;border-radius:9px;min-width:38px;height:38px;font-size:24px;line-height:1}',
+      '#staxx-hub-drawer [data-hub-find][aria-expanded="true"]{background:#0879bd;border-color:#80d9ff}',
+      '#staxx-hub-drawer #staxx-hub-find{display:flex;flex:1;flex-direction:column;min-height:0;padding:12px 10px 18px;gap:8px;overflow:hidden}',
+      '#staxx-hub-drawer #staxx-hub-find>label{font-size:10px;font-weight:850;letter-spacing:.8px;color:#9fcbe1}',
+      '#staxx-hub-drawer #staxx-hub-find-input{width:100%;min-height:44px;background:#112e48;color:#f1fbff;border:1px solid #5e96b8;border-radius:10px;padding:10px 12px;font-size:14px;outline-offset:2px}',
+      '#staxx-hub-drawer #staxx-hub-find-input:focus-visible{outline:2px solid #54d7fa}',
+      '#staxx-hub-drawer #staxx-hub-find-status{font-size:11px;color:#a7c8dc;margin:2px 0 0}',
+      '#staxx-hub-drawer #staxx-hub-find-results{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:12px}',
+      '#staxx-hub-drawer .staxx-find-item{width:100%;display:flex;flex-direction:column;gap:4px;text-align:left;min-height:48px;margin:0 0 7px;padding:10px 11px;color:#e8f7ff;border:1px solid #366180;background:#10314f;border-radius:10px}',
+      '#staxx-hub-drawer .staxx-find-item b{font-size:12px;line-height:1.3}',
+      '#staxx-hub-drawer .staxx-find-item small{font-size:10px;color:#a8c8de;line-height:1.4;overflow-wrap:anywhere}',
+      '#staxx-hub-drawer .staxx-find-item.urgent{border-color:#ff778d}',
+      '#staxx-hub-drawer .staxx-find-item:disabled{opacity:.52;cursor:not-allowed}',
+      '#staxx-hub-drawer .staxx-find-item:focus-visible{outline:2px solid #54d7fa}'
+    ].join('');
     document.documentElement.append(css, root);
 
     const entries = [
@@ -102,6 +120,11 @@
       {id:"company",label:"Company Helper",icon:"CO",desc:"Staff · Training · Growth"},
       {id:"happy",label:"Happy Jump",icon:"HJ",desc:"Gym · Schedule · Recovery"}
     ];
+    const sectionsByTool={
+      profit:[["daily","Today"],["alerts","Alerts"],["best","Best opportunities"],["scan","Item deals"],["travel","Travel"],["stocks","Stock market"],["capital","Capital"],["history","Price charts"],["income","Income"],["museum","Museum"],["portfolio","Trading ledger"],["settings","Settings"],["diagnostics","Diagnostics"]],
+      company:[["overview","Today"],["alerts","Alerts"],["employees","Staff"],["training","Training"],["growth","Growth"],["stock","Stock or services"],["settings","Settings"],["diagnostics","Diagnostics"]],
+      happy:[["today","Today"],["alerts","Alerts"],["compare","Compare methods"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks and books"],["progress","Progress"],["lab","Upgrades"],["settings","Settings"],["diagnostics","Diagnostics"]]
+    };
     const active = Object.create(null), notices = Object.create(null), summaries = Object.create(null), controls = Object.create(null), actionSets=Object.create(null), healthReports=Object.create(null);
     const registeredAt=Object.create(null);
     let trends=Object.create(null), arrangeShown=false;
@@ -109,8 +132,18 @@
     const tools=root.querySelector("#staxx-hub-tools"),alerts=root.querySelector("#staxx-hub-alerts"),bubble=root.querySelector("#staxx-hub-count");
     const overview=root.querySelector("#staxx-hub-overview"),overviewButton=root.querySelector("[data-overview]"),taskList=root.querySelector("#staxx-hub-tasks"),diagnostics=root.querySelector("#staxx-hub-diagnostics"),diagnosticButton=root.querySelector("[data-diagnostics]");
     let expanded=false, panelOpen=false, overviewShown=false, diagnosticsShown=false, moving=null, suppressClickUntil=0;
-    let hubView="today", expandedTaskList=false;
+    let hubView="today", expandedTaskList=false, findOpen=false;
     let uiMode=safeRead('staxx-hub-mode-v1','simple')==='advanced'?'advanced':'simple';
+    const findPanel=root.querySelector('#staxx-hub-find'),findInput=root.querySelector('#staxx-hub-find-input');
+    const findResults=root.querySelector('#staxx-hub-find-results'),findStatus=root.querySelector('#staxx-hub-find-status');
+    function setFindOpen(value){
+      findOpen=Boolean(value);
+      if(findPanel)findPanel.hidden=!findOpen;
+      const content=root.querySelector('.staxx-scroll');if(content)content.hidden=findOpen;
+      const btn=root.querySelector('[data-hub-find]');if(btn)btn.setAttribute('aria-expanded',String(findOpen));
+      if(findOpen){renderFind();findInput?.focus?.();}
+      else if(findInput){findInput.value='';}
+    }
     function publishMode(){document.dispatchEvent(new CustomEvent('staxx:mode',{detail:{mode:uiMode}}));}
     function switchHubView(view){
       if(!["today","tools","alerts","more"].includes(view))return;
@@ -180,6 +213,7 @@
     }
     function setExpanded(value){
       if(value&&!expanded){expandedTaskList=false;switchHubView("today");renderTasks();}
+      if(!value)setFindOpen(false);
       expanded=Boolean(value);veil.hidden=drawer.hidden=!expanded;launcherVisibility();renderContext();
     }
     function activeNotice(id){
@@ -188,9 +222,18 @@
       if(control.dismissed===n.fingerprint || Number(control.snoozeUntil)>Date.now())return null;
       return n;
     }
-    function openTool(id,alertId){
+    function openTool(id,alertId,section){
+      const routes=sectionsByTool[id]||entries.find(e=>e.id===id)?.sections||[];
+      const validSection=routes.some(item=>item[0]===section)?section:null;
       if(id==="company"&&!/^\/companies\.php$/i.test(location.pathname)){
-        try{sessionStorage.setItem("staxx-open-company","1");if(alertId)sessionStorage.setItem("staxx-open-company-alert",alertId);}catch(_){}
+        try{
+          sessionStorage.setItem("staxx-open-company","1");
+          sessionStorage.setItem("staxx-open-company-at",String(Date.now()));
+          if(alertId)sessionStorage.setItem("staxx-open-company-alert",alertId);
+          else sessionStorage.removeItem("staxx-open-company-alert");
+          if(validSection&&!alertId)sessionStorage.setItem("staxx-open-company-section",validSection);
+          else sessionStorage.removeItem("staxx-open-company-section");
+        }catch(_){}
         location.assign(location.origin+"/companies.php");return;
       }
       if(!active[id]){
@@ -199,7 +242,7 @@
       }
       panelOpen=true;setExpanded(false);launcherVisibility();
       document.dispatchEvent(new CustomEvent("staxx:closeall"));
-      document.dispatchEvent(new CustomEvent("staxx:open",{detail:{id,alertId:alertId||null}}));
+      document.dispatchEvent(new CustomEvent("staxx:open",{detail:{id,alertId:alertId||null,section:alertId?null:validSection}}));
     }
     function timeUntil(ms) {
       if(!Number.isFinite(ms)||ms<=0)return "";
@@ -275,9 +318,65 @@
         (Number(a.dueAt)||Infinity)-(Number(b.dueAt)||Infinity)||
         (Number(b.priority)||0)-(Number(a.priority)||0));
     }
+    function findCatalog(){
+      const rows=[],hiddenAlertIds=new Set();
+      for(const e of entries){
+        const available=Boolean(active[e.id]);
+        rows.push({kind:'tool',owner:e.id,title:e.label,detail:e.desc,available});
+        const routes=sectionsByTool[e.id]||e.sections||[];
+        for(const route of routes)rows.push({kind:'section',owner:e.id,section:route[0],title:route[1],detail:e.label+' · Section',available});
+        const current=activeNotice(e.id),raw=notices[e.id];
+        if(raw?.count>0&&!current)for(const item of raw.alerts||[])hiddenAlertIds.add(e.id+'/'+item.id);
+        if(current){
+          if(current.alerts?.length){
+            for(const item of current.alerts.slice(0,24))
+              rows.push({kind:'alert',owner:e.id,alertId:item.id,title:item.title,detail:e.label+' · '+item.detail+(current.cached?' · Last observed':''),available,cached:Boolean(current.cached)});
+          }else rows.push({kind:'alert',owner:e.id,title:current.summary||'Review alerts',detail:e.label+(current.cached?' · Last observed':''),available,cached:Boolean(current.cached)});
+        }
+      }
+      for(const task of taskRowsV25()){
+        if(hiddenAlertIds.has(task.owner+'/'+task.id))continue;
+        // A matching actionable alert is represented once, not twice.
+        if(activeNotice(task.owner)?.alerts?.some(x=>x.id===task.id))continue;
+        rows.push({kind:'action',owner:task.owner,alertId:task.id,title:task.title,
+          detail:task.tool+' · '+task.detail+(task.cached?' · Last observed':''),available:Boolean(active[task.owner]),
+          cached:Boolean(task.cached),status:task.status});
+      }
+      return rows;
+    }
+    function renderFind(){
+      if(!findOpen||!findResults||!findInput)return;
+      findResults.replaceChildren();
+      const query=String(findInput.value||'').trim().toLocaleLowerCase().slice(0,100);
+      const tokens=query.split(/\s+/).filter(Boolean);
+      let results=findCatalog();
+      if(tokens.length){
+        results=results.filter(item=>{
+          const hay=(item.title+' '+item.detail+' '+item.owner).toLocaleLowerCase();
+          return tokens.every(word=>hay.includes(word));
+        });
+        results.sort((a,b)=>{
+          const score=item=>(item.title.toLocaleLowerCase()===query?0:item.title.toLocaleLowerCase().startsWith(query)?1:2)*10+
+            (item.kind==='action'?0:item.kind==='alert'?1:item.kind==='section'?2:3);
+          return score(a)-score(b);
+        });
+      }else results=results.filter(x=>x.kind==='tool');
+      if(findStatus)findStatus.textContent=tokens.length?results.length+' matching destination'+(results.length===1?'':'s')+' · Showing up to 12':'Select a tool or type to find a section, alert or recommendation';
+      for(const item of results.slice(0,12)){
+        const btn=node('button','staxx-find-item'+(item.status==='urgent'?' urgent':''));btn.type='button';
+        if(item.kind==='section'){btn.dataset.hubSectionTool=item.owner;btn.dataset.hubSectionTab=item.section;}
+        else if(item.alertId){btn.dataset.openAlertTool=item.owner;btn.dataset.openAlertId=item.alertId;}
+        else btn.dataset.openStaxx=item.owner;
+        if(!item.available&&item.owner!=='company'){btn.disabled=true;btn.title='Enable '+item.owner+' in TornPDA first';}
+        const type=item.kind==='action'?'Action':item.kind==='alert'?'Alert':item.kind==='section'?'Section':'Tool';
+        btn.append(node('b','',item.title),node('small','',type+' · '+item.detail+(btn.disabled?' · Script not active':'')));
+        findResults.append(btn);
+      }
+      if(!results.length)findResults.append(node('p','staxx-empty','No matching active tool data. Try a shorter term or open a helper to refresh.'));
+    }
     function diagnosticReportV25(){
       const time=Date.now();
-      return {hub:"2.8",capturedAt:new Date(time).toISOString(),page:String(location.pathname||""),
+      return {hub:"3.0",capturedAt:new Date(time).toISOString(),page:String(location.pathname||""),
         connectedCount:entries.filter(x=>active[x.id]).length,knownCount:entries.length,tools:entries.map(e=>{
           const sum=summaries[e.id],actions=actionSets[e.id],notice=notices[e.id],h=healthReports[e.id];
           const age=Number(sum?.updated),lastAction=Number(actions?.updated);
@@ -492,6 +591,7 @@
       }
       if(!visible)alerts.append(node("p","staxx-empty",muted?"Alerts dismissed or snoozed. New alerts will still appear.":"Nothing needs your attention right now."));
       renderTasks();
+      if(findOpen)renderFind();
       showOverview();
       showDiagnosticsV25();
       launcherVisibility();
@@ -499,7 +599,9 @@
     }
     root.addEventListener("click",e=>{
       const b=e.target.closest("button");if(!b)return;
-      if(b.dataset.hubView){switchHubView(b.dataset.hubView);return;}
+      if(b.dataset.hubView){setFindOpen(false);switchHubView(b.dataset.hubView);return;}
+      if(b.hasAttribute('data-hub-find')){setFindOpen(!findOpen);return;}
+      if(b.dataset.hubSectionTool){openTool(b.dataset.hubSectionTool,null,b.dataset.hubSectionTab);return;}
       if(b.dataset.hubGuideDone){saveLocal('staxx-hub-onboarded-v1',true);renderWelcome();return;}
       if(b.hasAttribute('data-hub-guide')){saveLocal('staxx-hub-onboarded-v1',false);switchHubView('today');renderWelcome();return;}
       if(b.hasAttribute('data-hub-mode')){uiMode=uiMode==='simple'?'advanced':'simple';saveLocal('staxx-hub-mode-v1',uiMode);expandedTaskList=false;publishMode();render();return;}
@@ -541,7 +643,25 @@
       if(b.hasAttribute("data-hub-close"))setExpanded(false);
     });
     veil.addEventListener("click",()=>setExpanded(false));
-    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&expanded)setExpanded(false);});
+    findInput?.addEventListener?.('input',renderFind);
+    findInput?.addEventListener?.('keydown',e=>{
+      if(e.key==='Enter'){
+        const first=findResults?.querySelector?.('button:not(:disabled)');
+        if(first){e.preventDefault?.();first.click();}
+      }
+    });
+    document.addEventListener('staxx:find',()=>{
+      document.dispatchEvent(new CustomEvent('staxx:closeall'));
+      openPanels.clear();panelOpen=false;
+      setExpanded(true);setFindOpen(true);
+    });
+    document.addEventListener("keydown",e=>{
+      if(e.key==='Escape'&&findOpen){e.preventDefault?.();setFindOpen(false);return;}
+      if(e.key==='Escape'&&expanded){setExpanded(false);return;}
+      if(expanded&&(e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='k'){
+        e.preventDefault?.();setFindOpen(true);
+      }
+    });
     toggle.addEventListener("pointerdown",e=>{
       if(e.button!==undefined&&e.button!==0)return;
       moving={id:e.pointerId,startY:e.clientY,top:toggle.getBoundingClientRect().top,dragged:false};
@@ -581,6 +701,9 @@
         if(d.label)entry.label=String(d.label).slice(0,40);
         if(d.icon)entry.icon=String(d.icon).slice(0,3);
         if(d.desc)entry.desc=String(d.desc).slice(0,70);
+        if(Array.isArray(d.sections))entry.sections=d.sections.slice(0,20)
+          .filter(x=>x&&/^[a-z][a-z0-9-]{0,31}$/.test(String(x.id||'')))
+          .map(x=>[String(x.id),String(x.label||x.id).slice(0,45)]);
         if(typeof d.trendMetric==='string')entry.trendMetric=d.trendMetric.slice(0,36);
         if(Number(d.freshnessMs)>=60000&&Number(d.freshnessMs)<=86400000)entry.freshnessMs=Number(d.freshnessMs);
         if(!registeredAt[id])registeredAt[id]=Date.now();
@@ -644,7 +767,7 @@
 
 
 
-(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.27.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
+(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.30.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Fi(n)?Ro(n).toLocaleString("en-US"):"—";const cash=n=>Fi(n)?"$"+fmt(n):"Price unknown";const esc=x=>St(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const cu=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Ce((t-Tm()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Fl(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,jumpSuccessPct:null,xanaxOdPct:null,ecstasyOdPct:null,odEstimateMode:"community",odFactionReduction:0,odNightclub:false,manualPrices:{},sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00",adaptHistory:true};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lp=null,sm="auto",hs=get("history",[]),vr=get("gyms",{}),ledger=get("verification",[]),rg=get("rolling-plan",null),sp=get("show-partial",true),an=get("action-notes",[]),watch=get("watch",null),rc=get("recovery",null),start=Tm()/1000,awakeUntil=+get("awake-until",0)||0,al=get("gym-api-logs",[]),lc=+get("gym-log-checked-13",0)||0,ls="Not checked",acts=get("verified-actions",[]),actChecked=0,statSamples=get("stat-samples",[]),activityCoverage="Not checked";const rSt=(raw,t=Tm()/1000)=>acts.some(x=>x.kind==="REFILL"&&day(x.t)===day(t))?"used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>rSt(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Fr(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}function mins(v,back){return validClock(v)?Nu(v.slice(0,2))*60+Nu(v.slice(3)):back}let ukYear=0,ukStart=0,ukEnd=0;function slp(t){if(!cfg.sleepEnabled||t>=awakeUntil-3600&&t<awakeUntil)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),y=d.getUTCFullYear();if(y!==ukYear){ ukYear=y; const sunday=month=>{const last=new Date(Ut(y,month+1,0));return last.getUTCDate()-last.getUTCDay()}; ukStart=Ut(y,2,sunday(2),1)/1000;ukEnd=Ut(y,9,sunday(9),1)/1000;}const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;return a<b?m>=a&&m<b:m>=a||m<b;}function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" UK time":"Disabled"}
 function gymDots(raw){const dots=Nu(raw);if(!Fi(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}const perkRows=()=>En(data.perks?.perks||{}).flatMap(([type,entries])=>
 (Ar(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));const bonus=stat=>perkRows().reduce((n,r)=>{const d=r.description, p=+(d.match(/(\d+(?:\.\d+)?)\s*%/)||[])[1];const scoped=d.match(/\b(strength|speed|defen[cs]e|dexterity)\b/i)?.[1]?.toLowerCase().replace("defence","defense");return n+(p>0&&p<=200&&/gym.{0,12}gains?|gains?.{0,12}gym/i.test(d)&&!/decreas|reduc|lower|penalty/i.test(d)&&(!scoped||scoped===stat)?p/100:0);},1+Mx(0,+cfg.gymBonus||0)/100);function gain(e,h,s,dots,cost=10,m=1){let steps=Fl(e/cost),sum=0,ss=s,hh=h;while(steps-->0){const g=Mx(0,((3.480061091e-7*Math.log(hh+250)+3.091619094e-6)*ss+6.82775184551527e-5*(hh+250)-0.0301431777)*dots*cost*m);sum+=g;ss+=g;hh=Mx(0,hh-cost*0.5)}return sum;}function basket(item,n,stock=0){const buy=Mx(0,n-stock);if(!buy)return 0;const rows=[...(prices[item]||[])].filter(x=>Fi(+x.price)&&+x.price>0&&+x.amount>0).sort((a,b)=>a.price-b.price);let remaining=buy,total=0;for(const r of rows){const take=Mn(remaining,r.amount);remaining-=take;total+=take*r.price;if(!remaining)return total}const manual=+cfg.manualPrices?.[item];return manual>0&&Fi(manual)?total+remaining*manual:Infinity;}
@@ -664,7 +787,7 @@ await Wi.flutter_inappwebview.callHandler("PDA_httpGet",url,headers);if(r.status
  }else if(name.startsWith("m_"))prices[name.slice(2)]=name==="m_points"?
 (v.pointsmarket||[]).map(x=>({price:x.cost,amount:x.quantity})):
 v.itemmarket?.listings||[];else next[name]=v;}catch(err){errs.push(name+": "+St(err.message).slice(0,70))}}};await Promise.all([worker(),worker(),worker()]);data=next;data.priceUpdated=Tm();let allInventory=null;for(const cat of ["Drug","Candy","Book","Booster"]){try{let items;try{items=(await api("/user/inventory?cat="+cat+"&limit=250")).inventory?.items}catch(e){if(!/\b21\b/.test(St(e.message)))throw e;try{items=(await api("/user/inventory?cat="+cat.toLowerCase()+"&limit=250")).inventory?.items}catch(e2){if(!/\b21\b/.test(St(e2.message)))throw e2;if(!allInventory){allInventory=[];for(let offset=0;offset<2000;offset+=250){const page=(await api("/user/inventory?limit=250&offset="+offset)).inventory?.items;if(!Ar(page))throw Error("Unfiltered inventory unavailable");allInventory.push(...page);if(page.length<250)break;if(offset===1750)throw Error("Inventory exceeds safe page limit");}}const ids=cat==="Drug"?[206,197]:cat==="Candy"?[310]:cat==="Booster"?[366]:[];items=allInventory.filter(x=>cat==="Book"?(x.id>=744&&x.id<=787):ids.includes(x.id));errs.push("Inventory "+cat+": category 21; unfiltered fallback used");}}if(!Ar(items))throw Error("Missing inventory items");if(cat==="Book")data.books=items;else for(const row of items)for(const [name,id] of En(ITEMS))
-if(row.id===id&&!row.faction_owned)inv[name]=(inv[name]||0)+(+row.amount||0);}catch(e){if(cat==="Book")data.books=null;errs.push("Inventory "+cat+": "+St(e.message).slice(0,70))}}updated=next.bars?.bars?.energy&&next.bars?.bars?.happy&&next.cooldowns?.cooldowns&&next.stats?.battlestats&&next.gym?.gym&&Ar(next.gyms?.gyms)&&next.refills?.refills?Tm():0;if(!updated)errs.push("Essential Torn data incomplete: recommendations require a successful full refresh");const st=stats();recordStatSnapshot(st);if(Object.values(st).some(x=>x>0)){const today=day(Tm()/1000),last=hs[hs.length-1];if(!last||last.d!==today){hs.push({d:today,s:st});hs=hs.slice(-90);put("history",hs)}}let checkpointed=false;try{checkpointed=checkpoint(st)}catch(e){errs.push("Verification: "+St(e.message).slice(0,70))}try{lp=plans()}catch(e){lp=null;errs.push("Planner: "+St(e.message).slice(0,90))}if(checkpointed&&rg){const p=aPl();rg.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));rg.method=p?.method||"none";const g=gym(),h=happy();rg.gymId=g?.id??null;rg.single=g?Fr(ST.map(k=>[k,sGa(g,k,g.energy_cost||10,h.current??h.maximum??0,st)])):null;put("rolling-plan",rg);}if(rc?.pending&&checkpointed&&lp?.length&&data.bars?.bars?.energy&&data.cooldowns?.cooldowns){const p=aPl(),t=Tm()/1000;rc={...rc,pending:false,replanned:t,methodNow:p.method,g24:summary(p,24,t).gain};put("recovery",rc)}await Promise.all([scanGym(),scanActions()]);await scanLastOD(true);busy=false;draw();}function save(){put("settings",cfg);try{lp=plans()}catch(e){lp=null;errs.push("Planner: "+St(e.message).slice(0,90))}draw()}const ui=Do.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed!important;z-index:2147483646!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;background:#091622;color:#f4f8fb;font:14px/1.5 system-ui;overflow:hidden;box-sizing:border-box;border:0!important;box-shadow:none!important";const ct=Do.createElement("div");ct.style.cssText="height:calc(100% - 62px);overflow-y:auto;overflow-x:hidden;padding:12px 14px 30px;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch";const CQ=s=>ct.querySelector(s);const header=Do.createElement("div");header.style.cssText="height:62px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;background:#12283b;border-bottom:1px solid #355568";header.innerHTML="<b>⚡ HAPPY JUMP</b><span class='sub'>READ ONLY · v"+VER+"</span><button type='button' data-act='close' aria-label='Close Happy Jump Helper'>✕</button>";ui.append(header,ct);const button=Do.createElement("button");button.id="hhj-launch";button.textContent="HJ ◉";button.type="button";button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483645!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";button.style.setProperty("display","none","important");const launcherStyle=button.style.cssText;function sLa(visible){const desired=launcherStyle.replace("display:block!important","display:none!important");button.style.cssText=desired;const mounted=Do.getElementById("hhj-launch");if(mounted&&mounted!==button)mounted.style.cssText=desired;const duplicates=Do.querySelectorAll?.('[id="hhj-launch"]')||[];for(const el of duplicates)if(el!==button&&el!==mounted){if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}if(!visible){const otherLaunchers=Do.querySelectorAll?.("button")||[];for(const el of otherLaunchers){if(el===button||ui.contains?.(el))continue;if(el.id==="hhj-launch"||/^HJ\s*[◉⦿]/i.test(St(el.textContent||"").trim())){if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}}}}const css=Do.createElement("style");css.textContent="~ button,~ select,~ input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}~ button.on{background:#087e74;border-color:#4be6cf}~ button:disabled{opacity:.45}~ .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}~ .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}~ .card{border:1px solid #426078;border-radius:12px}~ .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}~ .choices{justify-content:flex-start;gap:8px}~ .choices button{min-width:90px}~ .sub{opacity:.75;font-size:12px}~ h3{margin:6px 0 12px;font-size:16px}~ .good{color:#86f1d7}~ .warn{color:#ffd598}";css.textContent+=""+"~{box-sizing:border-box!important}"+"~ .card{margin:10px 0;padding:13px 14px;background:#142a3c;border-color:#304e65}"+"~ .hero{border-color:#1dd6cb;background:#133546}"+"~ .tabs{margin:0 -14px 14px;padding:10px 14px 12px;top:0;border-bottom:1px solid #24465b;scrollbar-width:none;isolation:isolate;transform:translateZ(0)}"+"~ .tabs button{min-height:42px}"+"~ .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}"+"~ .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin:10px 0}"+"~ .metric-grid>div{background:#0e2332;border:1px solid #304a5c;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0}"+"~ .metric-grid span{font-size:12px;color:#acc3d0}"+"~ .metric-grid strong{font-size:clamp(17px,4vw,25px);line-height:1.2;color:#8cf1df;overflow-wrap:anywhere}"+"~ .metric-grid small{color:#b8c8d4;font-size:11px}"+"~ .timeline-row{display:grid;grid-template-columns:95px 70px minmax(0,1fr);gap:7px;align-items:start;padding:10px 8px;border-bottom:1px solid #324a5a}"+"~ .timeline-row span{overflow-wrap:anywhere}"+"~ .timeline-row small{grid-column:3;font-size:11px;color:#8cf1df}"+"~ .day-header{position:sticky;top:62px;background:#0d2333;padding:12px;margin:14px -14px 0;z-index:1}"+"~ button{min-height:41px;touch-action:manipulation}"+"~ .choices{gap:6px}"+"~ .choices button{min-width:0}"+"~ .row>*{min-width:0;overflow-wrap:anywhere}"+"~ .alert{padding:10px;border-left:3px solid #59e7d7;background:#173444;border-radius:7px}"+"@media(max-width:380px){~ .timeline-row{grid-template-columns:83px 58px minmax(0,1fr)}~ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}";css.textContent=css.textContent.replace(/~/g,"#hhj-compact-panel");css.textContent += "#hhj-compact-panel{background:#08192d!important;color:#e7f2ff!important}#hhj-compact-panel > div:first-child{background:linear-gradient(120deg,#0c3358,#0b203b)!important;border-color:#28506e!important}#hhj-compact-panel > div:first-child b{color:#77ddff!important;font-size:16px}#hhj-compact-panel .tabs{background:#0b223b!important;border-color:#294b69!important}#hhj-compact-panel .tabs button{background:#153655!important;border-color:#2c5575!important;border-radius:9px!important;color:#b2cee5!important}#hhj-compact-panel .tabs button.on{background:#1c5080!important;border-color:#68d8fc!important;color:#fff!important}#hhj-compact-panel .card{background:#0d2945!important;border-color:#284b6b!important;border-radius:12px!important;box-shadow:none!important}#hhj-compact-panel .card.hero{background:linear-gradient(130deg,#103c60,#0c2945)!important;border-color:#3e84a9!important}#hhj-compact-panel .metric-grid>div{background:#102844!important;border-color:#294661!important}#hhj-compact-panel .metric-grid strong{color:#75ddff!important}#hhj-compact-panel button{border-radius:9px!important;background:#1e4465;color:#edf7ff;border:1px solid #36678c}#hhj-compact-panel button.on,#hhj-compact-panel button[data-act=refresh]{background:#0879bd!important;border-color:#56bde9!important;color:#fff!important}#hhj-compact-panel input,#hhj-compact-panel select{background:#061b31;color:#fff;border-color:#325c79;border-radius:8px}#hhj-compact-panel .good{color:#49e2ad!important}#hhj-compact-panel .warn{color:#ffc687!important}#hhj-compact-panel .timeline-row{border-color:#2b506d!important}#hhj-compact-panel .day-header{background:#0c2945!important}#hhj-compact-panel .alert{background:#163752!important;border-color:#54d7fa!important}";let miniBusy=false,miniLast=0,miniFresh=0,miniStatsAtV210=0,miniGymAtV210=0;
+if(row.id===id&&!row.faction_owned)inv[name]=(inv[name]||0)+(+row.amount||0);}catch(e){if(cat==="Book")data.books=null;errs.push("Inventory "+cat+": "+St(e.message).slice(0,70))}}updated=next.bars?.bars?.energy&&next.bars?.bars?.happy&&next.cooldowns?.cooldowns&&next.stats?.battlestats&&next.gym?.gym&&Ar(next.gyms?.gyms)&&next.refills?.refills?Tm():0;if(!updated)errs.push("Essential Torn data incomplete: recommendations require a successful full refresh");const st=stats();recordStatSnapshot(st);if(Object.values(st).some(x=>x>0)){const today=day(Tm()/1000),last=hs[hs.length-1];if(!last||last.d!==today){hs.push({d:today,s:st});hs=hs.slice(-90);put("history",hs)}}let checkpointed=false;try{checkpointed=checkpoint(st)}catch(e){errs.push("Verification: "+St(e.message).slice(0,70))}try{lp=plans()}catch(e){lp=null;errs.push("Planner: "+St(e.message).slice(0,90))}if(checkpointed&&rg){const p=aPl();rg.events=(p?.events||[]).filter(x=>x.kind==="TRAIN").map(x=>({t:x.t,g:x.g}));rg.method=p?.method||"none";const g=gym(),h=happy();rg.gymId=g?.id??null;rg.single=g?Fr(ST.map(k=>[k,sGa(g,k,g.energy_cost||10,h.current??h.maximum??0,st)])):null;put("rolling-plan",rg);}if(rc?.pending&&checkpointed&&lp?.length&&data.bars?.bars?.energy&&data.cooldowns?.cooldowns){const p=aPl(),t=Tm()/1000;rc={...rc,pending:false,replanned:t,methodNow:p.method,g24:summary(p,24,t).gain};put("recovery",rc)}await Promise.all([scanGym(),scanActions()]);await scanLastOD(true);busy=false;draw();}function save(){put("settings",cfg);try{lp=plans()}catch(e){lp=null;errs.push("Planner: "+St(e.message).slice(0,90))}draw()}const ui=Do.createElement("div");ui.id="hhj-compact-panel";ui.style.cssText="display:none;position:fixed!important;z-index:2147483646!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;background:#091622;color:#f4f8fb;font:14px/1.5 system-ui;overflow:hidden;box-sizing:border-box;border:0!important;box-shadow:none!important";const ct=Do.createElement("div");ct.style.cssText="height:calc(100% - 62px);overflow-y:auto;overflow-x:hidden;padding:12px 14px 30px;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch";const CQ=s=>ct.querySelector(s);const header=Do.createElement("div");header.style.cssText="height:62px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;background:#12283b;border-bottom:1px solid #355568";header.innerHTML="<b>⚡ HAPPY JUMP</b><span class='sub'>READ ONLY · v"+VER+"</span><button type='button' data-act='staxx-find' aria-label='Find Staxx tools and actions'>⌕</button><button type='button' data-act='close' aria-label='Close Happy Jump Helper'>✕</button>";ui.append(header,ct);const button=Do.createElement("button");button.id="hhj-launch";button.textContent="HJ ◉";button.type="button";button.style.cssText="position:fixed!important;top:43%!important;right:6px!important;z-index:2147483645!important;background:#067f77!important;color:#fff!important;border:2px solid #adfff0!important;border-radius:25px!important;padding:12px 15px!important;font:800 15px system-ui!important;box-shadow:0 6px 18px #000b!important;display:block!important;visibility:visible!important;opacity:1!important";button.style.setProperty("display","none","important");const launcherStyle=button.style.cssText;function sLa(visible){const desired=launcherStyle.replace("display:block!important","display:none!important");button.style.cssText=desired;const mounted=Do.getElementById("hhj-launch");if(mounted&&mounted!==button)mounted.style.cssText=desired;const duplicates=Do.querySelectorAll?.('[id="hhj-launch"]')||[];for(const el of duplicates)if(el!==button&&el!==mounted){if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}if(!visible){const otherLaunchers=Do.querySelectorAll?.("button")||[];for(const el of otherLaunchers){if(el===button||ui.contains?.(el))continue;if(el.id==="hhj-launch"||/^HJ\s*[◉⦿]/i.test(St(el.textContent||"").trim())){if(el.style?.setProperty)el.style.setProperty("display","none","important");else if(el.style)el.style.cssText+=";display:none!important";}}}}const css=Do.createElement("style");css.textContent="~ button,~ select,~ input{background:#223a55;color:white;border:1px solid #52748d;border-radius:8px;padding:8px;font:inherit}~ button.on{background:#087e74;border-color:#4be6cf}~ button:disabled{opacity:.45}~ .tabs{display:flex;overflow-x:auto;gap:6px;padding:3px 0 9px;position:sticky;top:0;z-index:2;background:#0b1726;scrollbar-width:none;overscroll-behavior-x:contain}~ .tabs button{flex:0 0 auto;white-space:nowrap;min-height:39px;padding:8px 12px}~ .card{border:1px solid #426078;border-radius:12px}~ .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}~ .choices{justify-content:flex-start;gap:8px}~ .choices button{min-width:90px}~ .sub{opacity:.75;font-size:12px}~ h3{margin:6px 0 12px;font-size:16px}~ .good{color:#86f1d7}~ .warn{color:#ffd598}";css.textContent+=""+"~{box-sizing:border-box!important}"+"~ .card{margin:10px 0;padding:13px 14px;background:#142a3c;border-color:#304e65}"+"~ .hero{border-color:#1dd6cb;background:#133546}"+"~ .tabs{margin:0 -14px 14px;padding:10px 14px 12px;top:0;border-bottom:1px solid #24465b;scrollbar-width:none;isolation:isolate;transform:translateZ(0)}"+"~ .tabs button{min-height:42px}"+"~ .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}"+"~ .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin:10px 0}"+"~ .metric-grid>div{background:#0e2332;border:1px solid #304a5c;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0}"+"~ .metric-grid span{font-size:12px;color:#acc3d0}"+"~ .metric-grid strong{font-size:clamp(17px,4vw,25px);line-height:1.2;color:#8cf1df;overflow-wrap:anywhere}"+"~ .metric-grid small{color:#b8c8d4;font-size:11px}"+"~ .timeline-row{display:grid;grid-template-columns:95px 70px minmax(0,1fr);gap:7px;align-items:start;padding:10px 8px;border-bottom:1px solid #324a5a}"+"~ .timeline-row span{overflow-wrap:anywhere}"+"~ .timeline-row small{grid-column:3;font-size:11px;color:#8cf1df}"+"~ .day-header{position:sticky;top:62px;background:#0d2333;padding:12px;margin:14px -14px 0;z-index:1}"+"~ button{min-height:41px;touch-action:manipulation}"+"~ .choices{gap:6px}"+"~ .choices button{min-width:0}"+"~ .row>*{min-width:0;overflow-wrap:anywhere}"+"~ .alert{padding:10px;border-left:3px solid #59e7d7;background:#173444;border-radius:7px}"+"@media(max-width:380px){~ .timeline-row{grid-template-columns:83px 58px minmax(0,1fr)}~ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}";css.textContent=css.textContent.replace(/~/g,"#hhj-compact-panel");css.textContent += "#hhj-compact-panel{background:#08192d!important;color:#e7f2ff!important}#hhj-compact-panel > div:first-child{background:linear-gradient(120deg,#0c3358,#0b203b)!important;border-color:#28506e!important}#hhj-compact-panel > div:first-child b{color:#77ddff!important;font-size:16px}#hhj-compact-panel .tabs{background:#0b223b!important;border-color:#294b69!important}#hhj-compact-panel .tabs button{background:#153655!important;border-color:#2c5575!important;border-radius:9px!important;color:#b2cee5!important}#hhj-compact-panel .tabs button.on{background:#1c5080!important;border-color:#68d8fc!important;color:#fff!important}#hhj-compact-panel .card{background:#0d2945!important;border-color:#284b6b!important;border-radius:12px!important;box-shadow:none!important}#hhj-compact-panel .card.hero{background:linear-gradient(130deg,#103c60,#0c2945)!important;border-color:#3e84a9!important}#hhj-compact-panel .metric-grid>div{background:#102844!important;border-color:#294661!important}#hhj-compact-panel .metric-grid strong{color:#75ddff!important}#hhj-compact-panel button{border-radius:9px!important;background:#1e4465;color:#edf7ff;border:1px solid #36678c}#hhj-compact-panel button.on,#hhj-compact-panel button[data-act=refresh]{background:#0879bd!important;border-color:#56bde9!important;color:#fff!important}#hhj-compact-panel input,#hhj-compact-panel select{background:#061b31;color:#fff;border-color:#325c79;border-radius:8px}#hhj-compact-panel .good{color:#49e2ad!important}#hhj-compact-panel .warn{color:#ffc687!important}#hhj-compact-panel .timeline-row{border-color:#2b506d!important}#hhj-compact-panel .day-header{background:#0c2945!important}#hhj-compact-panel .alert{background:#163752!important;border-color:#54d7fa!important}";let miniBusy=false,miniLast=0,miniFresh=0,miniStatsAtV210=0,miniGymAtV210=0;
 let autoSignalV0260=get("auto-signal-v0260",null);
 function autoSignalCardV0260(){
  const last=autoSignalV0260&&Number(autoSignalV0260.t)>0?autoSignalV0260:null;
@@ -1547,7 +1670,10 @@ ct.scrollTop=hjScrollV190[tab]||0;
 if(sameTab){for(const [i,x] of [...ct.querySelectorAll('details')].entries())if(openedDetails.includes(i))x.open=true;}
 if(edited&&sameTab){for(const row of edited.fields){const el=[...ct.querySelectorAll('input,textarea,select')].find(x=>row.id?x.id===row.id:x.name===row.name);if(el){el.value=row.value;if(row.checked!==null)el.checked=row.checked;}}
 const focus=edited.id?ct.querySelector('#'+edited.id):null;if(focus)focus.focus({preventScroll:true});}
-if(hjAlertFocus){const node=ct.querySelector?.("#hhj-alert-"+hjAlertFocus);if(node){node.style.outline="2px solid #54d7fa";node.scrollIntoView?.({block:"nearest"});}hjAlertFocus="";}const tabs=ct.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");if(tabs&&selected)tabs.scrollLeft=sameTab?navPosition:Mx(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);}Do.addEventListener("staxx:open",e=>{if(e.detail?.id==="happy"){if(e.detail.alertId){tab="alerts";hjAlertFocus=St(e.detail.alertId);}opened=true;ui.style.display="block";sLa(false);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:true}}));draw();refresh();}else if(opened){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge();}});
+if(hjAlertFocus){const node=ct.querySelector?.("#hhj-alert-"+hjAlertFocus);if(node){node.style.outline="2px solid #54d7fa";node.scrollIntoView?.({block:"nearest"});}hjAlertFocus="";}const tabs=ct.querySelector?.(".tabs"),selected=tabs?.querySelector?.("button.on");if(tabs&&selected)tabs.scrollLeft=sameTab?navPosition:Mx(0,selected.offsetLeft-tabs.offsetLeft-tabs.clientWidth/2+selected.offsetWidth/2);}Do.addEventListener("staxx:open",e=>{if(e.detail?.id==="happy"){
+    if(e.detail.alertId){tab="alerts";hjAlertFocus=St(e.detail.alertId);}
+    else if(["today","alerts","compare","plan","supplies","gyms","perks","progress","lab","settings","diagnostics"].includes(e.detail.section)){tab=e.detail.section;hjAlertFocus="";}
+    opened=true;ui.style.display="block";sLa(false);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:true}}));draw();refresh();}else if(opened){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge();}});
 Do.addEventListener("staxx:closeall",()=>{if(opened){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge();}});
 Do.addEventListener("staxx:diagnostics-request",()=>{
  Do.dispatchEvent(new CustomEvent("staxx:diagnostics",{detail:{id:"happy",version:VER,
@@ -1564,7 +1690,9 @@ Do.addEventListener("staxx:diagnostics-request",()=>{
 Do.addEventListener("staxx:mode",()=>{hjTabsExpanded=false;if(opened)draw();});
 Do.addEventListener("staxx:ping",()=>Do.dispatchEvent(new CustomEvent("staxx:register",{detail:{id:"happy",label:"Happy Jump",icon:"HJ",desc:"Observed training · Schedule · Recovery",trendMetric:"24h projected gains",freshnessMs:900000}})));
 Do.dispatchEvent(new CustomEvent("staxx:register",{detail:{id:"happy",label:"Happy Jump",icon:"HJ",desc:"Observed training · Schedule · Recovery",trendMetric:"24h projected gains",freshnessMs:900000}}));
-button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";sLa(!opened);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:opened}}));if(opened){draw();return refresh()}badge()});ui.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;const act=b.dataset.act,val=b.dataset.val;if(act==="staxx-more-tabs"){hjTabsExpanded=!hjTabsExpanded;draw();return;}if(act==="close"){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge()}if(act==="refresh")refresh();if(act==="diag-check"){Do.dispatchEvent(new CustomEvent("staxx:ping"));Do.dispatchEvent(new CustomEvent("staxx:diagnostics-request"));draw()}if(act==="diag-copy"){const text=JSON.stringify(safeHjDiagnosticsV200(),null,2);if(Wi.navigator?.clipboard?.writeText)Wi.navigator.clipboard.writeText(text).catch(()=>{});else draw()}if(act==="open-torn"){if(["/gym.php","/item.php","/points.php"].includes(val))location.assign(location.origin+val);return;}if(act==="od-report"){if(noteOverdose(val)){draw();refresh()}}if(act==="od-label"){if(labelLastOD(val))draw()}if(act==="od-clear"){odClearPending=true;draw()}if(act==="od-cancel-clear"){odClearPending=false;draw()}if(act==="od-confirm-clear"){if(odClearPending&&reportedOverdose()){clearOverdose();draw();refresh()}}if(act==="tab"){tab=val;draw()}if(act==="stat"){cfg.stat=val;sm="auto";save()}if(act==="mode"){cfg.mode=val;sm="auto";save()}if(act==="choose"){sm=val;tab="plan";draw()}if(act==="optimizer-choose"){const [method,flag]=St(val||"").split(":");const r=optimizerResults();if(r.scenarios.some(x=>x.feasible&&x.method===method&&x.refills===(flag==="1"))){cfg.refills=flag==="1";cfg.mode="training";sm=method;tab="plan";save()}}if(act==="choose-supply"){sm=val;draw()}if(act==="horizon"){cfg.horizon=+val;save()}if(act==="lab-happy"){put("lab-happy",+val);draw()}if(act==="lab-save"){for(const [key,id] of [["lab-happy","lab-happy"],["lab-property-cost","lab-property-cost"],["lab-can-energy","lab-can-energy"],["lab-cans-per-day","lab-cans-per-day"],["lab-can-mult","lab-can-mult"],["lab-can-price","lab-can-price"]]){const input=CQ("#"+id);if(input)put(key,Mx(0,+input.value||0))}draw()}if(act==="awake-hour"||act==="awake-off"){awakeUntil=act==="awake-hour"?Tm()/1000+3600:0;put("awake-until",awakeUntil);lp=plans();draw()}if(act==="scan-logs")scanGym(true);if(act==="clearhistory"){hs=[];put("history",[]);draw()}if(act==="clearverification"){ledger=[];rg=null;put("verification",[]);put("rolling-plan",null);draw()}if(act==="partial"){sp=!sp;put("show-partial",sp);draw()}if(["gym-owned","gym-buy","gym-clear"].includes(act)){const id=+CQ("#hhj-gymlist")?.value;if(id&&/\/gym\.php$/.test(location.pathname||"")){if(act==="gym-clear")delete vr[id];else vr[id]=act==="gym-owned"?"owned":"buy";put("gyms",vr);draw()}}if(act==="save"){cfg.adaptHistory=!!CQ("#hhj-adapt-history")?.checked;cfg.budget=Mx(0,+CQ("#hhj-budget")?.value||0);cfg.refills=!!CQ("#hhj-refills")?.checked;cfg.sleepEnabled=!!CQ("#hhj-sleepenabled")?.checked;const bed=CQ("#hhj-sleepstart")?.value,wake=CQ("#hhj-sleepend")?.value;cfg.sleepStart=validClock(bed)?bed:"22:00";cfg.sleepEnd=validClock(wake)?wake:"08:00";if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;cfg.gymBonus=Mn(200,Mx(0,+CQ("#hhj-gymbonus")?.value||0));cfg.ownedPoints=Mx(0,+CQ("#hhj-points")?.value||0);const guessed=CQ("#hhj-jump-success")?.value;cfg.jumpSuccessPct=guessed!==undefined&&St(guessed).trim()!==""&&Fi(+guessed)&&+guessed>=0&&+guessed<=100?+guessed:null;for(const [name,id] of [["xanaxOdPct","#hhj-xanax-od"],["ecstasyOdPct","#hhj-ecstasy-od"]]){const v=CQ(id)?.value;cfg[name]=v!==undefined&&St(v).trim()!==""&&Fi(+v)&&+v>=0&&+v<=100?+v:null;}cfg.odEstimateMode=CQ("#hhj-od-community")?.checked?"community":"manual";cfg.odFactionReduction=Mn(30,Mx(0,+CQ("#hhj-od-faction")?.value||0));cfg.odNightclub=!!CQ("#hhj-od-nightclub")?.checked;cfg.manualPrices=Fr(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
+button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";sLa(!opened);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:opened}}));if(opened){draw();return refresh()}badge()});ui.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;const act=b.dataset.act,val=b.dataset.val;if(act==="staxx-more-tabs"){hjTabsExpanded=!hjTabsExpanded;draw();return;}
+      if(act==="staxx-find"){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));Do.dispatchEvent(new CustomEvent("staxx:find"));return;}
+      if(act==="close"){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge()}if(act==="refresh")refresh();if(act==="diag-check"){Do.dispatchEvent(new CustomEvent("staxx:ping"));Do.dispatchEvent(new CustomEvent("staxx:diagnostics-request"));draw()}if(act==="diag-copy"){const text=JSON.stringify(safeHjDiagnosticsV200(),null,2);if(Wi.navigator?.clipboard?.writeText)Wi.navigator.clipboard.writeText(text).catch(()=>{});else draw()}if(act==="open-torn"){if(["/gym.php","/item.php","/points.php"].includes(val))location.assign(location.origin+val);return;}if(act==="od-report"){if(noteOverdose(val)){draw();refresh()}}if(act==="od-label"){if(labelLastOD(val))draw()}if(act==="od-clear"){odClearPending=true;draw()}if(act==="od-cancel-clear"){odClearPending=false;draw()}if(act==="od-confirm-clear"){if(odClearPending&&reportedOverdose()){clearOverdose();draw();refresh()}}if(act==="tab"){tab=val;draw()}if(act==="stat"){cfg.stat=val;sm="auto";save()}if(act==="mode"){cfg.mode=val;sm="auto";save()}if(act==="choose"){sm=val;tab="plan";draw()}if(act==="optimizer-choose"){const [method,flag]=St(val||"").split(":");const r=optimizerResults();if(r.scenarios.some(x=>x.feasible&&x.method===method&&x.refills===(flag==="1"))){cfg.refills=flag==="1";cfg.mode="training";sm=method;tab="plan";save()}}if(act==="choose-supply"){sm=val;draw()}if(act==="horizon"){cfg.horizon=+val;save()}if(act==="lab-happy"){put("lab-happy",+val);draw()}if(act==="lab-save"){for(const [key,id] of [["lab-happy","lab-happy"],["lab-property-cost","lab-property-cost"],["lab-can-energy","lab-can-energy"],["lab-cans-per-day","lab-cans-per-day"],["lab-can-mult","lab-can-mult"],["lab-can-price","lab-can-price"]]){const input=CQ("#"+id);if(input)put(key,Mx(0,+input.value||0))}draw()}if(act==="awake-hour"||act==="awake-off"){awakeUntil=act==="awake-hour"?Tm()/1000+3600:0;put("awake-until",awakeUntil);lp=plans();draw()}if(act==="scan-logs")scanGym(true);if(act==="clearhistory"){hs=[];put("history",[]);draw()}if(act==="clearverification"){ledger=[];rg=null;put("verification",[]);put("rolling-plan",null);draw()}if(act==="partial"){sp=!sp;put("show-partial",sp);draw()}if(["gym-owned","gym-buy","gym-clear"].includes(act)){const id=+CQ("#hhj-gymlist")?.value;if(id&&/\/gym\.php$/.test(location.pathname||"")){if(act==="gym-clear")delete vr[id];else vr[id]=act==="gym-owned"?"owned":"buy";put("gyms",vr);draw()}}if(act==="save"){cfg.adaptHistory=!!CQ("#hhj-adapt-history")?.checked;cfg.budget=Mx(0,+CQ("#hhj-budget")?.value||0);cfg.refills=!!CQ("#hhj-refills")?.checked;cfg.sleepEnabled=!!CQ("#hhj-sleepenabled")?.checked;const bed=CQ("#hhj-sleepstart")?.value,wake=CQ("#hhj-sleepend")?.value;cfg.sleepStart=validClock(bed)?bed:"22:00";cfg.sleepEnd=validClock(wake)?wake:"08:00";if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;cfg.gymBonus=Mn(200,Mx(0,+CQ("#hhj-gymbonus")?.value||0));cfg.ownedPoints=Mx(0,+CQ("#hhj-points")?.value||0);const guessed=CQ("#hhj-jump-success")?.value;cfg.jumpSuccessPct=guessed!==undefined&&St(guessed).trim()!==""&&Fi(+guessed)&&+guessed>=0&&+guessed<=100?+guessed:null;for(const [name,id] of [["xanaxOdPct","#hhj-xanax-od"],["ecstasyOdPct","#hhj-ecstasy-od"]]){const v=CQ(id)?.value;cfg[name]=v!==undefined&&St(v).trim()!==""&&Fi(+v)&&+v>=0&&+v<=100?+v:null;}cfg.odEstimateMode=CQ("#hhj-od-community")?.checked?"community":"manual";cfg.odFactionReduction=Mn(30,Mx(0,+CQ("#hhj-od-faction")?.value||0));cfg.odNightclub=!!CQ("#hhj-od-nightclub")?.checked;cfg.manualPrices=Fr(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
 [k,Mx(0,+CQ('[data-price="'+k+'"]')?.value||0)]));save()}});mount();Do.addEventListener?.("DOMContentLoaded",mount,{once:true});// Read-only full-data check while Torn is foregrounded. Mini refresh covers bars;
 // this bounded check also updates inventory, owned books and live planning inputs.
 // Persistent attempt backoff prevents API bursts when TornPDA reloads the page.
