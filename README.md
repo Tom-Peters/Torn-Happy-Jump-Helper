@@ -1,3 +1,10 @@
+## Preview v0.31.5 — verified cross-tool checklist and play-time fit
+
+- StaxxHub 3.4 combines current suggestions and verified completions across ProfitStaxx, Company Helper and Happy Jump while keeping locally checked-for-now items explicitly separate from actions completed in Torn.
+- User-selected 5/10/15/30/60-minute review sessions make equivalent-priority recommendations easier to fit in a short visit, without demoting genuine training or cooldown urgency.
+- Real Torn user activity logs may complete a currently published Xanax or points-refill recommendation **only when the same kind and planned time match**. Forecasts, energy losses, and manual checkmarks never prove that a drug/refill/gym action occurred.
+- The permanent preview URL updates to 0.31.5 with an identical immutable versioned snapshot; the stable v0.10.22 installer remains unchanged.
+
 ## Preview v0.26.0 — event-aware foreground automation
 
 - A light refresh now detects observed energy decreases, refill transitions, newly verified activity log entries and overdoses while TornPDA is visible.
