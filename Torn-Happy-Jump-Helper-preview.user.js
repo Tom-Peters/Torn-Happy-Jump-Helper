@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper (Preview)
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#preview
-// @version      0.31.4
+// @version      0.31.5
 // @description  Torn gym planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -11,7 +11,7 @@
 // @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js
 // @grant        none
 // ==/UserScript==
-/* StaxxHub v3.3 · shared Torn PDA launcher · IamEEKY · no external dependencies */
+/* StaxxHub v3.4 · shared Torn PDA launcher · IamEEKY · no external dependencies */
 (function () {
   "use strict";
   if (typeof location === "undefined" || typeof document === "undefined" ||
@@ -29,7 +29,7 @@
       '<nav class="staxx-main-tabs" aria-label="StaxxHub sections"><button type="button" data-hub-view="today" aria-pressed="true">Today</button><button type="button" data-hub-view="dashboard" aria-pressed="false">Dashboard</button><button type="button" data-hub-view="activity" aria-pressed="false">Activity</button><button type="button" data-hub-view="tools" aria-pressed="false">Tools</button><button type="button" data-hub-view="alerts" aria-pressed="false">Alerts</button><button type="button" data-hub-view="more" aria-pressed="false">More</button></nav>' +
       '<section id="staxx-hub-find" aria-label="Find Staxx tools and actions" hidden><label for="staxx-hub-find-input">FIND TOOLS, ACTIONS &amp; ALERTS</label><input id="staxx-hub-find-input" type="search" maxlength="100" autocomplete="off" spellcheck="false" placeholder="e.g. trains, stocks, gym" aria-controls="staxx-hub-find-results"><p id="staxx-hub-find-status" role="status" aria-live="polite"></p><div id="staxx-hub-find-results" role="group" aria-label="Search results"></div></section>' +
       '<div class="staxx-scroll">' +
-      '<section data-hub-section="today"><section id="staxx-hub-welcome" hidden></section><section id="staxx-hub-source-status" aria-label="Tool evidence status"></section><section id="staxx-hub-page-shortcut" aria-label="Current Torn page shortcut"></section><section id="staxx-hub-early" aria-label="Upcoming source-dated recommendations"></section><section id="staxx-hub-changes" aria-label="Changed source recommendations"></section><div class="staxx-label"><h3>BEST NEXT REVIEW</h3><span>From current tool evidence</span></div><section id="staxx-hub-best" aria-label="Best currently available review"></section><div class="staxx-label"><h3>OTHER NEXT STEPS</h3><span>Priority and estimated review time</span></div><div id="staxx-hub-task-filters" role="group" aria-label="Filter actions by urgency"></div><section id="staxx-hub-tasks" aria-label="Prioritised Torn actions"></section><div class="staxx-label"><h3>YOUR SHORTCUTS</h3><span>Learns from your taps</span></div><div id="staxx-hub-frequent"></div><div class="staxx-label"><h3>OPEN A TOOL</h3><span>One tap</span></div><div id="staxx-hub-quick-tools"></div><p class="staxx-trendnote">Marking a recommendation checked only clears your review queue for up to 4 hours. It does not complete a Torn action.</p></section>' +
+      '<section data-hub-section="today"><section id="staxx-hub-welcome" hidden></section><section id="staxx-hub-source-status" aria-label="Tool evidence status"></section><section id="staxx-hub-page-shortcut" aria-label="Current Torn page shortcut"></section><section id="staxx-hub-early" aria-label="Upcoming source-dated recommendations"></section><section id="staxx-hub-changes" aria-label="Changed source recommendations"></section><section id="staxx-hub-session" aria-label="Available play time"></section><section id="staxx-hub-checklist" aria-label="Daily verified checklist"></section><div class="staxx-label"><h3>BEST NEXT REVIEW</h3><span>From current tool evidence</span></div><section id="staxx-hub-best" aria-label="Best currently available review"></section><div class="staxx-label"><h3>OTHER NEXT STEPS</h3><span>Priority and estimated review time</span></div><div id="staxx-hub-task-filters" role="group" aria-label="Filter actions by urgency"></div><section id="staxx-hub-tasks" aria-label="Prioritised Torn actions"></section><div class="staxx-label"><h3>YOUR SHORTCUTS</h3><span>Learns from your taps</span></div><div id="staxx-hub-frequent"></div><div class="staxx-label"><h3>OPEN A TOOL</h3><span>One tap</span></div><div id="staxx-hub-quick-tools"></div><p class="staxx-trendnote">Marking a recommendation checked only clears your review queue for up to 4 hours. It does not complete a Torn action.</p></section>' +
       '<section data-hub-section="dashboard" hidden><div class="staxx-label"><h3>SUITE DASHBOARD</h3><span>All three helpers</span></div><section id="staxx-hub-daily" aria-label="Daily evidence report"></section><section id="staxx-hub-dashboard"></section></section>' +
       '<section data-hub-section="activity" hidden><div class="staxx-label"><h3>RECENT ACTIVITY</h3><button type="button" data-activity-clear>Clear history</button></div><section id="staxx-hub-activity"></section></section>' +
       '<section data-hub-section="tools" hidden><div class="staxx-label"><h3>YOUR TOOLS</h3><button type="button" data-arrange aria-pressed="false">Reorder</button></div><div id="staxx-hub-tools"></div></section>' +
@@ -177,12 +177,13 @@
     let hubView="today", expandedTaskList=false, findOpen=false, taskFilter='all';
     const activityKey='staxx-hub-activity-v1',usageKey='staxx-hub-usage-v1',reviewKey='staxx-hub-reviewed-v1';
     const observedKey='staxx-hub-action-signatures-v1',baselineKey='staxx-hub-action-baselines-v1';
-    const changeKey='staxx-hub-action-changes-v1',feedbackKey='staxx-hub-feedback-v1';
+    const changeKey='staxx-hub-action-changes-v1',feedbackKey='staxx-hub-feedback-v1',sessionKey='staxx-hub-session-minutes-v1';
     const reviewWindowMs=4*3600000;
     const validTab=/^[a-z][a-z0-9-]{0,31}$/;
     let activity=[],usage=[],reviewed=Object.create(null);
     let observedActions=Object.create(null),baselines=Object.create(null),changeFlags=Object.create(null),feedback=Object.create(null);
     let uiMode=safeRead('staxx-hub-mode-v1','simple')==='advanced'?'advanced':'simple';
+    let sessionMinutes=[5,10,15,30,60].includes(safeRead(sessionKey,0))?safeRead(sessionKey,0):0;
     const findPanel=root.querySelector('#staxx-hub-find'),findInput=root.querySelector('#staxx-hub-find-input');
     const findResults=root.querySelector('#staxx-hub-find-results'),findStatus=root.querySelector('#staxx-hub-find-status');
     function setFindOpen(value){
@@ -401,7 +402,7 @@
       return rows.sort((a,b)=>Number(a.cached)-Number(b.cached)||
         (rank[b.status]??0)-(rank[a.status]??0)||
         (Number(a.dueAt)||Infinity)-(Number(b.dueAt)||Infinity)||
-        feedbackPriority(b)-feedbackPriority(a));
+        (feedbackPriority(b)+sessionFitScore(b))-(feedbackPriority(a)+sessionFitScore(a)));
     }
     // 3.2: local advisory review queue; never interprets a check as completed gameplay.
     // 3.3: all preference and change tracking stays on this device.
@@ -417,6 +418,19 @@
     }
     function feedbackVote(item){return feedback[actionKey(item.owner,item.id)]?.vote||0;}
     function feedbackPriority(item){return Number(item.priority||0)+feedbackVote(item)*10;}
+    function sessionFitScore(item){
+      if(!sessionMinutes||!Number.isInteger(item.reviewMinutes))return 0;
+      return item.reviewMinutes<=sessionMinutes?8:-8;
+    }
+    function fitsSession(item){
+      return sessionMinutes>0&&!item.cached&&Number.isInteger(item.reviewMinutes)&&item.reviewMinutes>=1&&item.reviewMinutes<=sessionMinutes;
+    }
+    function completionFor(item){
+      if(item.cached||!active[item.owner])return null;
+      const signature=shortHash(reviewSignature(item)),today=ukDay(Date.now());
+      return activity.find(e=>e.source==='api'&&e.tool===item.owner&&e.completedActionId===item.id&&
+        e.completedSig===signature&&ukDay(e.at)===today)||null;
+    }
     function noteObservedActions(id,items,updated){
       if(!active[id]||!Number.isFinite(updated)||updated>Date.now()+60000||
         Date.now()-updated>freshnessMs(id))return;
@@ -476,7 +490,7 @@
         host.append(cell);
       }
     }
-    function pendingActions(){return taskRowsV25().filter(x=>!isReviewed(x));}
+    function pendingActions(){return taskRowsV25().filter(x=>!isReviewed(x)&&!completionFor(x));}
     function findCatalog(){
       const rows=[],hiddenAlertIds=new Set();
       for(const e of entries){
@@ -705,7 +719,7 @@
     }
     function renderEarlyWarnings(){
       const host=root.querySelector('#staxx-hub-early');if(!host)return;host.replaceChildren();
-      const now=Date.now(),soon=taskRowsV25().filter(x=>!x.cached&&active[x.owner]&&
+      const now=Date.now(),soon=taskRowsV25().filter(x=>!x.cached&&active[x.owner]&&!completionFor(x)&&
         ['urgent','now','soon'].includes(x.status)&&Number.isFinite(x.dueAt)&&
         x.dueAt>now&&x.dueAt<=now+3600000).slice(0,3);
       if(!soon.length)return;
@@ -719,7 +733,7 @@
     }
     function renderChangedActions(){
       const host=root.querySelector('#staxx-hub-changes');if(!host)return;host.replaceChildren();
-      const changed=taskRowsV25().filter(x=>!x.cached&&active[x.owner]&&flagOf(x)).slice(0,4);
+      const changed=taskRowsV25().filter(x=>!x.cached&&active[x.owner]&&!completionFor(x)&&flagOf(x)).slice(0,4);
       if(!changed.length)return;
       const panel=node('div','staxx-intel');panel.append(node('strong','','NEW OR UPDATED RECOMMENDATIONS'));
       for(const item of changed){
@@ -813,20 +827,56 @@
       }
       if(!shown)host.append(node('p','staxx-empty','No source-backed events recorded yet. Activity appears after a helper observes a confirmed log, snapshot change, or local record.'));
     }
+    function renderSessionAndChecklist(){
+      const picker=root.querySelector('#staxx-hub-session'),host=root.querySelector('#staxx-hub-checklist');
+      if(picker){
+        picker.replaceChildren();
+        const card=node('div','staxx-intel');
+        card.append(node('strong','','PLAY TIME · PRIORITISE THE NEXT REVIEW'));
+        const options=node('div','staxx-session-options');
+        for(const value of [0,5,10,15,30,60]){
+          const b=node('button','',value?value+' min':'Any');
+          b.type='button';b.dataset.sessionMinutes=String(value);
+          b.setAttribute('aria-pressed',String(sessionMinutes===value));options.append(b);
+        }
+        card.append(options,node('p','staxx-intel-foot',
+          'Only source-estimated review time is used. Urgency and verified deadlines always come first; gameplay duration is not predicted.'));
+        picker.append(card);
+      }
+      if(host){
+        host.replaceChildren();
+        const all=taskRowsV25();
+        const fresh=all.filter(x=>!x.cached&&active[x.owner]);
+        const completed=fresh.filter(x=>completionFor(x));
+        const pending=fresh.filter(x=>!completionFor(x)&&!isReviewed(x));
+        const checked=fresh.filter(x=>!completionFor(x)&&isReviewed(x));
+        const card=node('div','staxx-intel');
+        card.append(node('strong','','DAILY CHECKLIST · '+ukDay(Date.now())),
+          node('p','','Pending '+pending.length+' · Verified complete '+completed.length+' · Checked (not complete) '+checked.length));
+        for(const item of completed.slice(0,4)){
+          const done=completionFor(item),line=node('p','staxx-completed','✓ '+item.tool+' · '+item.title);
+          card.append(line,node('small','staxx-intel-foot','Matched Torn API event · '+new Date(done.at).toLocaleTimeString('en-GB')));
+        }
+        card.append(node('p','staxx-intel-foot',
+          'Only exact matching source-published Torn API events can close a recommendation today. Unverified or changed tasks remain pending.'));
+        host.append(card);
+      }
+    }
     function renderTasks(){
       if(!taskList)return;
+      renderSessionAndChecklist();
       taskList.replaceChildren();
       renderBest();renderFrequent();renderSourceStatus();renderPageShortcut();renderEarlyWarnings();renderChangedActions();
       const filters=root.querySelector('#staxx-hub-task-filters');
       const all=taskRowsV25();
       if(filters){
         filters.replaceChildren();
-        for(const [value,label] of [['all','Pending'],['now','Do now'],['soon','Soon'],['optional','Optional'],['reviewed','Checked'],['changed','Changed']]){
-          const count=all.filter(x=>value==='reviewed'?isReviewed(x):value==='changed'?Boolean(flagOf(x)):!isReviewed(x)&&(value==='all'||categoryFor(x)===value)).length;
+        for(const [value,label] of [['all','Pending'],['now','Do now'],['soon','Soon'],['optional','fit','Fits time'],['reviewed','Checked'],['changed','Changed']]){
+          const count=all.filter(x=>!completionFor(x)&&(value==='reviewed'?isReviewed(x):value==='changed'?Boolean(flagOf(x)):!isReviewed(x)&&(value==='all'||value==='fit'&&fitsSession(x)||categoryFor(x)===value))).length;
           const btn=node('button','',label+' · '+count);btn.type='button';btn.dataset.taskFilter=value;btn.setAttribute('aria-pressed',String(taskFilter===value));filters.append(btn);
         }
       }
-      const rows=all.filter(x=>taskFilter==='reviewed'?isReviewed(x):taskFilter==='changed'?Boolean(flagOf(x)):!isReviewed(x)&&(taskFilter==='all'||categoryFor(x)===taskFilter));
+      const rows=all.filter(x=>!completionFor(x)&&(taskFilter==='reviewed'?isReviewed(x):taskFilter==='changed'?Boolean(flagOf(x)):!isReviewed(x)&&(taskFilter==='all'||taskFilter==='fit'&&fitsSession(x)||categoryFor(x)===taskFilter)));
       if(taskFilter==='reviewed')taskList.append(node('p','staxx-queue-info','Checked items return after 4 hours, or immediately if their reported evidence changes. This is not confirmation of a Torn action.'));
       for(const item of rows.slice(0,(expandedTaskList||uiMode==='advanced')?6:2)){
         const btn=node("button","staxx-task "+(!item.cached&&item.status==="urgent"?"urgent":!item.cached&&item.status==="soon"?"soon":""));
@@ -846,7 +896,7 @@
           checked.dataset.reviewUndo=taskFilter==='reviewed'?'1':'0';taskList.append(checked);
         }
       }
-      if(!rows.length)taskList.append(node('p','staxx-empty',taskFilter==='reviewed'?'No checked recommendations.':taskFilter==='changed'?'No new or updated recommendations since the last marked review.':'Nothing pending in this category. Open a tool for new evidence.'));
+      if(!rows.length)taskList.append(node('p','staxx-empty',taskFilter==='reviewed'?'No checked recommendations.':taskFilter==='fit'?'No fresh recommendations have an estimated review time within this session.':taskFilter==='changed'?'No new or updated recommendations since the last marked review.':'Nothing pending in this category. Open a tool for new evidence.'));
       if(rows.length>2&&uiMode!=='advanced'){
         const more=node("button","staxx-more-tasks",expandedTaskList?"Show fewer actions":"Show "+Math.min(rows.length-2,4)+" more actions");
         more.type="button";more.dataset.toggleTasks="1";taskList.append(more);
@@ -934,6 +984,13 @@
     root.addEventListener("click",e=>{
       const b=e.target.closest("button");if(!b)return;
       if(b.dataset.hubView){setFindOpen(false);switchHubView(b.dataset.hubView);return;}
+      if(b.dataset.sessionMinutes!==undefined){
+        const minutes=Number(b.dataset.sessionMinutes);
+        if(![0,5,10,15,30,60].includes(minutes))return;
+        sessionMinutes=minutes;saveLocal(sessionKey,minutes);
+        document.dispatchEvent(new CustomEvent('staxx:time-budget',{detail:{minutes}}));
+        renderTasks();return;
+      }
       if(b.dataset.taskFilter){taskFilter=b.dataset.taskFilter;expandedTaskList=false;renderTasks();return;}
       if(b.hasAttribute('data-change-clear')){clearChangeFlags();return;}
       if(b.hasAttribute('data-vote-reset')){feedback=Object.create(null);saveLocal(feedbackKey,feedback);renderTasks();return;}
@@ -1120,13 +1177,18 @@
         if(activity.some(x=>x.tool===tool&&x.id===item.id))continue;
         const routes=sectionsByTool[tool]||entries.find(x=>x.id===tool)?.sections||[];
         const section=routes.some(x=>x[0]===item.section)?item.section:null;
+        const action=typeof item.completedActionId==='string'&&/^[a-z][a-z0-9-]{0,63}$/.test(item.completedActionId)&&
+          item.source==='api'&&ukDay(at)===ukDay(now)&&active[tool]?
+          actionSets[tool]?.items?.find(x=>x.id===item.completedActionId):null;
+        const complete=action&&!actionSets[tool]?.cached&&now-Number(actionSets[tool].updated)<=freshnessMs(tool);
         activity.push({tool,id:item.id,at,source:item.source,
           title:String(item.title||'Observed update').slice(0,100),
-          detail:String(item.detail||'').slice(0,180),section});
+          detail:String(item.detail||'').slice(0,180),section,
+          ...(complete?{completedActionId:action.id,completedSig:shortHash(reviewSignature(action))}:{})});
         changed=true;
       }
       if(changed){activity=activity.filter(x=>x.at>Date.now()-30*86400000)
-        .sort((a,b)=>b.at-a.at).slice(0,120);saveLocal(activityKey,activity);renderActivity();renderDailyReport();}
+        .sort((a,b)=>b.at-a.at).slice(0,120);saveLocal(activityKey,activity);renderActivity();renderDailyReport();renderTasks();}
     });
     document.addEventListener("staxx:summary",e=>{
       const d=e.detail||{},id=d.id;if(!idOk(id)||!entries.some(x=>x.id===id))return;
@@ -1141,6 +1203,7 @@
     window.addEventListener?.("resize",renderContext);
     window.setInterval?.(()=>{if(!document.hidden){renderContext();if(expanded)renderPageShortcut();}},15000);
     window.setInterval?.(()=>{if(!document.hidden&&expanded){renderEarlyWarnings();if(hubView==='dashboard')renderDailyReport();}},60000);
+    document.addEventListener('staxx:time-budget-request',()=>document.dispatchEvent(new CustomEvent('staxx:time-budget',{detail:{minutes:sessionMinutes}})));
     // Older v1 notifications cannot be trusted for dismiss-state comparisons.
     render();
     document.dispatchEvent(new CustomEvent("staxx:ping"));
@@ -1153,7 +1216,7 @@
 
 
 
-(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.31.4";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
+(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.31.5";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Fi(n)?Ro(n).toLocaleString("en-US"):"—";const cash=n=>Fi(n)?"$"+fmt(n):"Price unknown";const esc=x=>St(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const cu=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Ce((t-Tm()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Fl(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,jumpSuccessPct:null,xanaxOdPct:null,ecstasyOdPct:null,odEstimateMode:"community",odFactionReduction:0,odNightclub:false,manualPrices:{},sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00",adaptHistory:true};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lp=null,sm="auto",hs=get("history",[]),vr=get("gyms",{}),ledger=get("verification",[]),rg=get("rolling-plan",null),sp=get("show-partial",true),an=get("action-notes",[]),watch=get("watch",null),rc=get("recovery",null),start=Tm()/1000,awakeUntil=+get("awake-until",0)||0,al=get("gym-api-logs",[]),lc=+get("gym-log-checked-13",0)||0,ls="Not checked",acts=get("verified-actions",[]),actChecked=0,statSamples=get("stat-samples",[]),activityCoverage="Not checked";const rSt=(raw,t=Tm()/1000)=>acts.some(x=>x.kind==="REFILL"&&day(x.t)===day(t))?"used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>rSt(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Fr(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}function mins(v,back){return validClock(v)?Nu(v.slice(0,2))*60+Nu(v.slice(3)):back}let ukYear=0,ukStart=0,ukEnd=0;function slp(t){if(!cfg.sleepEnabled||t>=awakeUntil-3600&&t<awakeUntil)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),y=d.getUTCFullYear();if(y!==ukYear){ ukYear=y; const sunday=month=>{const last=new Date(Ut(y,month+1,0));return last.getUTCDate()-last.getUTCDay()}; ukStart=Ut(y,2,sunday(2),1)/1000;ukEnd=Ut(y,9,sunday(9),1)/1000;}const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;return a<b?m>=a&&m<b:m>=a||m<b;}function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" UK time":"Disabled"}
 function gymDots(raw){const dots=Nu(raw);if(!Fi(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}const perkRows=()=>En(data.perks?.perks||{}).flatMap(([type,entries])=>
 (Ar(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));const bonus=stat=>perkRows().reduce((n,r)=>{const d=r.description, p=+(d.match(/(\d+(?:\.\d+)?)\s*%/)||[])[1];const scoped=d.match(/\b(strength|speed|defen[cs]e|dexterity)\b/i)?.[1]?.toLowerCase().replace("defence","defense");return n+(p>0&&p<=200&&/gym.{0,12}gains?|gains?.{0,12}gym/i.test(d)&&!/decreas|reduc|lower|penalty/i.test(d)&&(!scoped||scoped===stat)?p/100:0);},1+Mx(0,+cfg.gymBonus||0)/100);function gain(e,h,s,dots,cost=10,m=1){let steps=Fl(e/cost),sum=0,ss=s,hh=h;while(steps-->0){const g=Mx(0,((3.480061091e-7*Math.log(hh+250)+3.091619094e-6)*ss+6.82775184551527e-5*(hh+250)-0.0301431777)*dots*cost*m);sum+=g;ss+=g;hh=Mx(0,hh-cost*0.5)}return sum;}function basket(item,n,stock=0){const buy=Mx(0,n-stock);if(!buy)return 0;const rows=[...(prices[item]||[])].filter(x=>Fi(+x.price)&&+x.price>0&&+x.amount>0).sort((a,b)=>a.price-b.price);let remaining=buy,total=0;for(const r of rows){const take=Mn(remaining,r.amount);remaining-=take;total+=take*r.price;if(!remaining)return total}const manual=+cfg.manualPrices?.[item];return manual>0&&Fi(manual)?total+remaining*manual:Infinity;}
@@ -1955,7 +2018,11 @@ Ab(delta[stat]/n-single)/single<=0.12;ledger.push({t:now,from:rg.t,stat,forecast
   if(newActions.length)Do.dispatchEvent(new CustomEvent('staxx:activity',{detail:{id:'happy',events:newActions.slice(-12).map(a=>({
     id:'action-'+St(a.id).replace(/[^a-z0-9_.:-]/gi,'').slice(0,74),at:a.t*1000,
     source:'api',section:'progress',title:a.kind==='REFILL'?'Points energy refill confirmed':a.kind==='XANAX'?'Xanax use confirmed':'Ecstasy use confirmed',
-    detail:'Source: Torn user activity log · No planned action is marked complete without a matching log'
+    detail:'Source: Torn user activity log · No planned action is marked complete without a matching log',
+    // A verified event can close an existing Hub task only when its kind and planned time match.
+    ...((a.kind==='XANAX'||a.kind==='REFILL')&&(aPl()?.events||[]).some(x=>
+      x.kind===a.kind&&Math.abs(x.t-a.t)<=900&&!slp(x.t))?
+      {completedActionId:'event-'+a.kind.toLowerCase()}:{} )
   }))}}));
   actChecked=now;
   activityCoverage=truncated?"Partial ("+pages+" pages; older actions not verified)":"Read "+pages+" page(s) at "+cu(now);
