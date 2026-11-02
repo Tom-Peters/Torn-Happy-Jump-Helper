@@ -1,7 +1,7 @@
 "use strict";
 const test=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const source=fs.readFileSync(path.join(__dirname,"../Torn-Happy-Jump-Helper-preview.user.js"),"utf8");
-const snapshot=fs.readFileSync(path.join(__dirname,"../Torn-Happy-Jump-Helper-v0.31.4-preview.user.js"),"utf8");
+const snapshot=fs.readFileSync(path.join(__dirname,"../Torn-Happy-Jump-Helper-v0.31.5-preview.user.js"),"utf8");
 const a=source.indexOf("async function miniRefresh(){"),b=source.indexOf("function mount(){",a);
 assert.ok(a>=0&&b>a,"Foreground mini refresh remains available");
 const mini=source.slice(a,b);
