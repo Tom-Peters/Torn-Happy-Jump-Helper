@@ -7,10 +7,10 @@ test('Happy Jump has a visible Find control and safe direct section routes',()=>
  assert.match(preview,/new CustomEvent\("staxx:find"\)/);
  assert.match(preview,/e\.detail\.section/);
  assert.match(preview,/\["today","alerts","compare","plan","supplies","gyms","perks","progress","lab","settings","diagnostics"\]/);
- assert.match(preview,/\/\/ @version\s+0\.31\.1/);
+ assert.match(preview,/\/\/ @version\s+0\.31\.2/);
 });
 test('Happy Jump latest preview matches the immutable snapshot without modifying stable',()=>{
- assert.equal(preview,read('Torn-Happy-Jump-Helper-v0.31.1-preview.user.js'));
+ assert.equal(preview,read('Torn-Happy-Jump-Helper-v0.31.2-preview.user.js'));
  assert.match(read('Torn-Happy-Jump-Helper.user.js'),/\/\/ @version\s+0\.10\.22/);
 });
 test('Find does not introduce game-state submissions',()=>{
