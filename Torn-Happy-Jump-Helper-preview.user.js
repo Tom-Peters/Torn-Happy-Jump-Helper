@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper (Preview)
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#preview
-// @version      0.28.0
+// @version      0.29.0
 // @description  Torn gym planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -11,7 +11,7 @@
 // @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js
 // @grant        none
 // ==/UserScript==
-/* StaxxHub v2.8 · shared Torn PDA launcher · IamEEKY · no external dependencies */
+/* StaxxHub v2.9 · shared Torn PDA launcher · IamEEKY · no external dependencies */
 (function () {
   "use strict";
   if (typeof location === "undefined" || typeof document === "undefined" ||
@@ -28,11 +28,12 @@
       '<header class="staxx-head"><div><strong>Staxx<span>Hub</span></strong><small>YOUR TORN COMMAND CENTRE</small></div><button type="button" data-hub-close aria-label="Close sidebar">×</button></header>' +
       '<nav class="staxx-main-tabs" aria-label="StaxxHub sections"><button type="button" data-hub-view="today" aria-pressed="true">Today</button><button type="button" data-hub-view="tools" aria-pressed="false">Tools</button><button type="button" data-hub-view="alerts" aria-pressed="false">Alerts</button><button type="button" data-hub-view="more" aria-pressed="false">More</button></nav>' +
       '<div class="staxx-scroll">' +
-      '<section data-hub-section="today"><div class="staxx-label"><h3>WHAT TO DO NEXT</h3><span>Highest priority first</span></div><section id="staxx-hub-tasks" aria-label="Prioritised Torn actions"></section><div class="staxx-label"><h3>OPEN A TOOL</h3><span>One tap</span></div><div id="staxx-hub-quick-tools"></div><p class="staxx-trendnote">Recommendations update from verified information while TornPDA is open.</p></section>' +
+      '<section data-hub-section="today"><section id="staxx-hub-welcome" hidden></section><div class="staxx-label"><h3>WHAT TO DO NEXT</h3><span>Highest priority first</span></div><section id="staxx-hub-tasks" aria-label="Prioritised Torn actions"></section><div class="staxx-label"><h3>OPEN A TOOL</h3><span>One tap</span></div><div id="staxx-hub-quick-tools"></div><p class="staxx-trendnote">Recommendations update from verified information while TornPDA is open.</p></section>' +
       '<section data-hub-section="tools" hidden><div class="staxx-label"><h3>YOUR TOOLS</h3><button type="button" data-arrange aria-pressed="false">Reorder</button></div><div id="staxx-hub-tools"></div></section>' +
       '<section data-hub-section="alerts" hidden><div class="staxx-label"><h3>NOTIFICATIONS</h3><span id="staxx-hub-total"></span></div><div id="staxx-hub-alerts"></div></section>' +
       '<section data-hub-section="more" hidden><button class="staxx-overview-switch" type="button" data-overview>▦ &nbsp; Daily dashboard · all tools</button>' +
       '<section id="staxx-hub-overview" hidden></section><button class="staxx-overview-switch" type="button" data-diagnostics>⚙ &nbsp; Tool diagnostics</button><section id="staxx-hub-diagnostics" hidden></section>' +
+      '<button class="staxx-context-control" type="button" data-hub-mode>Display: Simple</button><button class="staxx-context-control" type="button" data-hub-guide>Show getting-started guide</button>' +
       '<button class="staxx-context-control" type="button" data-context-toggle>On-page guidance: On</button><p class="staxx-foot">Alerts use last known data · Drag the S tab vertically to reposition · No gameplay actions are submitted automatically</p></section>' +
       '</div></aside>';
     const css = document.createElement("style");
@@ -93,6 +94,7 @@
       '#staxx-hub-drawer .staxx-more-tasks{width:100%;margin:2px 0 8px;padding:9px;border:1px solid #376a8c;background:#0e3452;border-radius:9px;color:#9edfff;font-size:11px;font-weight:800}',
       '#staxx-hub-drawer [data-hub-section]>.staxx-label:first-child{margin-top:2px}'
     ].join("");
+    css.textContent += '#staxx-hub-welcome{border:1px solid #367194;background:#103552;border-radius:11px;padding:11px;margin:0 0 12px}#staxx-hub-welcome strong{display:block;color:#9ce7ff;font-size:13px}#staxx-hub-welcome p{font-size:11px;line-height:1.45;color:#c4dfed;margin:7px 0}#staxx-hub-welcome button{background:#0879bd;border:1px solid #64c6ea;border-radius:8px;padding:8px 10px;min-height:36px;font-size:11px;font-weight:800;width:100%}';
     document.documentElement.append(css, root);
 
     const entries = [
@@ -108,6 +110,8 @@
     const overview=root.querySelector("#staxx-hub-overview"),overviewButton=root.querySelector("[data-overview]"),taskList=root.querySelector("#staxx-hub-tasks"),diagnostics=root.querySelector("#staxx-hub-diagnostics"),diagnosticButton=root.querySelector("[data-diagnostics]");
     let expanded=false, panelOpen=false, overviewShown=false, diagnosticsShown=false, moving=null, suppressClickUntil=0;
     let hubView="today", expandedTaskList=false;
+    let uiMode=safeRead('staxx-hub-mode-v1','simple')==='advanced'?'advanced':'simple';
+    function publishMode(){document.dispatchEvent(new CustomEvent('staxx:mode',{detail:{mode:uiMode}}));}
     function switchHubView(view){
       if(!["today","tools","alerts","more"].includes(view))return;
       hubView=view;
@@ -389,11 +393,19 @@
       bar.append(heading,message,button,sub);
       anchor.insertAdjacentElement("afterend",bar);
     }
+    function renderWelcome(){
+      const host=root.querySelector('#staxx-hub-welcome');if(!host)return;
+      const done=safeRead('staxx-hub-onboarded-v1',false)===true;
+      host.hidden=done;host.replaceChildren();if(done)return;
+      host.append(node('strong','','Welcome to StaxxHub'),node('p','','1. Today shows your next verified action. 2. Tools opens each installed helper. 3. Alerts takes you to the exact issue.'));
+      host.append(node('p','','Simple mode keeps the important tabs visible; Advanced restores every section. You can change this under More.'));
+      const finish=node('button','','Got it · Start using Staxx');finish.type='button';finish.dataset.hubGuideDone='1';host.append(finish);
+    }
     function renderTasks(){
       if(!taskList)return;
       taskList.replaceChildren();
       const rows=taskRowsV25();
-      for(const item of rows.slice(0,expandedTaskList?6:2)){
+      for(const item of rows.slice(0,(expandedTaskList||uiMode==='advanced')?6:2)){
         const btn=node("button","staxx-task "+(!item.cached&&item.status==="urgent"?"urgent":!item.cached&&item.status==="soon"?"soon":""));
         btn.type="button";btn.dataset.openAlertTool=item.owner;btn.dataset.openAlertId=item.id;
         btn.append(node("span","staxx-step",(item.cached?"LAST OBSERVED · ":"")+(item.status==="urgent"?"ACT NOW":item.status==="now"?"DO NEXT":item.status==="soon"?"UPCOMING":item.status==="review"?"REVIEW":"OPTIONAL")+" · "+item.tool),
@@ -404,13 +416,15 @@
         taskList.append(btn);
       }
       if(!rows.length)taskList.append(node("p","staxx-empty","No verified next steps yet. Open a tool to refresh its data."));
-      if(rows.length>2){
+      if(rows.length>2&&uiMode!=='advanced'){
         const more=node("button","staxx-more-tasks",expandedTaskList?"Show fewer actions":"Show "+Math.min(rows.length-2,4)+" more actions");
         more.type="button";more.dataset.toggleTasks="1";taskList.append(more);
       }
-      if(rows.length>6&&expandedTaskList)taskList.append(node("p","staxx-foot",String(rows.length-6)+" further recommendations inside your tools"));
+      if(rows.length>6&&(expandedTaskList||uiMode==='advanced'))taskList.append(node("p","staxx-foot",String(rows.length-6)+" further recommendations inside your tools"));
     }
     function render(){
+      renderWelcome();
+      const modeButton=root.querySelector('[data-hub-mode]');if(modeButton)modeButton.textContent='Display: '+(uiMode==='simple'?'Simple':'Advanced')+' · change';
       tools.replaceChildren();alerts.replaceChildren();
       const quick=root.querySelector("#staxx-hub-quick-tools");
       if(quick)quick.replaceChildren();
@@ -486,6 +500,9 @@
     root.addEventListener("click",e=>{
       const b=e.target.closest("button");if(!b)return;
       if(b.dataset.hubView){switchHubView(b.dataset.hubView);return;}
+      if(b.dataset.hubGuideDone){saveLocal('staxx-hub-onboarded-v1',true);renderWelcome();return;}
+      if(b.dataset.hubGuide){saveLocal('staxx-hub-onboarded-v1',false);switchHubView('today');renderWelcome();return;}
+      if(b.dataset.hubMode){uiMode=uiMode==='simple'?'advanced':'simple';saveLocal('staxx-hub-mode-v1',uiMode);expandedTaskList=false;publishMode();render();return;}
       if(b.dataset.toggleTasks){expandedTaskList=!expandedTaskList;renderTasks();return;}
       if(b.dataset.contextToggle!==undefined){saveLocal("staxx-hub-context-v1",!contextEnabled());renderContext();return;}
       if(b.dataset.dismissStaxx){const id=b.dataset.dismissStaxx,n=notices[id];if(n){controls[id]={...controls[id],dismissed:n.fingerprint,snoozeUntil:0};saveLocal("staxx-hub-alert-control-"+id,controls[id]);render();}return;}
@@ -551,6 +568,7 @@
       else{openPanels.delete(e.detail.id);panelOpen=openPanels.size>0;launcherVisibility();}
       renderContext();
     });
+    document.addEventListener('staxx:mode',e=>{const m=e.detail?.mode;if((m==='simple'||m==='advanced')&&m!==uiMode){uiMode=m;saveLocal('staxx-hub-mode-v1',m);expandedTaskList=false;render();}});
     document.addEventListener("staxx:register",e=>{
       const d=e.detail||{},id=d.id;if(!idOk(id))return;
       let entry=entries.find(x=>x.id===id);
@@ -1513,14 +1531,17 @@ function hjDiagnosticsV200(){
 }
 
 const hjScrollV190=Object.create(null);let lastHjTabV190=null;
+let hjTabsExpanded=false;const simpleHjTabs=new Set(['today','alerts','plan','progress']);
 const labels=[["today","Today"],["alerts","Alerts"],["compare","Compare"],["plan","Schedule"],["supplies","Supplies"],["gyms","Gyms"],["perks","Perks & books"],["progress","Progress"],["lab","Upgrades"],["settings","Settings"],["diagnostics","Diagnostics"]];function draw(){if(!opened)return;
+let simpleHjMode=true;try{simpleHjMode=JSON.parse(localStorage.getItem('staxx-hub-mode-v1')||'"simple"')!=='advanced';}catch(_){}
+const shownHjLabels=!simpleHjMode||hjTabsExpanded?labels:labels.filter(([k])=>simpleHjTabs.has(k)||k===tab);
 const before=ct.querySelector('.tabs'),navPosition=before?.scrollLeft||0;
 if(lastHjTabV190)hjScrollV190[lastHjTabV190]=ct.scrollTop||0;
 const active=Do.activeElement,activeField=active&&ct.contains(active)&&/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)?active:null;
 const edited=activeField?{id:activeField.id,fields:[...ct.querySelectorAll('input,textarea,select')].filter(x=>x.id||x.name).map(x=>({id:x.id,name:x.name,value:x.value,checked:x.type==='checkbox'?x.checked:null})),tab:lastHjTabV190}:null;
 const openedDetails=[...ct.querySelectorAll('details')].map((x,i)=>x.open?i:-1).filter(i=>i>=0);
-try{ct.innerHTML='<nav class="tabs">'+labels.map(([k,v])=>
-'<button class="'+(k===tab?'on':'')+'" data-act="tab" data-val="'+k+'">'+v+'</button>').join("")+'</nav>'+(tab==="today"?today():tab==="alerts"?alertsView():tab==="compare"?compare():tab==="plan"?plan():
+try{ct.innerHTML='<nav class="tabs" aria-label="Happy Jump sections">'+shownHjLabels.map(([k,v])=>
+'<button class="'+(k===tab?'on':'')+'" data-act="tab" data-val="'+k+'">'+v+'</button>').join("")+(simpleHjMode?'<button data-act="staxx-more-tabs" aria-expanded="'+hjTabsExpanded+'">'+(hjTabsExpanded?'Less':'More ▾')+'</button>':'')+'</nav>'+(tab==="today"?today():tab==="alerts"?alertsView():tab==="compare"?compare():tab==="plan"?plan():
 tab==="supplies"?supplies():tab==="gyms"?gyms():tab==="perks"?perks():tab==="progress"?progress():tab==="lab"?lab():tab==="diagnostics"?hjDiagnosticsV200():settings())+'<p class="sub">IamEEKY · Forecast only · No automated Torn actions · v'+VER+'</p>';}catch(e){ct.innerHTML='<section class="card"><h3>Panel recovery</h3><p>Rendering failed: '+esc(e.message)+'</p><button data-act="refresh">Retry refresh</button></section>';}const sameTab=lastHjTabV190===tab;lastHjTabV190=tab;
 ct.scrollTop=hjScrollV190[tab]||0;
 if(sameTab){for(const [i,x] of [...ct.querySelectorAll('details')].entries())if(openedDetails.includes(i))x.open=true;}
@@ -1540,9 +1561,10 @@ Do.addEventListener("staxx:diagnostics-request",()=>{
  if(opened){if(!updated||Tm()-updated>120000)void refresh();}
  else if(Tm()/1000-miniLast>=60)void miniRefresh();
 });
+Do.addEventListener("staxx:mode",()=>{hjTabsExpanded=false;if(opened)draw();});
 Do.addEventListener("staxx:ping",()=>Do.dispatchEvent(new CustomEvent("staxx:register",{detail:{id:"happy",label:"Happy Jump",icon:"HJ",desc:"Observed training · Schedule · Recovery",trendMetric:"24h projected gains",freshnessMs:900000}})));
 Do.dispatchEvent(new CustomEvent("staxx:register",{detail:{id:"happy",label:"Happy Jump",icon:"HJ",desc:"Observed training · Schedule · Recovery",trendMetric:"24h projected gains",freshnessMs:900000}}));
-button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";sLa(!opened);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:opened}}));if(opened){draw();return refresh()}badge()});ui.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;const act=b.dataset.act,val=b.dataset.val;if(act==="close"){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge()}if(act==="refresh")refresh();if(act==="diag-check"){Do.dispatchEvent(new CustomEvent("staxx:ping"));Do.dispatchEvent(new CustomEvent("staxx:diagnostics-request"));draw()}if(act==="diag-copy"){const text=JSON.stringify(safeHjDiagnosticsV200(),null,2);if(Wi.navigator?.clipboard?.writeText)Wi.navigator.clipboard.writeText(text).catch(()=>{});else draw()}if(act==="open-torn"){if(["/gym.php","/item.php","/points.php"].includes(val))location.assign(location.origin+val);return;}if(act==="od-report"){if(noteOverdose(val)){draw();refresh()}}if(act==="od-label"){if(labelLastOD(val))draw()}if(act==="od-clear"){odClearPending=true;draw()}if(act==="od-cancel-clear"){odClearPending=false;draw()}if(act==="od-confirm-clear"){if(odClearPending&&reportedOverdose()){clearOverdose();draw();refresh()}}if(act==="tab"){tab=val;draw()}if(act==="stat"){cfg.stat=val;sm="auto";save()}if(act==="mode"){cfg.mode=val;sm="auto";save()}if(act==="choose"){sm=val;tab="plan";draw()}if(act==="optimizer-choose"){const [method,flag]=St(val||"").split(":");const r=optimizerResults();if(r.scenarios.some(x=>x.feasible&&x.method===method&&x.refills===(flag==="1"))){cfg.refills=flag==="1";cfg.mode="training";sm=method;tab="plan";save()}}if(act==="choose-supply"){sm=val;draw()}if(act==="horizon"){cfg.horizon=+val;save()}if(act==="lab-happy"){put("lab-happy",+val);draw()}if(act==="lab-save"){for(const [key,id] of [["lab-happy","lab-happy"],["lab-property-cost","lab-property-cost"],["lab-can-energy","lab-can-energy"],["lab-cans-per-day","lab-cans-per-day"],["lab-can-mult","lab-can-mult"],["lab-can-price","lab-can-price"]]){const input=CQ("#"+id);if(input)put(key,Mx(0,+input.value||0))}draw()}if(act==="awake-hour"||act==="awake-off"){awakeUntil=act==="awake-hour"?Tm()/1000+3600:0;put("awake-until",awakeUntil);lp=plans();draw()}if(act==="scan-logs")scanGym(true);if(act==="clearhistory"){hs=[];put("history",[]);draw()}if(act==="clearverification"){ledger=[];rg=null;put("verification",[]);put("rolling-plan",null);draw()}if(act==="partial"){sp=!sp;put("show-partial",sp);draw()}if(["gym-owned","gym-buy","gym-clear"].includes(act)){const id=+CQ("#hhj-gymlist")?.value;if(id&&/\/gym\.php$/.test(location.pathname||"")){if(act==="gym-clear")delete vr[id];else vr[id]=act==="gym-owned"?"owned":"buy";put("gyms",vr);draw()}}if(act==="save"){cfg.adaptHistory=!!CQ("#hhj-adapt-history")?.checked;cfg.budget=Mx(0,+CQ("#hhj-budget")?.value||0);cfg.refills=!!CQ("#hhj-refills")?.checked;cfg.sleepEnabled=!!CQ("#hhj-sleepenabled")?.checked;const bed=CQ("#hhj-sleepstart")?.value,wake=CQ("#hhj-sleepend")?.value;cfg.sleepStart=validClock(bed)?bed:"22:00";cfg.sleepEnd=validClock(wake)?wake:"08:00";if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;cfg.gymBonus=Mn(200,Mx(0,+CQ("#hhj-gymbonus")?.value||0));cfg.ownedPoints=Mx(0,+CQ("#hhj-points")?.value||0);const guessed=CQ("#hhj-jump-success")?.value;cfg.jumpSuccessPct=guessed!==undefined&&St(guessed).trim()!==""&&Fi(+guessed)&&+guessed>=0&&+guessed<=100?+guessed:null;for(const [name,id] of [["xanaxOdPct","#hhj-xanax-od"],["ecstasyOdPct","#hhj-ecstasy-od"]]){const v=CQ(id)?.value;cfg[name]=v!==undefined&&St(v).trim()!==""&&Fi(+v)&&+v>=0&&+v<=100?+v:null;}cfg.odEstimateMode=CQ("#hhj-od-community")?.checked?"community":"manual";cfg.odFactionReduction=Mn(30,Mx(0,+CQ("#hhj-od-faction")?.value||0));cfg.odNightclub=!!CQ("#hhj-od-nightclub")?.checked;cfg.manualPrices=Fr(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
+button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";sLa(!opened);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:opened}}));if(opened){draw();return refresh()}badge()});ui.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;const act=b.dataset.act,val=b.dataset.val;if(act==="staxx-more-tabs"){hjTabsExpanded=!hjTabsExpanded;draw();return;}if(act==="close"){opened=false;ui.style.display="none";sLa(true);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:false}}));badge()}if(act==="refresh")refresh();if(act==="diag-check"){Do.dispatchEvent(new CustomEvent("staxx:ping"));Do.dispatchEvent(new CustomEvent("staxx:diagnostics-request"));draw()}if(act==="diag-copy"){const text=JSON.stringify(safeHjDiagnosticsV200(),null,2);if(Wi.navigator?.clipboard?.writeText)Wi.navigator.clipboard.writeText(text).catch(()=>{});else draw()}if(act==="open-torn"){if(["/gym.php","/item.php","/points.php"].includes(val))location.assign(location.origin+val);return;}if(act==="od-report"){if(noteOverdose(val)){draw();refresh()}}if(act==="od-label"){if(labelLastOD(val))draw()}if(act==="od-clear"){odClearPending=true;draw()}if(act==="od-cancel-clear"){odClearPending=false;draw()}if(act==="od-confirm-clear"){if(odClearPending&&reportedOverdose()){clearOverdose();draw();refresh()}}if(act==="tab"){tab=val;draw()}if(act==="stat"){cfg.stat=val;sm="auto";save()}if(act==="mode"){cfg.mode=val;sm="auto";save()}if(act==="choose"){sm=val;tab="plan";draw()}if(act==="optimizer-choose"){const [method,flag]=St(val||"").split(":");const r=optimizerResults();if(r.scenarios.some(x=>x.feasible&&x.method===method&&x.refills===(flag==="1"))){cfg.refills=flag==="1";cfg.mode="training";sm=method;tab="plan";save()}}if(act==="choose-supply"){sm=val;draw()}if(act==="horizon"){cfg.horizon=+val;save()}if(act==="lab-happy"){put("lab-happy",+val);draw()}if(act==="lab-save"){for(const [key,id] of [["lab-happy","lab-happy"],["lab-property-cost","lab-property-cost"],["lab-can-energy","lab-can-energy"],["lab-cans-per-day","lab-cans-per-day"],["lab-can-mult","lab-can-mult"],["lab-can-price","lab-can-price"]]){const input=CQ("#"+id);if(input)put(key,Mx(0,+input.value||0))}draw()}if(act==="awake-hour"||act==="awake-off"){awakeUntil=act==="awake-hour"?Tm()/1000+3600:0;put("awake-until",awakeUntil);lp=plans();draw()}if(act==="scan-logs")scanGym(true);if(act==="clearhistory"){hs=[];put("history",[]);draw()}if(act==="clearverification"){ledger=[];rg=null;put("verification",[]);put("rolling-plan",null);draw()}if(act==="partial"){sp=!sp;put("show-partial",sp);draw()}if(["gym-owned","gym-buy","gym-clear"].includes(act)){const id=+CQ("#hhj-gymlist")?.value;if(id&&/\/gym\.php$/.test(location.pathname||"")){if(act==="gym-clear")delete vr[id];else vr[id]=act==="gym-owned"?"owned":"buy";put("gyms",vr);draw()}}if(act==="save"){cfg.adaptHistory=!!CQ("#hhj-adapt-history")?.checked;cfg.budget=Mx(0,+CQ("#hhj-budget")?.value||0);cfg.refills=!!CQ("#hhj-refills")?.checked;cfg.sleepEnabled=!!CQ("#hhj-sleepenabled")?.checked;const bed=CQ("#hhj-sleepstart")?.value,wake=CQ("#hhj-sleepend")?.value;cfg.sleepStart=validClock(bed)?bed:"22:00";cfg.sleepEnd=validClock(wake)?wake:"08:00";if(cfg.sleepStart===cfg.sleepEnd)cfg.sleepEnabled=false;cfg.gymBonus=Mn(200,Mx(0,+CQ("#hhj-gymbonus")?.value||0));cfg.ownedPoints=Mx(0,+CQ("#hhj-points")?.value||0);const guessed=CQ("#hhj-jump-success")?.value;cfg.jumpSuccessPct=guessed!==undefined&&St(guessed).trim()!==""&&Fi(+guessed)&&+guessed>=0&&+guessed<=100?+guessed:null;for(const [name,id] of [["xanaxOdPct","#hhj-xanax-od"],["ecstasyOdPct","#hhj-ecstasy-od"]]){const v=CQ(id)?.value;cfg[name]=v!==undefined&&St(v).trim()!==""&&Fi(+v)&&+v>=0&&+v<=100?+v:null;}cfg.odEstimateMode=CQ("#hhj-od-community")?.checked?"community":"manual";cfg.odFactionReduction=Mn(30,Mx(0,+CQ("#hhj-od-faction")?.value||0));cfg.odNightclub=!!CQ("#hhj-od-nightclub")?.checked;cfg.manualPrices=Fr(["points","xanax","ecstasy","lollipop","dvd"].map(k=>
 [k,Mx(0,+CQ('[data-price="'+k+'"]')?.value||0)]));save()}});mount();Do.addEventListener?.("DOMContentLoaded",mount,{once:true});// Read-only full-data check while Torn is foregrounded. Mini refresh covers bars;
 // this bounded check also updates inventory, owned books and live planning inputs.
 // Persistent attempt backoff prevents API bursts when TornPDA reloads the page.
