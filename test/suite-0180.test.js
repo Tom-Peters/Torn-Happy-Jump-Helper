@@ -8,7 +8,7 @@ const snapshot=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-
 test("v0.29.1 preview and immutable snapshot use the same advisor logic and Hub",()=>{
   const body=s=>s.slice(s.indexOf("// ==/UserScript==")+"// ==/UserScript==".length);
   assert.equal(body(source),body(snapshot));
-  assert.match(source,/\/\/ @version\s+0\.28\.0/);
+  assert.match(source,/\/\/ @version\s+0\.29\.1/);
   assert.match(source,/StaxxHub v2\.9/);
 });
 test("training improvements use existing observed state and planning models",()=>{
@@ -53,7 +53,7 @@ test('v0.22 personalised training uses actual gym sessions, local time and a dat
  assert.match(source,/Your verified usual gym window/);
  assert.match(source,/cfg\.adaptHistory!==false/);
 });
-test('v0.22 has local, redacted diagnostics and shared dynamic StaxxHub v2.5',()=>{
+test('v0.22 has local, redacted diagnostics and shared dynamic StaxxHub v2.9',()=>{
  assert.match(source,/function safeHjDiagnosticsV200\(/);
  assert.match(source,/function hjDiagnosticsV200\(/);
  assert.match(source,/staxx:diagnostics-request/);
