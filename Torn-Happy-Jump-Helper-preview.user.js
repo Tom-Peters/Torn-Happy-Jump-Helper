@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Happy Jump Helper (Preview)
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#preview
-// @version      0.31.5
+// @version      0.31.6
 // @description  Torn gym planner
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -11,7 +11,7 @@
 // @downloadURL  https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js
 // @grant        none
 // ==/UserScript==
-/* StaxxHub v3.4 · shared Torn PDA launcher · IamEEKY · no external dependencies */
+/* StaxxHub v3.5 · shared Torn PDA launcher · IamEEKY · no external dependencies */
 (function () {
   "use strict";
   if (typeof location === "undefined" || typeof document === "undefined" ||
@@ -30,7 +30,7 @@
       '<section id="staxx-hub-find" aria-label="Find Staxx tools and actions" hidden><label for="staxx-hub-find-input">FIND TOOLS, ACTIONS &amp; ALERTS</label><input id="staxx-hub-find-input" type="search" maxlength="100" autocomplete="off" spellcheck="false" placeholder="e.g. trains, stocks, gym" aria-controls="staxx-hub-find-results"><p id="staxx-hub-find-status" role="status" aria-live="polite"></p><div id="staxx-hub-find-results" role="group" aria-label="Search results"></div></section>' +
       '<div class="staxx-scroll">' +
       '<section data-hub-section="today"><section id="staxx-hub-welcome" hidden></section><section id="staxx-hub-source-status" aria-label="Tool evidence status"></section><section id="staxx-hub-page-shortcut" aria-label="Current Torn page shortcut"></section><section id="staxx-hub-early" aria-label="Upcoming source-dated recommendations"></section><section id="staxx-hub-changes" aria-label="Changed source recommendations"></section><section id="staxx-hub-session" aria-label="Available play time"></section><section id="staxx-hub-checklist" aria-label="Daily verified checklist"></section><div class="staxx-label"><h3>BEST NEXT REVIEW</h3><span>From current tool evidence</span></div><section id="staxx-hub-best" aria-label="Best currently available review"></section><div class="staxx-label"><h3>OTHER NEXT STEPS</h3><span>Priority and estimated review time</span></div><div id="staxx-hub-task-filters" role="group" aria-label="Filter actions by urgency"></div><section id="staxx-hub-tasks" aria-label="Prioritised Torn actions"></section><div class="staxx-label"><h3>YOUR SHORTCUTS</h3><span>Learns from your taps</span></div><div id="staxx-hub-frequent"></div><div class="staxx-label"><h3>OPEN A TOOL</h3><span>One tap</span></div><div id="staxx-hub-quick-tools"></div><p class="staxx-trendnote">Marking a recommendation checked only clears your review queue for up to 4 hours. It does not complete a Torn action.</p></section>' +
-      '<section data-hub-section="dashboard" hidden><div class="staxx-label"><h3>SUITE DASHBOARD</h3><span>All three helpers</span></div><section id="staxx-hub-daily" aria-label="Daily evidence report"></section><section id="staxx-hub-dashboard"></section></section>' +
+      '<section data-hub-section="dashboard" hidden><div class="staxx-label"><h3>SUITE DASHBOARD</h3><span>All Staxx helpers</span></div><section id="staxx-hub-daily" aria-label="Daily evidence report"></section><section id="staxx-hub-dashboard"></section></section>' +
       '<section data-hub-section="activity" hidden><div class="staxx-label"><h3>RECENT ACTIVITY</h3><button type="button" data-activity-clear>Clear history</button></div><section id="staxx-hub-activity"></section></section>' +
       '<section data-hub-section="tools" hidden><div class="staxx-label"><h3>YOUR TOOLS</h3><button type="button" data-arrange aria-pressed="false">Reorder</button></div><div id="staxx-hub-tools"></div></section>' +
       '<section data-hub-section="alerts" hidden><div class="staxx-label"><h3>NOTIFICATIONS</h3><span id="staxx-hub-total"></span></div><div id="staxx-hub-alerts"></div></section>' +
@@ -160,7 +160,8 @@
     const entries = [
       {id:"profit",label:"ProfitStaxx",icon:"PS",desc:"Markets · Stocks · Income"},
       {id:"company",label:"Company Helper",icon:"CO",desc:"Staff · Training · Growth"},
-      {id:"happy",label:"Happy Jump",icon:"HJ",desc:"Gym · Schedule · Recovery"}
+      {id:"happy",label:"Happy Jump",icon:"HJ",desc:"Gym · Schedule · Recovery"},
+      {id:"war",label:"WarStaxx",icon:"WS",desc:"Ranked war · Targets · Black Skulls"}
     ];
     const sectionsByTool={
       profit:[["daily","Today"],["alerts","Alerts"],["best","Best opportunities"],["scan","Item deals"],["travel","Travel"],["stocks","Stock market"],["capital","Capital"],["history","Price charts"],["income","Income"],["museum","Museum"],["portfolio","Trading ledger"],["settings","Settings"],["diagnostics","Diagnostics"]],
@@ -322,7 +323,11 @@
         location.assign(location.origin+"/companies.php");return;
       }
       if(!active[id]){
-        alerts.replaceChildren(node("p","staxx-empty","This tool is not active on this page. Enable its script in Torn PDA and reload."));
+        const warning=node("p","staxx-empty",
+          id==="war"
+            ?"WarStaxx did not register on this page. Your Torn PDA installation may be enabled but not running here. Check the script version, update it in Manage Scripts, then reload Torn. Use Browser DevTools → Scripts to check whether WarStaxx was injected and whether an error occurred."
+            :"This tool is not running on this page. Check its enabled state and injection details in Torn PDA, then reload.");
+        setExpanded(true);switchHubView("alerts");alerts.replaceChildren(warning);
         return;
       }
       panelOpen=true;setExpanded(false);launcherVisibility();
@@ -916,7 +921,7 @@
         if(n)maxLevel=Math.max(maxLevel,n.level==="urgent"?2:n.level==="warning"?1:0);
         if(!n && notices[e.id]?.count>0)muted++;
         const btn=node("button","staxx-tool");btn.type="button";btn.dataset.openStaxx=e.id;
-        const info=node("span","staxx-info");info.append(node("b","",e.label),node("small","",active[e.id]?e.desc:"Enable script to open"));
+        const info=node("span","staxx-info");info.append(node("b","",e.label),node("small","",active[e.id]?e.desc:"Not running · check Torn PDA scripts"));
         btn.append(node("span","staxx-icon",e.icon),info,node("span","staxx-pill"+(count?" on":""),count||"›"));
         if(arrangeShown){
           const row=node("div","staxx-toolrow"),up=node("button","staxx-move","↑"),down=node("button","staxx-move","↓");
@@ -1114,7 +1119,7 @@
       if(!entry && entries.length<25){
         entry={id,label:String(d.label||id).slice(0,40),icon:String(d.icon||"S").slice(0,3),desc:String(d.desc||"Staxx tool").slice(0,70)};
         entries.push(entry);controls[id]=safeRead("staxx-hub-alert-control-"+id,{});
-        saveLocal("staxx-hub-registry-v2",entries.slice(3));
+        saveLocal("staxx-hub-registry-v2",entries.filter(x=>!["profit","company","happy","war"].includes(x.id)));
       }
       if(entry){
         if(d.label)entry.label=String(d.label).slice(0,40);
@@ -1216,7 +1221,7 @@
 
 
 
-(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.31.5";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
+(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.31.6";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Fi(n)?Ro(n).toLocaleString("en-US"):"—";const cash=n=>Fi(n)?"$"+fmt(n):"Price unknown";const esc=x=>St(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const cu=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Ce((t-Tm()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Fl(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,jumpSuccessPct:null,xanaxOdPct:null,ecstasyOdPct:null,odEstimateMode:"community",odFactionReduction:0,odNightclub:false,manualPrices:{},sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00",adaptHistory:true};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lp=null,sm="auto",hs=get("history",[]),vr=get("gyms",{}),ledger=get("verification",[]),rg=get("rolling-plan",null),sp=get("show-partial",true),an=get("action-notes",[]),watch=get("watch",null),rc=get("recovery",null),start=Tm()/1000,awakeUntil=+get("awake-until",0)||0,al=get("gym-api-logs",[]),lc=+get("gym-log-checked-13",0)||0,ls="Not checked",acts=get("verified-actions",[]),actChecked=0,statSamples=get("stat-samples",[]),activityCoverage="Not checked";const rSt=(raw,t=Tm()/1000)=>acts.some(x=>x.kind==="REFILL"&&day(x.t)===day(t))?"used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>rSt(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Fr(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}function mins(v,back){return validClock(v)?Nu(v.slice(0,2))*60+Nu(v.slice(3)):back}let ukYear=0,ukStart=0,ukEnd=0;function slp(t){if(!cfg.sleepEnabled||t>=awakeUntil-3600&&t<awakeUntil)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),y=d.getUTCFullYear();if(y!==ukYear){ ukYear=y; const sunday=month=>{const last=new Date(Ut(y,month+1,0));return last.getUTCDate()-last.getUTCDay()}; ukStart=Ut(y,2,sunday(2),1)/1000;ukEnd=Ut(y,9,sunday(9),1)/1000;}const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;return a<b?m>=a&&m<b:m>=a||m<b;}function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" UK time":"Disabled"}
 function gymDots(raw){const dots=Nu(raw);if(!Fi(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}const perkRows=()=>En(data.perks?.perks||{}).flatMap(([type,entries])=>
 (Ar(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));const bonus=stat=>perkRows().reduce((n,r)=>{const d=r.description, p=+(d.match(/(\d+(?:\.\d+)?)\s*%/)||[])[1];const scoped=d.match(/\b(strength|speed|defen[cs]e|dexterity)\b/i)?.[1]?.toLowerCase().replace("defence","defense");return n+(p>0&&p<=200&&/gym.{0,12}gains?|gains?.{0,12}gym/i.test(d)&&!/decreas|reduc|lower|penalty/i.test(d)&&(!scoped||scoped===stat)?p/100:0);},1+Mx(0,+cfg.gymBonus||0)/100);function gain(e,h,s,dots,cost=10,m=1){let steps=Fl(e/cost),sum=0,ss=s,hh=h;while(steps-->0){const g=Mx(0,((3.480061091e-7*Math.log(hh+250)+3.091619094e-6)*ss+6.82775184551527e-5*(hh+250)-0.0301431777)*dots*cost*m);sum+=g;ss+=g;hh=Mx(0,hh-cost*0.5)}return sum;}function basket(item,n,stock=0){const buy=Mx(0,n-stock);if(!buy)return 0;const rows=[...(prices[item]||[])].filter(x=>Fi(+x.price)&&+x.price>0&&+x.amount>0).sort((a,b)=>a.price-b.price);let remaining=buy,total=0;for(const r of rows){const take=Mn(remaining,r.amount);remaining-=take;total+=take*r.price;if(!remaining)return total}const manual=+cfg.manualPrices?.[item];return manual>0&&Fi(manual)?total+remaining*manual:Infinity;}
