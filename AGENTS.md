@@ -1,24 +1,14 @@
-# AGENTS.md — Happy Jump Helper
+# AGENTS.md — Training-TornStaxx
 
-## MUST READ — current shared Torn development rules
-**Before any code change in this repository**, load the **latest** canonical suite standard:
-https://raw.githubusercontent.com/Tom-Peters/Torn-ProfitStaxx/main/docs/TORN-SUITE-STANDARD.md
+Read the current standalone hub architecture and event contract before changing the training module:
+https://raw.githubusercontent.com/Tom-Peters/TornStaxx/main/AGENTS.md
+https://raw.githubusercontent.com/Tom-Peters/TornStaxx/main/docs/INTEGRATION.md
 
-Also read the shared StaxxHub integration contract:
-https://raw.githubusercontent.com/Tom-Peters/Torn-ProfitStaxx/main/docs/STAXX-HUB-INTEGRATION.md
-
-The canonical standard governs all Torn scripts, including future scripts. It can change without a local commit. Do not rely on an older cached version. If you cannot access it, state the limitation and do not invent its contents. Follow this repository's tests and project documentation in addition to the shared rules.
-
-## Project-specific entrypoint
-- Active user-installed script: `Torn-Happy-Jump-Helper-preview.user.js`.
-- Preserve training schedule, gym calculations, gain tracking, overdose/recovery, user preferences and user-owned inventory logic. Never silently alter stable installer. Update matching versioned preview snapshot and preview parity test.
-- Public author credit: **IamEEKY** only; no real Torn API keys, employee records or private imported data in code, tests, documentation or commits.
-
-## Cross-repository change checklist
-1. Is this a shared UI, StaxxHub, notification, accessibility, safety or event-contract change? Update canonical `docs/TORN-SUITE-STANDARD.md` / changelog in Torn-ProfitStaxx if rules changed.
-2. Edit `shared/staxx-hub.js` in Torn-ProfitStaxx first. Copy identical code to **all three active script entrypoints**, plus the current Happy Jump preview snapshot.
-3. Bump relevant userscript versions; preserve stable install URLs, avoid duplicate launchers, retain panel `staxx:panel` events.
-4. Test read-only behaviour, no invented metrics, persisted preferences, dismiss/snooze, launcher visibility and responsive layout.
-5. Confirm each repository's CI and shared sync check. Be accurate about visual testing: CI is not Torn PDA device testing.
-
-Do not update one shared userscript in isolation and leave the others on mismatched StaxxHub code.
+- **Shared hub** is owned by the standalone `TornStaxx/TornStaxx.user.js`; never embed its full UI in any Training installer.
+- **Current preview installer:** `Torn-Happy-Jump-Helper-preview.user.js` with immutable version-matching snapshot, public display name **Training-TornStaxx** and stable integration ID `happy`. Do not rename the GitHub repository/installer paths until user explicitly performs the repository rename.
+- **Pinned stable rollback:** `Torn-Happy-Jump-Helper.user.js`. Never silently promote or overwrite this installer.
+- Keep existing gym and gain calculations, proven event logs, drug/refill schedules, overdose and recovery, observed off-plan training, perks/education, books, inventory and local preferences.
+- No fabricated gains, unobserved purchase evidence, gameplay auto-clicks, automatic drug consumption or remote writes. Remain foreground-only and honor API permissions/backoff.
+- Support registration, actions, summaries, notices, deep-link sections, diagnostics and panel state; the small fallback exists only when standalone TornStaxx is absent.
+- Public author **IamEEKY** only; never publish real credentials, player data or imported records.
+- Test with `npm test`, `node --check Torn-Happy-Jump-Helper-preview.user.js`, versioned snapshot parity and on-device Torn PDA validation.
