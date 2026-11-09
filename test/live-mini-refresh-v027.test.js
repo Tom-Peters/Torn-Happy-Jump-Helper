@@ -6,7 +6,7 @@ assert.ok(begin>0&&end>begin,"Happy Jump alert publication found");
 const snippet=src.slice(begin,end)+";publishHubAlerts";
 function published(updated,miniFresh){
  const now=Date.UTC(2026,10,1,18,0),events=[];
- const ctx={updated,miniFresh,Tm:()=>now,Mx:Math.max,Ce:Math.ceil,Fl:Math.floor,fmt:String,
+ const ctx={trainingWarHold:()=>false,updated,miniFresh,Tm:()=>now,Mx:Math.max,Ce:Math.ceil,Fl:Math.floor,fmt:String,
   reportedOverdose:()=>null,priorityAction:()=>null,aPl:()=>({events:[]}),
   loadInput:()=>({energy:0,cost:25}),nextDecision:()=>({kind:"none"}),
   summary:()=>({gain:1200,trains:3}),cfg:{stat:"strength"},

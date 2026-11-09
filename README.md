@@ -1,4 +1,12 @@
-> **Now part of TornStaxx 4.0:** This specialist module is displayed in Torn PDA as **Training-TornStaxx** (v0.32.0 preview). The shared command centre has moved to the standalone fifth userscript, [TornStaxx](https://github.com/Tom-Peters/TornStaxx). Install its [raw hub installer](https://raw.githubusercontent.com/Tom-Peters/TornStaxx/main/TornStaxx.user.js) once, then update this module from its **unchanged** [raw userscript URL](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js). Existing domain functions, local data and API key settings remain in the specialist script. Repository rename will be handled separately.\n\n## Preview v0.31.5 — verified cross-tool checklist and play-time fit
+## 0.33.0 - In-game guidance
+
+Training now checks the official faction wars endpoint independently of WarStaxx. Active ranked wars pause gym, Xanax, refill and Happy Jump recommendations. Scheduled wars switch to a hold at their start time. Unknown or stale status holds advice until verified; a confirmed war ending triggers a fresh plan. Observed history continues. No faction is handled through the user faction endpoint. Checks run at most once per minute while foregrounded.
+
+Gym, items and points pages receive compact guidance; the gym includes stat selectors and live energy/happiness. Today leads with the next decision, with detailed analysis expandable. The pinned stable rollback remains untouched.
+
+Validation: automated regression and parser checks; live Torn PDA validation remains a device check.
+
+> **Now part of TornStaxx 4.0:** This specialist module is displayed in Torn PDA as **Training-TornStaxx** (v0.33.0 preview). The shared command centre has moved to the standalone fifth userscript, [TornStaxx](https://github.com/Tom-Peters/TornStaxx). Install its [raw hub installer](https://raw.githubusercontent.com/Tom-Peters/TornStaxx/main/TornStaxx.user.js) once, then update this module from its **unchanged** [raw userscript URL](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js). Existing domain functions, local data and API key settings remain in the specialist script. Repository rename will be handled separately.\n\n## Preview v0.31.5 — verified cross-tool checklist and play-time fit
 
 - StaxxHub 3.4 combines current suggestions and verified completions across ProfitStaxx, Company Helper and Happy Jump while keeping locally checked-for-now items explicitly separate from actions completed in Torn.
 - User-selected 5/10/15/30/60-minute review sessions make equivalent-priority recommendations easier to fit in a short visit, without demoting genuine training or cooldown urgency.
