@@ -1,3 +1,7 @@
+## 0.35.0 - Native action details
+
+Gym stat controls include per-train gain estimates at current happiness. The latest visible Torn gym result is displayed separately, including during a ranked-war hold; it is not inferred from energy loss. Native helper text is excluded from result parsing. No general items-page banner.
+
 ## 0.34.0 - Workspace and native-page separation
 
 Fixed Today / Schedule / Progress navigation and grouped Improve / Manage tools. Today shows one decision, method/stat controls and current energy/happiness. Detailed analysis is secondary. Native guidance requires the gym page and #gymroot; no generic item/points/home banner. Ranked-war protection continues independently of placement. Existing stable rollback is unchanged.
