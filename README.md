@@ -1,3 +1,9 @@
+## 0.34.0 - Workspace and native-page separation
+
+Fixed Today / Schedule / Progress navigation and grouped Improve / Manage tools. Today shows one decision, method/stat controls and current energy/happiness. Detailed analysis is secondary. Native guidance requires the gym page and #gymroot; no generic item/points/home banner. Ranked-war protection continues independently of placement. Existing stable rollback is unchanged.
+
+Validated with existing regression suites, parser checks and DOM integration scenarios. Live Torn PDA visual/device validation remains separate.
+
 ## 0.33.0 - In-game guidance
 
 Training now checks the official faction wars endpoint independently of WarStaxx. Active ranked wars pause gym, Xanax, refill and Happy Jump recommendations. Scheduled wars switch to a hold at their start time. Unknown or stale status holds advice until verified; a confirmed war ending triggers a fresh plan. Observed history continues. No faction is handled through the user faction endpoint. Checks run at most once per minute while foregrounded.
