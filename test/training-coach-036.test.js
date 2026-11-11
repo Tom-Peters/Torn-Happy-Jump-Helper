@@ -7,7 +7,7 @@ function fixture(){
  const document={body:node(),head:node(),hidden:false,createElement:node,querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,addEventListener(){},dispatchEvent(){}};
  const window={top:1,self:2,setInterval(){}};
  const ctx={document,window,location:{hostname:'www.torn.com',pathname:'/gym.php'},localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)},CustomEvent:function(type,init){this.type=type;this.detail=init.detail;},Date:class extends Date{static now(){return now}},URL,console};
- const expose='window.__test={parseDiabetesCalendar,diabetesMultiplier,diabetesAssessment,diabetesCard,setCalendar:(windows)=>{diabetesCalendar={windows,checked:Date.now()};diabetesMemo=null},jumpBoostSetup,jumpKit,gain,bonus,happyDrain,effectiveStat,loadInput,simulate,coachFresh,coachSnapshot,nextDecision,priorityAction,targetWeeks,cFactor,today,coachStrategyCard,sGa,stats,plans,refill,set:(v)=>{data=v;updated=Date.now();miniFresh=Date.now();rankedWarState={status:"clear",checked:Date.now()};},config:cfg,setPrices:v=>prices=v,setInventory:v=>inv=v,setPlan:v=>lp=v,setWar:v=>rankedWarState=v,setActions:v=>acts=v,setOD:v=>put("reported-overdose",v)};return;';
+ const expose='window.__test={parseTrainingCalendar,visibleTrainingEvents,trainingEventMultiplier,eventAlerts,trainingEventSettings,trainingEventsCard,parseCandyCatalog,candyComparisons,candyComparisonCard,candyRecipeCost,candyRecipeHappy,inventoryCategory,setCandy:(items,quotes)=>{candyCatalog=items;candyQuotes=quotes;diabetesMemo=null;},setTrainingCalendar:(windows)=>{trainingCalendar={windows,checked:Date.now(),unknown:[]};diabetesCalendar={windows:windows.filter(w=>w.kind==="diabetes"),checked:Date.now()};diabetesMemo=null;},parseDiabetesCalendar,diabetesMultiplier,diabetesAssessment,diabetesCard,setCalendar:(windows)=>{diabetesCalendar={windows,checked:Date.now()};trainingCalendar={windows:windows.map(w=>({...w,kind:"diabetes",title:"World Diabetes Day"})),checked:Date.now(),unknown:[]};diabetesMemo=null},jumpBoostSetup,jumpKit,gain,bonus,happyDrain,effectiveStat,loadInput,simulate,coachFresh,coachSnapshot,nextDecision,priorityAction,targetWeeks,cFactor,today,coachStrategyCard,sGa,stats,plans,refill,set:(v)=>{data=v;updated=Date.now();miniFresh=Date.now();rankedWarState={status:"clear",checked:Date.now()};},config:cfg,setPrices:v=>prices=v,setInventory:v=>inv=v,setPlan:v=>lp=v,setWar:v=>rankedWarState=v,setActions:v=>acts=v,setOD:v=>put("reported-overdose",v)};return;';
  const needle='});mount();Do.addEventListener?.';assert.ok(source.includes(needle));
  vm.runInNewContext(source.replace(needle,'});'+expose+'mount();Do.addEventListener?.'),ctx);
  const a=window.__test;const s={coreAt:now,perksAt:now,stats:{battlestats:Object.fromEntries(['strength','speed','defense','dexterity'].map(k=>[k,{value:1000000}]))},gym:{gym:{id:1}},gyms:{gyms:[{id:1,name:'Test gym',energy_cost:10,modifiers:{strength:73,speed:73,defense:73,dexterity:73}}]},bars:{bars:{energy:{current:150,maximum:150,interval:600,increment:5,ticktime:300},happy:{current:5025,maximum:5025}}},cooldowns:{cooldowns:{drug:0,booster:0}},refills:{refills:{energy:false}},perks:{perks:{property_perks:['2% gym gains'],education_perks:['1% strength gym gains'],faction_perks:['15% strength gym gains'],book_perks:[]}}};
@@ -102,11 +102,46 @@ test('event triples only candy at consumption time, stacks with books and is nev
  assert.ok(boosted.gain>plain.gain);assert.equal(boosted.count.xanax,0);assert.match(boosted.events.find(x=>x.kind==='JUMP').detail,/Diabetes Day/);
  const late=a.simulate('happy-candy',{...input,now:end-30},1,{refills:false});assert.equal(late.jumps,0);
 });
-test('event assessment includes same-period baseline, budget and holds; upcoming quick boosts do not encourage waiting',()=>{
- const {a,s,now}=fixture();a.setCalendar([{start:now()/1000-60,end:now()/1000+48*3600}]);
+function candyFixture(){
+ const f=fixture(),{a,s,now}=f;
+ const items=a.parseCandyCatalog({items:[
+  {id:310,type:'Candy',name:'Lollipop',effect:'Increases happiness by 25 and booster cooldown by 30 minutes.',requirement:null,value:{market_price:1000},is_tradable:true},
+  {id:1001,type:'Candy',name:'Higher happy candy',effect:'Increases happiness by 100.',requirement:null,value:{market_price:100000},is_tradable:true},
+  {id:1002,type:'Candy',name:'Conditional item',effect:'Chance to increase happiness by 500.',value:{market_price:1},is_tradable:true}
+ ]});
+ s.candyInventoryAt=now();s.candyInventory=[{id:310,amount:20},{id:1001,amount:4},{id:1001,amount:999,faction_owned:true}];
+ a.setCandy(items,Object.fromEntries(items.map(x=>[x.id,{at:now(),rows:[{price:x.reference,amount:10000}]}])));
  a.setPrices({lollipop:[{price:1000,amount:1000}],ecstasy:[{price:30000,amount:100}],xanax:[{price:800000,amount:100}],points:[{price:50000,amount:1000}]});
- const report=a.diabetesAssessment(),row=report.rows.find(x=>x.available);assert.ok(row);assert.equal(row.extra,row.eventGain-row.baselineGain);assert.ok(row.eventBonus>0);assert.ok(row.cost>0);assert.doesNotMatch(a.diabetesCard(),/NaN|Infinity/);
- a.config.budget=0;assert.ok(a.diabetesAssessment().rows.every(x=>!x.available));
- a.config.budget=50000000;a.setCalendar([{start:now()/1000+86400,end:now()/1000+3*86400}]);assert.match(a.diabetesAssessment().rows[0].reason,/Keep regular training/);
- a.setWar({status:'active',checked:now(),start:now()/1000-60});assert.equal(a.diabetesAssessment().rows.length,0);assert.match(a.diabetesAssessment().reason,/paused/);
+ return {...f,items};
+}
+test('event catalogue respects lead days, personal durations, per-event preferences, expiry and actual can-use times',()=>{
+ const {a,now,advance}=fixture(),t=now()/1000;
+ const events=[{title:'World Diabetes Day',start:t+20*86400,end:t+22*86400,fixed_start_time:true},{title:'CaffeineCon 2026',start:t,end:t+3600,fixed_start_time:true},{title:'Employee Appreciation Day',start:t+40*86400,end:t+42*86400,fixed_start_time:true},{title:'420 Day',start:t,end:t+86400,fixed_start_time:true}];
+ const parsed=a.parseTrainingCalendar({calendar:{events}},{calendar:{start_time:'13:00'}});assert.equal(parsed.windows.length,3);a.setTrainingCalendar(parsed.windows);
+ assert.equal(a.visibleTrainingEvents().length,2);assert.equal(a.eventAlerts().length,2);a.config.eventLead=42;assert.equal(a.visibleTrainingEvents().length,3);
+ a.config.eventDisabled={diabetes:true};assert.equal(a.visibleTrainingEvents().length,2);a.config.eventNotify=false;assert.equal(a.eventAlerts().length,0);
+ a.config.trainingEvents=false;assert.equal(a.visibleTrainingEvents().length,0);assert.equal(a.trainingEventMultiplier('caffeine',t),2);assert.equal(a.trainingEventMultiplier('caffeine',t+3600),1);
+ const p=a.loadInput(),withEvent=a.simulate('natural',{...p,_canScenario:{baseE:25,mult:1,perDay:2}},3,{refills:false});assert.equal(withEvent.canAdded,75); // First can 50 E, second after expiry 25 E.
+ const earliest=Date.UTC(2026,11,19,10)/1000,latest=Date.UTC(2026,11,31,16)/1000;
+ const long=a.parseTrainingCalendar({calendar:{events:[{title:'Christmas Town',earliest_start:earliest,latest_end:latest,fixed_start_time:false}]}},{calendar:{start_time:'14:15'}}).windows[0];assert.equal(long.end-long.start,12*86400);
+ a.config.trainingEvents=true;a.config.eventDisabled={};a.config.eventLead=21;advance(23*86400000);a.setTrainingCalendar(parsed.windows);assert.ok(!a.visibleTrainingEvents().some(w=>w.kind==='diabetes'));assert.doesNotMatch(a.trainingEventsCard(),/World Diabetes Day/);
+});
+test('general candy kits distinguish owned stock, market depth, cash and economic value; round effects and honour expiry',()=>{
+ const {a,s,items,now,advance}=candyFixture();assert.equal(items.length,2);
+ const rows=a.candyComparisons(),mix=rows.find(x=>x.mixed);assert.ok(mix);assert.equal(rows[0].mixed,true);assert.equal(mix.rows.reduce((n,x)=>n+x.have,0),24);
+ assert.equal(mix.rows.reduce((n,x)=>n+x.quantity,0),49);assert.equal(mix.cost,mix.rows.reduce((n,x)=>n+x.cost,0)+30000);
+ a.config.candyOwnedFirst=false;a.config.candyRank='gains';assert.equal(a.candyComparisons()[0].recipe[0].item.id,1001);
+ a.config.candyRank='value';assert.equal(a.candyComparisons()[0].recipe[0].item.id,310);
+ a.config.eventBudget=0;assert.ok(a.candyComparisons().every(x=>!x.affordable));a.config.eventBudget=10000000;
+ s.perks.perks.faction_perks=['50% increase to candy effects'];assert.equal(a.jumpBoostSetup('happy-candy',now()/1000,'off',25).happy,38);
+ a.setCandy(items,{310:{at:now(),rows:[{price:1000,amount:1}]}});assert.ok(a.candyComparisons().every(x=>!x.affordable));
+ advance(16*60000);s.coreAt=now();s.perksAt=now();a.set(s);assert.ok(a.candyComparisons().every(x=>!x.affordable));assert.match(a.candyComparisonCard(),/inventory is unverified or stale/);
+});
+test('event timing compares complete general-candy scenarios against equal periods, separate budgets and holds',()=>{
+ const {a,s,now}=candyFixture();a.setCalendar([{start:now()/1000+86400,end:now()/1000+3*86400}]);
+ const report=a.diabetesAssessment(),row=report.rows.find(x=>x.available);assert.ok(row);assert.equal(row.extra,row.eventGain-row.baselineGain);assert.ok(row.eventBonus>0);assert.ok(row.cost<=10000000);assert.ok(row.jumpAt>=now()/1000+86400);assert.ok(row.steps.some(x=>x.kind==='TRAIN'&&x.t<row.stackStart));assert.doesNotMatch(a.diabetesCard(),/NaN|Infinity/);
+ a.config.budget=0;assert.ok(a.diabetesAssessment().rows.some(x=>x.available)); // Event budget is separate from routine budget.
+ a.config.eventBudget=0;assert.ok(a.diabetesAssessment().rows.every(x=>!x.available));a.config.eventBudget=10000000;
+ a.setWar({status:'active',checked:now(),start:now()/1000-60});assert.equal(a.diabetesAssessment().rows.length,0);assert.match(a.diabetesAssessment().reason,/paused/);assert.match(a.today(),/Upcoming training opportunities/);assert.doesNotMatch(a.today(),/Your next gym session/);
+ a.setWar({status:'clear',checked:now()});a.setCalendar([{start:now()/1000+20*86400,end:now()/1000+22*86400}]);assert.equal(a.diabetesAssessment().projected,true);assert.match(a.diabetesCard(),/Early preparation preview/);
 });

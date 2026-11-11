@@ -1,3 +1,16 @@
+## 0.38.0 - Event preparation and general candy comparisons
+
+Update from the unchanged [TrainingStaxx preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js).
+
+- **Plan ahead:** useful event options appear 21 days ahead by default and disappear at the verified personal event end. Settings offers 7/14/21/28/42 days, per-event visibility, reminders and a separate cash limit (default $10m).
+- **More than lollipops:** compare supported API candy effects, fresh listing depth, your owned stock and mixed kits. Choose maximum session gains or value for money; owned-stock priority can be switched off. New cash and reference item value are separate. Markets refresh on opening Compare, with a manual refresh and bounded foreground reads.
+- **Diabetes Day timing:** compare quick boosts and stacked jumps across several start times and up to three leading kits. Regular natural training continues before the selected start; each result is compared with the best affordable regular routine over the same period. Displays lost regeneration, additional cash, event-only gains, nominal timing and the eight-hour cooldown scenario. Long-lead previews explicitly assume future starting bars/cooldowns and require a fresh check near the event.
+- **Other opportunities:** CaffeineCon, Torn Anniversary, Employee Appreciation Day, Easter Egg Hunt, Trick or Treat, Christmas Town and Museum Day. Direct bonuses, claimable resources and uncertain supplies are clearly distinguished. CaffeineCon doubles energy cans in the lab only at actual simulated use times inside the verified slot.
+- **Relevant placement:** compact event notice in the gym and current happiness estimates beside matching candy rows. Main-page preparation stays visible during war/recovery; consumption advice remains paused. Hub reminders use the existing alerts and deep links; while war holds suppress due notices, event preparation remains a review action.
+- **Limits:** forecasts are estimates, not guaranteed gains. Early previews hold current stats/perks/prices constant. Notices work while Torn is open, not as background phone notifications. General candy comparisons are session/kit comparisons; the ordinary saved lollipop routine remains explicitly labelled separately.
+
+Three grouped event/candy/timing checks extend the existing engine test file. No new CI workflows or test suites. Stable rollback remains 0.10.22. See [model notes and event sources](docs/TRAINING-MODEL.md).
+
 ## 0.37.0 - World Diabetes Day value check
 
 - Reads the official event calendar and your personal event start slot. The 3x candy bonus applies at the projected candy-use time, only inside your verified window; DVDs are unaffected.

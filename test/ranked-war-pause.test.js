@@ -4,7 +4,7 @@ const source=fs.readFileSync(require('node:path').join(__dirname,'../Torn-Happy-
 function fixture(state=null,reply={wars:{ranked:null}}){
  let now=2000000000000;const events=[],writes=[],calls=[];
  const code=source.slice(source.indexOf('let rankedWarState='),source.indexOf('function syncTrainingPage()'));
- const ctx={get:()=>state,put:(k,v)=>writes.push(v),Tm:()=>now,Fl:Math.floor,Do:{hidden:false,dispatchEvent:e=>events.push(e)},
+ const ctx={eventAlerts:()=>[],get:()=>state,put:(k,v)=>writes.push(v),Tm:()=>now,Fl:Math.floor,Do:{hidden:false,dispatchEvent:e=>events.push(e)},
  CustomEvent:function(type,x){this.type=type;this.detail=x.detail;},api:async path=>{calls.push(path);if(reply instanceof Error)throw reply;return reply;}};
  const api=vm.runInNewContext(code+';({parseTrainingWar,trainingWarHold,refreshTrainingWar,publishTrainingHold,set:(v)=>rankedWarState=v})',ctx);
  return {api,events,calls,writes,ctx,tick:n=>now+=n,now};
