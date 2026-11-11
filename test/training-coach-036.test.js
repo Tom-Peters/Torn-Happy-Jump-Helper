@@ -7,7 +7,7 @@ function fixture(){
  const document={body:node(),head:node(),hidden:false,createElement:node,querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,addEventListener(){},dispatchEvent(){}};
  const window={top:1,self:2,setInterval(){}};
  const ctx={document,window,location:{hostname:'www.torn.com',pathname:'/gym.php'},localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)},CustomEvent:function(type,init){this.type=type;this.detail=init.detail;},Date:class extends Date{static now(){return now}},URL,console};
- const expose='window.__test={jumpBoostSetup,jumpKit,gain,bonus,happyDrain,effectiveStat,loadInput,simulate,coachFresh,coachSnapshot,nextDecision,priorityAction,targetWeeks,cFactor,today,coachStrategyCard,sGa,stats,plans,refill,set:(v)=>{data=v;updated=Date.now();miniFresh=Date.now();rankedWarState={status:"clear",checked:Date.now()};},config:cfg,setPrices:v=>prices=v,setInventory:v=>inv=v,setPlan:v=>lp=v,setWar:v=>rankedWarState=v,setActions:v=>acts=v,setOD:v=>put("reported-overdose",v)};return;';
+ const expose='window.__test={parseDiabetesCalendar,diabetesMultiplier,diabetesAssessment,diabetesCard,setCalendar:(windows)=>{diabetesCalendar={windows,checked:Date.now()};diabetesMemo=null},jumpBoostSetup,jumpKit,gain,bonus,happyDrain,effectiveStat,loadInput,simulate,coachFresh,coachSnapshot,nextDecision,priorityAction,targetWeeks,cFactor,today,coachStrategyCard,sGa,stats,plans,refill,set:(v)=>{data=v;updated=Date.now();miniFresh=Date.now();rankedWarState={status:"clear",checked:Date.now()};},config:cfg,setPrices:v=>prices=v,setInventory:v=>inv=v,setPlan:v=>lp=v,setWar:v=>rankedWarState=v,setActions:v=>acts=v,setOD:v=>put("reported-overdose",v)};return;';
  const needle='});mount();Do.addEventListener?.';assert.ok(source.includes(needle));
  vm.runInNewContext(source.replace(needle,'});'+expose+'mount();Do.addEventListener?.'),ctx);
  const a=window.__test;const s={coreAt:now,perksAt:now,stats:{battlestats:Object.fromEntries(['strength','speed','defense','dexterity'].map(k=>[k,{value:1000000}]))},gym:{gym:{id:1}},gyms:{gyms:[{id:1,name:'Test gym',energy_cost:10,modifiers:{strength:73,speed:73,defense:73,dexterity:73}}]},bars:{bars:{energy:{current:150,maximum:150,interval:600,increment:5,ticktime:300},happy:{current:5025,maximum:5025}}},cooldowns:{cooldowns:{drug:0,booster:0}},refills:{refills:{energy:false}},perks:{perks:{property_perks:['2% gym gains'],education_perks:['1% strength gym gains'],faction_perks:['15% strength gym gains'],book_perks:[]}}};
@@ -78,4 +78,35 @@ test('main workspace renders complete coach and routine from live state without 
  const {a}=fixture();a.setPlan(a.plans());const html=a.today();
  for(const text of ['Your next gym session','Most / E','Repeatable training','Education, perks and books','Observed progress','Mean estimates'])assert.ok(html.includes(text),text);
  assert.doesNotMatch(html,/NaN|Infinity/);
+});
+
+// Focused event regression coverage; reuse the existing current-engine fixture.
+test('Diabetes Day uses the personal 48-hour slot and rejects unknown timing',()=>{
+ const {a}=fixture(),start=Date.UTC(2026,10,13,10)/1000,end=Date.UTC(2026,10,15,16)/1000;
+ const event={title:'World Diabetes Day',start,end,earliest_start:start,latest_end:end,fixed_start_time:false};
+ const w=a.parseDiabetesCalendar({calendar:{events:[event]}},{calendar:{start_time:'13:15:00'}})[0];
+ assert.equal(w.start,Date.UTC(2026,10,13,13,15)/1000);assert.equal(w.end-w.start,48*3600);
+ assert.throws(()=>a.parseDiabetesCalendar({calendar:{events:[event]}},{calendar:{}}));
+ assert.throws(()=>a.parseDiabetesCalendar({calendar:{events:[event]}},{calendar:{start_time:'17:00'}}));
+ a.setCalendar([w]);assert.equal(a.diabetesMultiplier(w.start-1),1);assert.equal(a.diabetesMultiplier(w.start),3);assert.equal(a.diabetesMultiplier(w.end-1),3);assert.equal(a.diabetesMultiplier(w.end),1);
+});
+test('event triples only candy at consumption time, stacks with books and is never counted twice',()=>{
+ const {a,s,now}=fixture(),start=now()/1000+60,end=start+48*3600;a.setCalendar([{start,end}]);
+ s.perks.perks.book_perks=['100% increase to candy effects'];s.perks.perks.event_perks=['World Diabetes Day: 200% increase to candy effects'];
+ const normal=a.jumpBoostSetup('happy-candy',start-1),active=a.jumpBoostSetup('happy-candy',start);
+ assert.equal(normal.happy,50);assert.equal(active.happy,150);assert.equal(a.jumpBoostSetup('happy-candy',start,'off').happy,50);
+ assert.equal(a.jumpBoostSetup('happy',start).happy,a.jumpBoostSetup('happy',start-1).happy);
+ a.setPrices({lollipop:[{price:1000,amount:1000}],ecstasy:[{price:30000,amount:100}],xanax:[{price:800000,amount:100}]});
+ const input={...a.loadInput(),_candyQuick:true,_jumpNotBefore:start,_jumpBefore:end-60};
+ const boosted=a.simulate('happy-candy',input,2,{refills:false}),plain=a.simulate('happy-candy',{...input,_diabetesMode:'off'},2,{refills:false});
+ assert.ok(boosted.gain>plain.gain);assert.equal(boosted.count.xanax,0);assert.match(boosted.events.find(x=>x.kind==='JUMP').detail,/Diabetes Day/);
+ const late=a.simulate('happy-candy',{...input,now:end-30},1,{refills:false});assert.equal(late.jumps,0);
+});
+test('event assessment includes same-period baseline, budget and holds; upcoming quick boosts do not encourage waiting',()=>{
+ const {a,s,now}=fixture();a.setCalendar([{start:now()/1000-60,end:now()/1000+48*3600}]);
+ a.setPrices({lollipop:[{price:1000,amount:1000}],ecstasy:[{price:30000,amount:100}],xanax:[{price:800000,amount:100}],points:[{price:50000,amount:1000}]});
+ const report=a.diabetesAssessment(),row=report.rows.find(x=>x.available);assert.ok(row);assert.equal(row.extra,row.eventGain-row.baselineGain);assert.ok(row.eventBonus>0);assert.ok(row.cost>0);assert.doesNotMatch(a.diabetesCard(),/NaN|Infinity/);
+ a.config.budget=0;assert.ok(a.diabetesAssessment().rows.every(x=>!x.available));
+ a.config.budget=50000000;a.setCalendar([{start:now()/1000+86400,end:now()/1000+3*86400}]);assert.match(a.diabetesAssessment().rows[0].reason,/Keep regular training/);
+ a.setWar({status:'active',checked:now(),start:now()/1000-60});assert.equal(a.diabetesAssessment().rows.length,0);assert.match(a.diabetesAssessment().reason,/paused/);
 });

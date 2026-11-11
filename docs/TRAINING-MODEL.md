@@ -77,3 +77,16 @@ Item notes mount only in identified native item rows for Xanax 206, Ecstasy 197 
 Release validation includes the repository test suite, current-engine numerical regression cases, invalid inputs, sequential Fitness Center loss, UTC refill boundaries, preservation of existing stack, jump refill order, budgets, war/recovery/stale holds, matching immutable snapshot, and PDA quote-normalisation parsing. An isolated DOM fixture exercised all workspace views, native stat selection/disclosure, gym/items/points placement and cleanup on unrelated pages without activating native game buttons.
 
 On-device Torn PDA and real-account API validation remains pending. The local Chromium renderer could not start because the environment denied its socket; DOM checks are not a substitute for an on-device visual pass.
+
+
+## 0.37.0 - World Diabetes Day
+
+The official [calendar](https://wiki.torn.com/wiki/Calendar) lists triple candy happiness with a personalised 48-hour event slot. Timing comes from the official API v2 `/torn/calendar` and `/user/calendar`, checked against the schemas in [Torn OpenAPI](https://www.torn.com/swagger/openapi.json). Variable events use the personal TCT time on the earliest-start date, plus 48 hours, and must fit inside the published earliest/latest bounds. A malformed/missing personal time cannot activate the multiplier. Reads are foreground-only, hourly after success, with retry backoff; calendar evidence expires after six hours.
+
+Candy gains multiply by three at the simulated consumption timestamp; event-named perk text is excluded from the generic perk multiplier to avoid counting the event twice. Existing book/faction candy perks still multiply normally. The event never triples DVDs or gym gains directly. No future book ownership or activation is assumed.
+
+The value check compares a quick unstacked lollipop boost and a stacked lollipop jump against the strongest feasible regular scenario with the same start/end. It reports additional cash, stat difference, the isolated event bonus, energy-regeneration losses and manual action steps. For an upcoming event, the quick-boost result tells the player to continue regular training and recheck at the start; it does not recommend holding a full bar for days. The stacked scenario explicitly models starting now and waiting. It is not an optimisation of every possible future stacking start time.
+
+Only the existing lollipop basket is priced in this check; higher-happiness candy may offer a different best outcome. The result is explicitly a scenario comparison, not a universal judgment about all Diabetes Day strategies. Ecstasy risk is labelled unknown unless supported by the existing risk model, and owned supplies retain opportunity cost. War, recovery and freshness holds suppress the recommendation.
+
+Validation: three added grouped event cases in the existing current-engine file cover personal slots/boundaries, candy-only multiplication with books and no double count, actual future consumption time, budgets, same-period comparison, upcoming quick-boost advice and war holds. The existing PDA parser and installer parity checks also passed. Live phone validation remains pending.

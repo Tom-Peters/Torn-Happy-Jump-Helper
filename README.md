@@ -1,3 +1,11 @@
+## 0.37.0 - World Diabetes Day value check
+
+- Reads the official event calendar and your personal event start slot. The 3x candy bonus applies at the projected candy-use time, only inside your verified window; DVDs are unaffected.
+- Today and Compare assess quick lollipop boosts and stacked lollipop jumps against regular training over the same period. Shows extra stats, extra cash, lost regeneration, event-only benefit and the manual scenario steps.
+- Upcoming quick boosts explicitly say to keep training until the event rather than wasting days of energy regeneration. Stacked comparisons describe starting now. Existing candy/book perks combine with the event once; unverified or expired dates never enable 3x.
+- A small gym note and matching Lollipop item-row note lead back to the comparison. Ranked-war/recovery holds still win. Unknown Ecstasy odds remain disclosed; a possible gain is not a guaranteed recommendation.
+- Three targeted event regression cases added to the existing engine test file; focused parser and installer-parity checks. Stable rollback unchanged.
+
 ## 0.36.0 - Live gym coach and training calculation audit
 
 Update using the unchanged [TrainingStaxx preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js).
