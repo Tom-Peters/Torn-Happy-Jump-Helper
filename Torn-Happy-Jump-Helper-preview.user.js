@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Training-TornStaxx - Training Optimiser (Preview)
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#preview
-// @version      0.38.0
+// @version      0.39.0
 // @description  Live gym coach, training strategy and verified progress with ranked-war protection
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -60,7 +60,7 @@
 
 
 
-(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.38.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
+(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.39.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Fi(n)?Ro(n).toLocaleString("en-US"):"—";const cash=n=>Fi(n)?"$"+fmt(n):"Price unknown";const esc=x=>St(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const cu=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Ce((t-Tm()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Fl(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,jumpSuccessPct:null,xanaxOdPct:null,ecstasyOdPct:null,odEstimateMode:"community",odFactionReduction:0,odNightclub:false,manualPrices:{},sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00",adaptHistory:true};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lp=null,sm="auto",hs=get("history",[]),vr=get("gyms",{}),ledger=get("verification",[]),rg=get("rolling-plan",null),sp=get("show-partial",true),an=get("action-notes",[]),watch=get("watch",null),rc=get("recovery",null),start=Tm()/1000,awakeUntil=+get("awake-until",0)||0,al=get("gym-api-logs",[]),lc=+get("gym-log-checked-13",0)||0,ls="Not checked",acts=get("verified-actions",[]),actChecked=0,statSamples=get("stat-samples",[]),activityCoverage="Not checked";const rSt=(raw,t=Tm()/1000)=>acts.some(x=>x.kind==="REFILL"&&day(x.t)===day(t))?"used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>rSt(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Fr(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}function mins(v,back){return validClock(v)?Nu(v.slice(0,2))*60+Nu(v.slice(3)):back}let ukYear=0,ukStart=0,ukEnd=0;function slp(t){if(!cfg.sleepEnabled||t>=awakeUntil-3600&&t<awakeUntil)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),y=d.getUTCFullYear();if(y!==ukYear){ ukYear=y; const sunday=month=>{const last=new Date(Ut(y,month+1,0));return last.getUTCDate()-last.getUTCDay()}; ukStart=Ut(y,2,sunday(2),1)/1000;ukEnd=Ut(y,9,sunday(9),1)/1000;}const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;return a<b?m>=a&&m<b:m>=a||m<b;}function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" UK time":"Disabled"}
 function gymDots(raw){const dots=Nu(raw);if(!Fi(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}const perkRows=()=>En(data.perks?.perks||{}).flatMap(([type,entries])=>
 (Ar(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));function bonus(stat){
@@ -89,6 +89,8 @@ function gain(e,h,s,dots,cost=10,m=1,stat=cfg.stat,drain=happyDrain()){
  sum+=g;ss+=g;hh=Mx(0,hh-cost*drain);
  }return sum;
 }
+let statGoals=get("stat-goals-v1",{});
+if(!statGoals||typeof statGoals!=="object"||Ar(statGoals))statGoals={};
 function basket(item,n,stock=0){const buy=Mx(0,n-stock);if(!buy)return 0;const rows=[...(prices[item]||[])].filter(x=>Fi(+x.price)&&+x.price>0&&+x.amount>0).sort((a,b)=>a.price-b.price);let remaining=buy,total=0;for(const r of rows){const take=Mn(remaining,r.amount);remaining-=take;total+=take*r.price;if(!remaining)return total}const manual=+cfg.manualPrices?.[item];return manual>0&&Fi(manual)?total+remaining*manual:Infinity;}
 // World Diabetes Day: use the official calendar and the player's own TCT slot.
 let diabetesCalendar={windows:[],checked:0},diabetesAttempt=0,diabetesMemo=null;
@@ -406,12 +408,15 @@ function syncTrainingPage(){
  if(observedKey&&observedKey!==coachObservedKey){coachObservedKey=observedKey;coachObservedAt=Tm();}
  if(coachObservedAt>(data.coreAt||updated||0)&&Tm()-coachObservedCheck>15000&&!miniBusy&&!busy){coachObservedCheck=Tm();void miniRefresh();}
  const held=trainingWarHold(),od=reportedOverdose(),decision=held?trainingWarMessage():nextDecision(),x=coachSnapshot();
- const signature=JSON.stringify([decision.title,decision.detail,held,!!od,cfg.stat,coachFresh(),updated,miniFresh,Fl(Tm()/60000),observed]);
+ const target=statGoals[cfg.stat];
+ const remaining=!held&&!od&&x&&coachFresh()&&Number.isSafeInteger(target)&&target>0?Mx(0,target-x.p.value):null;
+ const signature=JSON.stringify([decision.title,decision.detail,held,!!od,cfg.stat,coachFresh(),updated,miniFresh,Fl(Tm()/60000),observed,target,remaining]);
  if(existing?.dataset.signature===signature)return;
  const el=existing||Do.createElement('section'),expanded=!!existing?.querySelector('details')?.open;
  el.id='staxx-training-tip';el.dataset.signature=signature;el.setAttribute('aria-label','TrainingStaxx gym coach');
  if(!existing)host.prepend(el);
  el.innerHTML='<div class="hhj-coach-heading"><strong>'+esc(decision.title)+'</strong><button type="button" data-review>Training</button></div><p>'+esc(decision.detail)+'</p>'+
+ (remaining===null?'':'<p class="sub">'+esc(cfg.stat)+' target: '+(remaining===0?'reached':fmt(remaining)+' stats remaining')+'.</p>')+
  (!held&&!od&&trainingEventStatus()?'<p class="sub">'+esc(trainingEventStatus())+' Open Training for the value comparison.</p>':'')+
  (!held&&!od&&x&&coachFresh()?coachStatsHTML(x,true)+'<details'+(expanded?' open':'')+'><summary>Timing, refills and calculation details</summary>'+coachReadinessHTML(x)+coachModelHTML(x.p)+'</details>':'')+
  (observed?'<p class="hhj-native-result">Torn result: <b>+'+observed.amount.toLocaleString('en-GB',{maximumFractionDigits:2})+' '+esc(observed.stat)+'</b></p>':'')+
@@ -1356,8 +1361,31 @@ function trainingRecordsV024(){
  return card("Training Records · your personal bests",h);
 }
 
+function statGoalCard(){
+ const stat=cfg.stat,goal=statGoals[stat],current=stats()[stat];
+ const known=!!loadInput()&&coachFresh();
+ const goalSet=Number.isSafeInteger(goal)&&goal>0;
+ const remaining=goalSet&&known?Mx(0,goal-current):null;
+ const cutoff=Tm()/1000-604800;
+ const logged=al.filter(row=>row.stat===stat&&row.t>=cutoff&&row.t<=Tm()/1000&&Fi(row.amount)&&row.amount>0);
+ const recorded=logged.reduce((sum,row)=>sum+row.amount,0);
+ const routine=(lp||[]).filter(row=>row.affordable&&["natural","xanax"].includes(row.method))
+   .sort((a,b)=>b.gain-a.gain)[0];
+ const weeks=remaining>0&&routine&&coachFresh()&&!trainingWarHold()&&!reportedOverdose()
+   ?targetWeeks(current,routine.gain,goal):null;
+ return card("Your "+esc(stat)+" target",
+   (remaining===null?'<p>'+(goalSet?'Refresh to compare your latest stat with this target.':'Set a milestone for your current focus stat.')+'</p>':
+    '<p><b>'+fmt(current)+' / '+fmt(goal)+'</b> · '+(remaining===0?'Target reached':fmt(remaining)+' remaining')+'</p>'+
+    '<progress aria-label="Progress to target" max="'+goal+'" value="'+Mn(goal,current)+'"></progress>')+
+   '<label>Target <input id="hhj-stat-goal" type="number" min="1" step="1" value="'+(goalSet?goal:'')+'"></label> '+
+   '<button type="button" data-act="save-stat-goal">Save target</button> '+
+   (goalSet?'<button type="button" data-act="clear-stat-goal">Clear target</button>':'')+
+   '<p class="sub">'+(logged.length?fmt(recorded)+' gained in '+logged.length+' captured gym logs in the past 7 days.':'No gym gains captured in the past 7 days.')+
+   (weeks===null?'':' About '+weeks.toFixed(1)+' weeks at the current modelled weekly rate.')+'</p>'+
+   '<p id="hhj-stat-goal-status" role="status"></p>');
+}
 function progress(){const st=stats(),regular=(lp||[]).filter(x=>!x.method.startsWith("happy")&&x.affordable)
-.sort((a,b)=>b.gain-a.gain)[0];return autoSignalCardV0260()+pLg()+trainingRecordsV024()+statSampleCard()+progressionRoadmapV18()+boostCard()+card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+card("Targets at a constant weekly rate · reference only",regular?projection(st[cfg.stat],regular.gain).map(x=>
+.sort((a,b)=>b.gain-a.gain)[0];return controls("Focus stat",cfg.stat,ST.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),"stat")+statGoalCard()+autoSignalCardV0260()+pLg()+trainingRecordsV024()+statSampleCard()+progressionRoadmapV18()+boostCard()+card("Base battle stats",ST.map(k=>"<div class='row'><span>"+esc(k)+"</span><b>"+fmt(st[k])+"</b></div>").join(""))+card("Targets at a constant weekly rate · reference only",regular?projection(st[cfg.stat],regular.gain).map(x=>
 "<div class='row'><b>"+fmt(x.goal)+"</b><span>"+(x.weeks===null?"Outside model":x.weeks+" weeks")+"</span></div>").join("")+"<p class='sub'>Constant-rate reference, not a predicted date: current weekly gain held fixed. Future gyms, stats, perks and missed sessions change the result.</p>":
 "No budget-feasible repeating plan available.")+'<button data-act="clearhistory">Clear local history</button>';}function targetWeeks(s,g,goal=50000000){if(![s,g,goal].every(Fi)||s<0||g<=0)return null;return Mx(0,(goal-s)/g)}
 function propertyContext(){const r=data.property?.property,c=data.propertyCatalog?.properties;if(!r||!Ar(c))return null;const type=r.property||{},base=c.find(x=>x.id===type.id||St(x.name).toLowerCase()===St(type.name||"").toLowerCase());return {name:St(type.name||base?.name||"Property"),happy:Nu(r.happy),mods:Ar(r.modifications)?r.modifications:[],staff:Ar(r.staff)?r.staff:[],base,known:!!base}}
@@ -1452,6 +1480,20 @@ Do.addEventListener("staxx:mode",()=>{hjTabsExpanded=false;if(opened)draw();});
 Do.addEventListener("staxx:ping",()=>Do.dispatchEvent(new CustomEvent("staxx:register",{detail:{id:"happy",label:"Training-TornStaxx",icon:"HJ",desc:"Observed training · Schedule · Recovery",trendMetric:"24h projected gains",freshnessMs:900000}})));
 Do.dispatchEvent(new CustomEvent("staxx:register",{detail:{id:"happy",label:"Training-TornStaxx",icon:"HJ",desc:"Observed training · Schedule · Recovery",trendMetric:"24h projected gains",freshnessMs:900000}}));
 button.addEventListener("click",()=>{opened=!opened;ui.style.display=opened?"block":"none";sLa(!opened);Do.dispatchEvent(new CustomEvent("staxx:panel",{detail:{id:"happy",open:opened}}));if(opened){draw();return refresh()}badge()});ui.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;const act=b.dataset.act,val=b.dataset.val;
+ if(act==="save-stat-goal"||act==="clear-stat-goal"){
+  if(act==="clear-stat-goal")delete statGoals[cfg.stat];
+  else{
+   const target=Number(CQ("#hhj-stat-goal")?.value);
+   if(!Number.isSafeInteger(target)||target<1){
+    const message=CQ("#hhj-stat-goal-status");if(message)message.textContent="Enter a positive whole stat value.";
+    return;
+   }
+   statGoals[cfg.stat]=target;
+  }
+  put("stat-goals-v1",statGoals);draw();
+  const message=CQ("#hhj-stat-goal-status");if(message)message.textContent=act==="clear-stat-goal"?"Target cleared.":"Target saved.";
+  return;
+ }
  if(act==="candy-scan"){void scanCandyMarkets();return;}
  if(act==="candy-rank"){cfg.candyRank=val==="value"?"value":"gains";diabetesMemo=null;save();return;}
  if(act==="training-events-save"){

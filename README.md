@@ -1,3 +1,7 @@
+## 0.39.0
+
+Set a custom milestone for each battle stat under Progress and compare it with the current stat, captured gym gains and an estimated weekly training rate.
+
 ## 0.38.0 - Event preparation and general candy comparisons
 
 Update from the unchanged [TrainingStaxx preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js).
