@@ -7,7 +7,7 @@ const snippet=src.slice(begin,end)+";publishHubAlerts";
 function published(updated,miniFresh){
  const now=Date.UTC(2026,10,1,18,0),events=[];
  const ctx={trainingWarHold:()=>false,updated,miniFresh,Tm:()=>now,Mx:Math.max,Ce:Math.ceil,Fl:Math.floor,fmt:String,
-  reportedOverdose:()=>null,priorityAction:()=>null,aPl:()=>({events:[]}),
+  coachFresh:()=>now-Math.max(updated,miniFresh)<=4*60000,reportedOverdose:()=>null,priorityAction:()=>null,aPl:()=>({events:[]}),
   loadInput:()=>({energy:0,cost:25}),nextDecision:()=>({kind:"none"}),
   summary:()=>({gain:1200,trains:3}),cfg:{stat:"strength"},
   Do:{dispatchEvent:e=>events.push(e)},CustomEvent:function(type,init){this.type=type;this.detail=init.detail;}};

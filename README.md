@@ -1,3 +1,15 @@
+## 0.36.0 - Live gym coach and training calculation audit
+
+Update using the unchanged [TrainingStaxx preview installer](https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper-preview.user.js).
+
+- **Today rebuilt around decisions:** next action, current-energy gain for all four stats, timing/refill headroom, best repeatable routine, cooldown sensitivity and training upgrades. Observed progress stays separate from forecasts.
+- **Inside Torn:** compact gym coach with selectable focus and expandable timing details. Local notes beside identified Xanax, Ecstasy, DVD and energy-refill rows; nothing added to unrelated pages.
+- **Corrected calculations:** V2 gain formula, multiplicative perks, post-50m growth approximation, Fitness Center happiness savings, valid-input guards and constant-rate target references. No automatic scaling from incomparable historical logs.
+- **Happy jumps:** preserve existing stacks, account for supported booster perks, and include the available post-jump refill. Supplies and schedule use the same kit.
+- **Protection:** ranked-war pause retained; recovery, stale snapshots and expired boosted happiness suppress current-action advice. Current gym is rechecked between full refreshes.
+
+See [calculation audit, sources and limits](docs/TRAINING-MODEL.md). Gains remain estimates; real-account Torn PDA validation is pending. Versioned 0.36.0 snapshot matches the permanent preview; the pinned stable 0.10.22 rollback remains separate.
+
 ## 0.35.0 - Native action details
 
 Gym stat controls include per-train gain estimates at current happiness. The latest visible Torn gym result is displayed separately, including during a ranked-war hold; it is not inferred from energy loss. Native helper text is excluded from result parsing. No general items-page banner.
