@@ -33,3 +33,12 @@ test('Repeated cursors stop bounded scans and foreground requests cannot overlap
 test('Nested result retains explicit root stat identity',()=>{
  const f=fixture();assert.equal(f.readLog({id:'nested',timestamp:f.now-1,data:{stat:'speed',result:{gain:123}}}).stat,'speed');
 });
+test('A populated single-type log cannot hide speed sessions from the Gym category',async()=>{
+ const older=log('old',1799999000);
+ const speed=(id,amount)=>({id,timestamp:1799999160,details:{category:'Gym'},data:{speed_increased:amount,energy_used:125,trains:5}});
+ const f=fixture(path=>({log:path.includes('cat=125')?[speed('first',12170.62),speed('second',12233.25),older]:[older],_metadata:{links:{prev:null},nanostamp:'123'}}));
+ f.scope.al=[{id:'old',t:older.timestamp,stat:'strength',amount:100}];
+ await f.scanGym();await f.scanGym(true);
+ assert.equal(f.calls.length,2);const rows=f.scope.al.filter(x=>x.stat==='speed');
+ assert.equal(rows.length,2);assert.equal(Math.round(rows.reduce((sum,x)=>sum+x.amount,0)*100),2440387);
+});

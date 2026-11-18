@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Training-TornStaxx - Training Optimiser (Preview)
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper#preview
-// @version      0.39.2
+// @version      0.39.3
 // @description  Live gym coach, training strategy and verified progress with ranked-war protection
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -60,7 +60,7 @@
 
 
 
-(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.39.2";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
+(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.39.3";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Fi(n)?Ro(n).toLocaleString("en-US"):"—";const cash=n=>Fi(n)?"$"+fmt(n):"Price unknown";const esc=x=>St(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const cu=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Ce((t-Tm()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Fl(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,jumpSuccessPct:null,xanaxOdPct:null,ecstasyOdPct:null,odEstimateMode:"community",odFactionReduction:0,odNightclub:false,manualPrices:{},sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00",adaptHistory:true};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lp=null,sm="auto",hs=get("history",[]),vr=get("gyms",{}),ledger=get("verification",[]),rg=get("rolling-plan",null),sp=get("show-partial",true),an=get("action-notes",[]),watch=get("watch",null),rc=get("recovery",null),start=Tm()/1000,awakeUntil=+get("awake-until",0)||0,al=get("gym-api-logs",[]),lc=+get("gym-log-checked-13",0)||0,ls="Not checked",acts=get("verified-actions",[]),actChecked=0,statSamples=get("stat-samples",[]),activityCoverage="Not checked";const rSt=(raw,t=Tm()/1000)=>acts.some(x=>x.kind==="REFILL"&&day(x.t)===day(t))?"used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>rSt(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Fr(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}function mins(v,back){return validClock(v)?Nu(v.slice(0,2))*60+Nu(v.slice(3)):back}let ukYear=0,ukStart=0,ukEnd=0;function slp(t){if(!cfg.sleepEnabled||t>=awakeUntil-3600&&t<awakeUntil)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),y=d.getUTCFullYear();if(y!==ukYear){ ukYear=y; const sunday=month=>{const last=new Date(Ut(y,month+1,0));return last.getUTCDate()-last.getUTCDay()}; ukStart=Ut(y,2,sunday(2),1)/1000;ukEnd=Ut(y,9,sunday(9),1)/1000;}const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;return a<b?m>=a&&m<b:m>=a||m<b;}function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" UK time":"Disabled"}
 function gymDots(raw){const dots=Nu(raw);if(!Fi(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}const perkRows=()=>En(data.perks?.perks||{}).flatMap(([type,entries])=>
 (Ar(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));function bonus(stat){
@@ -1328,7 +1328,7 @@ function readLog(r){const d=r?.data||{},v=d.result&&typeof d.result==="object"?{
 function olderGymPage(res,path){
  const meta=res?._metadata||{},links=meta.links||{};
  let link=links.prev;
- if(!link&&typeof meta.nanostamp==='string'&&/^\d+$/.test(meta.nanostamp)&&res.log?.length){
+ if(!Object.prototype.hasOwnProperty.call(links,'prev')&&!link&&typeof meta.nanostamp==='string'&&/^\d+$/.test(meta.nanostamp)&&res.log?.length){
   const u=new URL(BASE+path);u.searchParams.delete('to');u.searchParams.set('nanostamp',meta.nanostamp);
   link=u.href;
  }else if(!Object.prototype.hasOwnProperty.call(links,'prev')&&!meta.nanostamp)link=links.next;
@@ -1343,7 +1343,7 @@ async function scanGym(force=false){
  gymScanBusy=true;
  const ids=new Set(al.map(x=>St(x.id))),summary=[],freshGym=[];let added=0,parsed=0,unknown=0,fields='',partial=false,failure='';
  try{
-  for(const [label,filter] of [['5301','log=5301'],['Gym category','cat=125'],['sample','']]){
+  for(const [label,filter] of [['Gym category','cat=125'],['Gym log types','log=5300,5301,5302,5303,5304'],['sample','']]){
    let path='/user/log?limit=100&from='+(now-7776000)+'&to='+now+(filter?'&'+filter:'')+'&timestamp='+now,count=0;
    const seen=new Set(),limit=label==='sample'?1:force?12:4;
    for(let page=0;path&&page<limit;page++){
@@ -1352,7 +1352,8 @@ async function scanGym(force=false){
     const res=await api(path),rows=res.log;if(!Ar(rows))throw Error('Unexpected log format');
     count+=rows.length;
     for(const x of rows){
-     if(label==='sample'&&Nu(x.details?.id)!==5301)continue;
+     if(label!=='Gym category'&&x.details?.category&&St(x.details.category).toLowerCase()!=='gym')continue;
+     if(label==='sample'&&St(x.details?.category||'').toLowerCase()!=='gym')continue;
      const y=readLog(x);
      if(y&&y.t<=now+60&&y.t>=now-7776000){
       parsed++;if(!ids.has(y.id)){al.push(y);ids.add(y.id);freshGym.push(y);added++;}
