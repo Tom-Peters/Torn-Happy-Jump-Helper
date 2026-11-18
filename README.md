@@ -1,3 +1,9 @@
+## Preview 0.39.1 - missing gym data recovery
+
+Fixes `Cannot read properties of null (reading 'cost')` in the model card when Progress is opened before valid gym inputs are available. The card now explains which data is missing while preserving observed history. The per-train estimator also returns unknown for absent or invalid gym cost, without inventing zero gains.
+
+Update the permanent preview installer. The stable rollback and earlier snapshots remain unchanged. Regression coverage includes missing gym inputs and a full DOM pass across the main tabs.
+
 ## 0.39.0
 
 Set a custom milestone for each battle stat under Progress and compare it with the current stat, captured gym gains and an estimated weekly training rate.
