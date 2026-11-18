@@ -1,3 +1,13 @@
+## Preview 0.39.2 - restore previous gym-session loading
+
+The gym scanner now follows Torn's older-page `prev` links and exact nanosecond cursors rather than newer-page `next` links. Nested result payloads retain their root stat identity. Successfully read sessions are saved even if a later page fails, with no duplicate log IDs.
+
+The scan window is 90 days. Automatic scans read at most four pages per filter; **Progress → Scan logs (90 days)** checks up to twelve. Page limits and permission/network errors are visible alongside saved history. Storage retains up to 5,000 sessions in the 90-day window; Progress shows the latest 50 for the selected stat. API availability and key permissions still determine which past logs can be recovered.
+
+Foreground-only scans cannot overlap. No session, stat gain or completed train is inferred from energy use alone. The pinned stable rollback is unchanged.
+
+Reference: [Torn API user-log pagination](https://www.torn.com/swagger/openapi.json).
+
 ## Preview 0.39.1 - missing gym data recovery
 
 Fixes `Cannot read properties of null (reading 'cost')` in the model card when Progress is opened before valid gym inputs are available. The card now explains which data is missing while preserving observed history. The per-train estimator also returns unknown for absent or invalid gym cost, without inventing zero gains.
