@@ -206,8 +206,8 @@ test("forecast card never claims reliable accuracy with insufficient intervals",
  assert.match(a.core.fCard(),/Fewer than 3 matching intervals/);
 });
 
-test("canonical installer stays pinned at the confirmed release during preview",()=>{
- const stable=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
+test("archived stable preserves the confirmed legacy release",()=>{
+ const stable=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.10.22-stable-rollback.user.js"),"utf8");
  const preview=fs.readFileSync(FILE,"utf8");
  assert.match(stable,/@version\s+0\.10\.22/);
  assert.match(stable,/@updateURL\s+https:\/\/raw\.githubusercontent\.com\/Tom-Peters\/Torn-Happy-Jump-Helper\/main\/Torn-Happy-Jump-Helper\.user\.js/);
@@ -256,8 +256,8 @@ test("property and energy can comparisons are visible only when data is availabl
  assert.match(h,/no items or properties are purchased/i);
 });
 
-test("the permanent preview channel is independent of the pinned stable channel",()=>{
- const stable=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
+test("historical preview and archived stable preserve independent identities",()=>{
+ const stable=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.10.22-stable-rollback.user.js"),"utf8");
  const preview=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-preview.user.js"),"utf8");
  assert.match(stable,/@version\s+0\.10\.22/);
  const stableVersion=stable.match(/@version\s+(\d+\.\d+\.\d+)/)?.[1];
@@ -344,9 +344,9 @@ test("badge picks the single highest priority event in an imminent cluster",()=>
  assert.equal(a.core.priorityAction([{kind:"TRAIN",t:now-30},{kind:"XANAX",t:now+140}],now).kind,"TRAIN","an action already due takes precedence");
  assert.equal(a.core.priorityAction([{kind:"TRAIN",t:now+4000}],now),null);
 });
-test("property API URLs are read only and never included in permanent stable release",()=>{
+test("property API URLs are read only and not included in archived legacy stable release",()=>{
  const preview=fs.readFileSync(FILE,"utf8");
- const stable=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper.user.js"),"utf8");
+ const stable=fs.readFileSync(path.join(__dirname,"..","Torn-Happy-Jump-Helper-v0.10.22-stable-rollback.user.js"),"utf8");
  assert.match(preview,/property:"\/user\/property"/);
  assert.match(preview,/propertyCatalog:"\/torn\/properties"/);
  assert.doesNotMatch(stable,/propertyCatalog:"\/torn\/properties"/);
