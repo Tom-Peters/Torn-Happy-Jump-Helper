@@ -1,6 +1,6 @@
 {
   "name": "torn-happy-jump-helper",
-  "version": "0.40.0",
+  "version": "0.40.1",
   "private": true,
   "description": "Training-TornStaxx production userscript at the permanent main install URL",
   "scripts": {

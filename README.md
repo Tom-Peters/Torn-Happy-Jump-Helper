@@ -1,3 +1,7 @@
+## 0.40.1 - Expanded award counter matching
+
+Match additional exact award descriptions, correct London/Dubai/South Africa legacy counter names, retain reached-but-unawarded milestones and prioritise close counters for bounded history queries. Main only.
+
 ## 0.40.0 - Achievement planning provider (production)
 
 Fetches up to 40 relevant historical counters at 30 days in batches of ten, derives pace, estimated dates and conditional resource requirements for supported award patterns, and supplies them to the hub. Unknown costs and rates remain unknown. No gameplay automation or extra API key. The preview remains frozen.
