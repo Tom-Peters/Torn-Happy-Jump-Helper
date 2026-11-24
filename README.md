@@ -1,3 +1,11 @@
+# Production channel migration — 0.39.4
+
+Training-TornStaxx now ships through the permanent main installer:
+
+https://raw.githubusercontent.com/Tom-Peters/Torn-Happy-Jump-Helper/main/Torn-Happy-Jump-Helper.user.js
+
+Disable the old preview script and install or update the main script in Torn PDA. The promoted implementation is identical to the tested 0.39.4 preview except for userscript identity metadata. Existing localStorage keys are unchanged. The preview URL remains frozen at 0.39.4 for compatibility; future releases target the main installer. The prior 0.10.22 stable build is preserved at `Torn-Happy-Jump-Helper-v0.10.22-stable-rollback.user.js` (archival copy, not an update channel). Never enable both installers. Older release notes below describe historical channels.
+
 ## Preview 0.39.2 - restore previous gym-session loading
 
 The gym scanner now follows Torn's older-page `prev` links and exact nanosecond cursors rather than newer-page `next` links. Nested result payloads retain their root stat identity. Successfully read sessions are saved even if a later page fails, with no duplicate log IDs.

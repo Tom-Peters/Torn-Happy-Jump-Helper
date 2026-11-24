@@ -28,9 +28,14 @@ test("permanent preview implementation matches the tested versioned release byte
  assert.equal(body(preview),body(versioned),"only installer metadata may differ");
 });
 
-test("stable installer remains independent of the preview promotion",()=>{
- const stable=read("Torn-Happy-Jump-Helper.user.js");
- assert.match(header(stable),/\/\/ @version\s+0\.10\.22\n/);
- assert.ok(header(stable).includes("Torn-Happy-Jump-Helper.user.js"));
- assert.doesNotMatch(header(stable),/Torn-Happy-Jump-Helper-preview\.user\.js/);
+test("production installer has the permanent main identity and tested implementation",()=>{
+ const stable=read("Torn-Happy-Jump-Helper.user.js"),meta=header(stable);
+ assert.match(meta,/Training-TornStaxx - Training Optimiser\n/);
+ assert.match(meta,/\/\/ @version\s+0\.39\.4\n/);
+ assert.ok(meta.includes("// @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper\n"));
+ assert.ok(meta.includes("// @updateURL    "+base+"Torn-Happy-Jump-Helper.user.js"));
+ assert.ok(meta.includes("// @downloadURL  "+base+"Torn-Happy-Jump-Helper.user.js"));
+ assert.equal(body(stable),body(read("Torn-Happy-Jump-Helper-v0.39.4.user.js")));
+ assert.equal(body(stable),body(read(releaseName)));
+ assert.match(header(read("Torn-Happy-Jump-Helper-v0.10.22-stable-rollback.user.js")),/\/\/ @version\s+0\.10\.22\n/);
 });

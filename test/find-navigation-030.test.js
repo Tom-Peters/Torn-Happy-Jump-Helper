@@ -9,9 +9,11 @@ test('Happy Jump has a visible Find control and safe direct section routes',()=>
  assert.match(preview,/\["today","alerts","compare","plan","supplies","gyms","perks","progress","lab","settings","diagnostics"\]/);
  assert.match(preview,/\/\/ @version\s+0\.39\.4/);
 });
-test('Happy Jump latest preview matches the immutable snapshot without modifying stable',()=>{
+test('Frozen preview and promoted main preserve the same tested implementation',()=>{
  assert.equal(preview,read('Torn-Happy-Jump-Helper-v0.39.4-preview.user.js'));
- assert.match(read('Torn-Happy-Jump-Helper.user.js'),/\/\/ @version\s+0\.10\.22/);
+ const main=read('Torn-Happy-Jump-Helper.user.js');
+ assert.match(main,/\/\/ @version\s+0\.39\.4/);
+ assert.equal(main.slice(main.indexOf('// ==/UserScript==')),preview.slice(preview.indexOf('// ==/UserScript==')));
 });
 test('Find does not introduce game-state submissions',()=>{
  assert.doesNotMatch(preview,/PDA_http(?:Post|Put|Patch|Delete)\s*\(/);
