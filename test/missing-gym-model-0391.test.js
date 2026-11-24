@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync(require('node:path').join(__dirname,'../Torn-Happy-Jump-Helper-preview.user.js'),'utf8');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../Torn-Happy-Jump-Helper.user.js'),'utf8');
 const extract=(a,b)=>source.slice(source.indexOf(a),source.indexOf(b,source.indexOf(a)));
 test('Progress model handles missing gym input without losing observed history',()=>{
  const model=vm.runInNewContext(extract('function mCard(','function cgCard(')+';mCard',{card:(title,body)=>title+body});

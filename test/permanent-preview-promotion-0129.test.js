@@ -31,11 +31,11 @@ test("permanent preview implementation matches the tested versioned release byte
 test("production installer has the permanent main identity and tested implementation",()=>{
  const stable=read("Torn-Happy-Jump-Helper.user.js"),meta=header(stable);
  assert.match(meta,/Training-TornStaxx - Training Optimiser\n/);
- assert.match(meta,/\/\/ @version\s+0\.39\.4\n/);
+ const version=JSON.parse(read("package.json")).version;
+ assert.equal(meta.match(/\/\/ @version\s+([^\s]+)\n/)?.[1],version);
  assert.ok(meta.includes("// @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper\n"));
  assert.ok(meta.includes("// @updateURL    "+base+"Torn-Happy-Jump-Helper.user.js"));
  assert.ok(meta.includes("// @downloadURL  "+base+"Torn-Happy-Jump-Helper.user.js"));
- assert.equal(body(stable),body(read("Torn-Happy-Jump-Helper-v0.39.4.user.js")));
- assert.equal(body(stable),body(read(releaseName)));
+ assert.equal(body(stable),body(read("Torn-Happy-Jump-Helper-v"+version+".user.js")));
  assert.match(header(read("Torn-Happy-Jump-Helper-v0.10.22-stable-rollback.user.js")),/\/\/ @version\s+0\.10\.22\n/);
 });

@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const src=fs.readFileSync(require('node:path').join(__dirname,'../Torn-Happy-Jump-Helper-preview.user.js'),'utf8');
+const src=fs.readFileSync(require('node:path').join(__dirname,'../Torn-Happy-Jump-Helper.user.js'),'utf8');
 function fixture(reply){
  const now=1800000000,store={},calls=[],scope={ST:['strength','speed','defense','dexterity'],Nu:Number,St:String,Fi:Number.isFinite,Fl:Math.floor,Ar:Array.isArray,Tm:()=>now*1000,BASE:'https://api.torn.com/v2',URL,al:[],lc:0,ls:'',busy:false,Do:{hidden:false,dispatchEvent(){}},CustomEvent:class{},fmt:String,put:(k,v)=>store[k]=JSON.parse(JSON.stringify(v)),loadInput:()=>null,draw(){},api:async path=>{calls.push(path);return reply(path,calls.length);}};
  const part=src.slice(src.indexOf('function readLog('),src.indexOf('function mCard('));
