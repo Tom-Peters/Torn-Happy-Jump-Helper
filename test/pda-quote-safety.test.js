@@ -4,7 +4,7 @@ const { Script } = require('node:vm');
 const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const source = readFileSync(path.join(__dirname, '..', 'Torn-Happy-Jump-Helper-preview.user.js'), 'utf8');
+const source = readFileSync(path.join(__dirname, '..', 'Torn-Happy-Jump-Helper.user.js'), 'utf8');
 
 test('Torn PDA source begins with a valid userscript metadata block', () => {
   assert.ok(source.startsWith('// ==UserScript==\n'));

@@ -5,7 +5,7 @@ on:
     paths:
       - .github/workflows/build-enhanced.yml
       - scripts/build-enhanced.mjs
-      - Torn-Happy-Jump-Helper.user.js
+      - Torn-Happy-Jump-Helper-v0.10.22-stable-rollback.user.js
       - Torn-Happy-Jump-Helper.full.js
   workflow_dispatch:
 permissions:

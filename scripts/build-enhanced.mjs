@@ -1,6 +1,6 @@
 import {readFileSync,writeFileSync} from "node:fs";
 import {minify} from "terser";
-const compact=readFileSync("Torn-Happy-Jump-Helper.user.js","utf8");
+const compact=readFileSync("Torn-Happy-Jump-Helper-v0.10.22-stable-rollback.user.js","utf8");
 const full=readFileSync("Torn-Happy-Jump-Helper.full.js","utf8");
 const outputName="Torn-Happy-Jump-Helper-Enhanced.user.js";
 const meta=compact.match(/^\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
