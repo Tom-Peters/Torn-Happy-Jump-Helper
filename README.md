@@ -1,3 +1,7 @@
+## 0.41.0 - Achievement counters and education goals
+
+The achievement provider now reads grouped v2 personal stats alongside older flat counters. It matches battle and working-stat milestones, stock payouts, travel and education awards. Completed courses are counted once. A course finish time is supplied when the current course is the last one required for an award. The hub can still use other results when education or private stats are unavailable.
+
 ## 0.40.1 - Expanded award counter matching
 
 Match additional exact award descriptions, correct London/Dubai/South Africa legacy counter names, retain reached-but-unawarded milestones and prioritise close counters for bounded history queries. Main only.

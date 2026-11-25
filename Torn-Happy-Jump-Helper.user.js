@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Training-TornStaxx - Training Optimiser
 // @namespace    https://github.com/Tom-Peters/Torn-Happy-Jump-Helper
-// @version      0.40.1
+// @version      0.41.0
 // @description  Live gym coach, training strategy and verified progress with ranked-war protection
 // @author       IamEEKY
 // @match        https://www.torn.com/*
@@ -60,7 +60,7 @@
 
 
 
-(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.40.1";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
+(function(){"use strict";const Fi=Number.isFinite,En=Object.entries,Fr=Object.fromEntries,Fl=Math.floor,Ce=Math.ceil,Ro=Math.round,Mx=Math.max,Mn=Math.min,Tm=Date.now,Ar=Array.isArray,Ab=Math.abs,Nu=Number,St=String,Pa=Date.parse,Ut=Date.UTC,Do=document,Wi=window;const KEY="###PDA-APIKEY###", BASE="https://api.torn.com/v2", VER="0.41.0";if(!/^(www\.)?torn\.com$/.test(location.hostname))return;if(Wi.__TornHappyJumpBooting===VER)return;Wi.__TornHappyJumpBooting=VER;const N="hhj-compact-v1",ST=["strength","defense","speed","dexterity"], ITEMS={xanax:206,ecstasy:197,lollipop:310,dvd:366
 };const fmt=n=>Fi(n)?Ro(n).toLocaleString("en-US"):"—";const cash=n=>Fi(n)?"$"+fmt(n):"Price unknown";const esc=x=>St(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const utc=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+" UTC";const cu=t=>new Date(t*1000).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false})+" UTC";const eta=t=>{const m=Ce((t-Tm()/1000)/60);return m<=1?"Now":m<60?"In "+m+" min":"In "+Fl(m/60)+"h "+m%60+"m"};const day=t=>new Date(t*1000).toISOString().slice(0,10);const get=(k,alt)=>{try{const x=localStorage.getItem(N+":"+k);return x===null?alt:JSON.parse(x)}catch(_){return alt}};const put=(k,v)=>{try{localStorage.setItem(N+":"+k,JSON.stringify(v))}catch(_){}};const CFG={budget:50000000,stat:"speed",mode:"training",refills:true,horizon:24,theme:"dark",gymBonus:0,ownedPoints:0,jumpSuccessPct:null,xanaxOdPct:null,ecstasyOdPct:null,odEstimateMode:"community",odFactionReduction:0,odNightclub:false,manualPrices:{},sleepEnabled:true,sleepStart:"23:00",sleepEnd:"08:00",adaptHistory:true};let cfg={...CFG,...get("settings",{})},data={},prices={},inv={},errs=[],busy=false,updated=0,tab="today",opened=false,lp=null,sm="auto",hs=get("history",[]),vr=get("gyms",{}),ledger=get("verification",[]),rg=get("rolling-plan",null),sp=get("show-partial",true),an=get("action-notes",[]),watch=get("watch",null),rc=get("recovery",null),start=Tm()/1000,awakeUntil=+get("awake-until",0)||0,al=get("gym-api-logs",[]),lc=+get("gym-log-checked-13",0)||0,ls="Not checked",acts=get("verified-actions",[]),actChecked=0,statSamples=get("stat-samples",[]),activityCoverage="Not checked";const rSt=(raw,t=Tm()/1000)=>acts.some(x=>x.kind==="REFILL"&&day(x.t)===day(t))?"used":raw===true?"used":raw===false?"ready":"unknown";const refill=()=>rSt(data.refills?.refills?.energy);const gym=()=>{const all=data.gyms?.gyms||[];return all.find(x=>+x.id===+data.gym?.gym?.id)||null};const stats=()=>Fr(ST.map(k=>[k,+data.stats?.battlestats?.[k]?.value||0]));const energy=()=>data.bars?.bars?.energy||{}, happy=()=>data.bars?.bars?.happy||{};const cd=()=>data.cooldowns?.cooldowns||{};function validClock(v){return typeof v==="string"&&/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)}function mins(v,back){return validClock(v)?Nu(v.slice(0,2))*60+Nu(v.slice(3)):back}let ukYear=0,ukStart=0,ukEnd=0;function slp(t){if(!cfg.sleepEnabled||t>=awakeUntil-3600&&t<awakeUntil)return false;const a=mins(cfg.sleepStart,1320),b=mins(cfg.sleepEnd,480);if(a===b)return false;const d=new Date(t*1000),y=d.getUTCFullYear();if(y!==ukYear){ ukYear=y; const sunday=month=>{const last=new Date(Ut(y,month+1,0));return last.getUTCDate()-last.getUTCDay()}; ukStart=Ut(y,2,sunday(2),1)/1000;ukEnd=Ut(y,9,sunday(9),1)/1000;}const m=(d.getUTCHours()*60+d.getUTCMinutes()+(t>=ukStart&&t<ukEnd?60:0))%1440;return a<b?m>=a&&m<b:m>=a||m<b;}function sleepLabel(){return cfg.sleepEnabled?(cfg.sleepStart||"22:00")+"–"+(cfg.sleepEnd||"08:00")+" UK time":"Disabled"}
 function gymDots(raw){const dots=Nu(raw);if(!Fi(dots)||dots<=0)return 0;return dots>10?dots/10:dots;}const perkRows=()=>En(data.perks?.perks||{}).flatMap(([type,entries])=>
 (Ar(entries)?entries:[]).filter(x=>typeof x==="string"&&/gym|training|energy|happy|happiness|drug|cooldown|booster|candy|refill|xanax|ecstasy|DVD/i.test(x)).map(description=>({type,description})));function bonus(stat){
@@ -383,7 +383,12 @@ async function refreshTrainingWar(){
    rankedWarState={status:"clear",start:0,checked:Tm()};put("ranked-war-v1",rankedWarState);
   }}catch(_){/* Never turn a failed check into a false all-clear. */}
  }
- finally{warCheckBusy=false;}
+ finally{
+  warCheckBusy=false;
+  if(achievementSnapshot&&achievementSnapshot.warHold!==trainingWarHold()){
+   publishAchievements(achievementBusy?"loading":Tm()-achievementSnapshot.updated<600000?"ready":"cached");
+  }
+ }
 }
 function trainingWarCard(){
  const m=trainingWarMessage(),stale=rankedWarState&&Tm()-rankedWarState.checked>10*60000;
@@ -1555,6 +1560,14 @@ function achievementProgress(description,stats){
   ["itemsboughtabroad","^(?:buy "+n+" items abroad|import "+n+" items from abroad)$"],
   ["booksread","^read "+n+" books$"],
   ["totalstats","^(?:reach|attain|achieve) "+n+" total (?:battle )?stats$"],
+  ["strength","^(?:gain|attain) "+n+" strength$"],
+  ["defense","^(?:gain|attain) "+n+" defen[sc]e$"],
+  ["speed","^(?:gain|attain) "+n+" speed$"],
+  ["dexterity","^(?:gain|attain) "+n+" dexterity$"],
+  ["manuallabor","^attain "+n+" manual labou?r$"],
+  ["intelligence","^attain "+n+" intelligence$"],
+  ["endurance","^attain "+n+" endurance$"],
+  ["stockpayouts","^receive "+n+" stock payouts$"],
   ["awards","^(?:reach|achieve) "+n+" total awards$"],
   ["peoplebusted","^bust "+n+" players out of jail$"],
   ["peoplebought","^bail "+n+" players out of jail$"],
@@ -1570,19 +1583,82 @@ function achievementProgress(description,stats){
   ["raceswon","^win "+n+" races$"],
   ["racingpointsearned","^earn "+n+" racing points$"],
   ["attackswonabroad","^defeat "+n+" people while abroad$"],
-  ["organisedcrimes","^participate in "+n+" organi[sz]ed crimes$"],
+  ["organizedcrimes","^participate in "+n+" organi[sz]ed crimes$"],
   ["criminaloffenses","^"+n+" total crimes$"]
  ];
- for(const [country,key] of [["Mexico","mextravel"],["Canada","cantravel"],["Cayman Islands","caytravel"],["Hawaii","hawtravel"],["England","lontravel"],["United Kingdom","lontravel"],["Switzerland","switravel"],["Argentina","argtravel"],["Japan","japtravel"],["China","chitravel"],["Dubai","dubtravel"],["South Africa","soutravel"]])rules.push([key,"^travel to "+country+" "+n+" times$"]);
+ for(const [country,key] of [["Mexico","mextravel"],["Canada","cantravel"],["Cayman Islands","caytravel"],["Hawaii","hawtravel"],["England","uktravel"],["United Kingdom","uktravel"],["Switzerland","switravel"],["Argentina","argtravel"],["Japan","japtravel"],["China","chitravel"],["Dubai","uaetravel"],["South Africa","satravel"]])rules.push([key,"^travel to "+country+" "+n+" times$"]);
  for(const [key,pattern] of rules){
   const m=d.match(new RegExp(pattern,"i"));if(!m)continue;
-  const target=Number((m[1]||m[2]||"").replace(/,/g,"")),current=stats?.[key];
+  const target=Number((m[1]||m[2]||"").replace(/,/g,"")),current=stats?.[key]??stats?.[({uktravel:"lontravel",uaetravel:"dubtravel",satravel:"soutravel",organizedcrimes:"organisedcrimes"})[key]];
   if(!Number.isSafeInteger(target)||target<1||typeof current!=="number"||!Number.isFinite(current)||current<0)return null;
   return {counter:key,current,target,percent:Math.min(100,100*current/target),remaining:Math.max(0,target-current)};
  }
  return null;
 }
-function achievementModel(catalog,owned,stats){
+// Torn v2 groups counters by category. Historical queries use the short stat names.
+function achievementCounters(raw){
+ if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
+ const paths={
+  attackswon:"attacking.attacks.won",defendswon:"attacking.defends.won",attacksassisted:"attacking.attacks.assist",
+  attacksdraw:"attacking.attacks.stalemate",attacksstealthed:"attacking.attacks.stealth",attackcriticalhits:"attacking.hits.critical",
+  roundsfired:"attacking.ammunition.total",respectforfaction:"attacking.faction.respect",bountiescollected:"bounties.collected.amount",
+  peoplebusted:"jail.busts.success",peoplebought:"jail.bails.amount",revives:"hospital.reviving.revives",
+  medicalitemsused:"hospital.medical_items_used",bloodwithdrawn:"hospital.blood_withdrawn",
+  refills:"other.refills.energy",nerverefills:"other.refills.nerve",daysbeendonator:"other.donator_days",awards:"other.awards",
+  jobpointsused:"jobs.job_points_used",trainsreceived:"jobs.trains_received",
+  manuallabor:"jobs.stats.manual",intelligence:"jobs.stats.intelligence",endurance:"jobs.stats.endurance",
+  totalstats:"battle_stats.total",strength:"battle_stats.strength",defense:"battle_stats.defense",speed:"battle_stats.speed",dexterity:"battle_stats.dexterity",
+  cityfinds:"items.found.city",dumpfinds:"items.found.dump",itemsdumped:"items.trashed",booksread:"items.used.books",
+  candyused:"items.used.candy",alcoholused:"items.used.alcohol",energydrinkused:"items.used.energy_drinks",virusescoded:"items.viruses_coded",
+  auctionswon:"trading.items.auctions.won",bazaarcustomers:"trading.bazaar.customers",stockpayouts:"investments.stocks.payouts",
+  traveltimes:"travel.total",itemsboughtabroad:"travel.items_bought",attackswonabroad:"travel.attacks_won",
+  mextravel:"travel.mexico",cantravel:"travel.canada",caytravel:"travel.cayman_islands",hawtravel:"travel.hawaii",
+  uktravel:"travel.united_kingdom",switravel:"travel.switzerland",argtravel:"travel.argentina",japtravel:"travel.japan",
+  chitravel:"travel.china",uaetravel:"travel.united_arab_emirates",satravel:"travel.south_africa",
+  contractscompleted:"missions.contracts.total",missioncreditsearned:"missions.credits",raceswon:"racing.races.won",racingpointsearned:"racing.points",
+  criminaloffenses:"crimes.offenses.total",organizedcrimes:"crimes.offenses.organized_crimes"
+ };
+ const counts={};
+ const oldNames={uktravel:"lontravel",uaetravel:"dubtravel",satravel:"soutravel",organizedcrimes:"organisedcrimes"};
+ for(const [key,path] of Object.entries(paths)){
+  const value=path.split(".").reduce((obj,part)=>obj?.[part],raw)??raw[key]??raw[oldNames[key]];
+  if(typeof value==="number"&&Number.isFinite(value)&&value>=0)counts[key]=value;
+ }
+ return Object.keys(counts).length?counts:null;
+}
+function awardEducation(user,catalog){
+ const done=user?.education?.complete??user?.education_completed;
+ if(!Array.isArray(done)||!done.every(id=>Number.isSafeInteger(id)&&id>0))return null;
+ const completed=new Set(done),degrees=new Map();
+ for(const department of Array.isArray(catalog?.education)?catalog.education:[]){
+  const courses=department?.courses;
+  if(!Array.isArray(courses)||!courses.length||!courses.every(c=>Number.isSafeInteger(c?.id)&&c.id>0))continue;
+  const ids=new Set(courses.map(c=>c.id));
+  for(const course of courses)if(Number.isSafeInteger(course.rewards?.honor)&&course.rewards.honor>0){
+   degrees.set(course.rewards.honor,ids);
+  }
+ }
+ return {completed,degrees,current:user?.education?.current};
+}
+function educationAwardProgress(award,education){
+ if(!education)return null;
+ let target,current,nextCounts=false,counter;
+ const threshold=award.description.trim().match(/^complete ([1-9][0-9,]*) education courses?\.?$/i);
+ if(threshold){
+  target=Number(threshold[1].replace(/,/g,""));current=education.completed.size;counter="educationcourses";
+  nextCounts=!education.completed.has(education.current?.id);
+ }else{
+  const courses=education.degrees.get(award.id);
+  if(!courses||!/^complete all .+ courses\.?$/i.test(award.description.trim()))return null;
+  target=courses.size;current=[...courses].filter(id=>education.completed.has(id)).length;
+  counter="degree"+award.id;nextCounts=courses.has(education.current?.id)&&!education.completed.has(education.current.id);
+ }
+ if(!Number.isSafeInteger(target)||target<=0)return null;
+ const remaining=Math.max(0,target-current),enrolled=education.current;
+ const courseEnd=remaining===1&&nextCounts&&Number.isSafeInteger(enrolled?.id)&&enrolled.id>0&&Number.isSafeInteger(enrolled.until)?enrolled.until*1000:null;
+ return {counter,current,target,remaining,percent:Math.min(100,current/target*100),courseEnd};
+}
+function achievementModel(catalog,owned,stats,education){
  const rows=[],seen=new Set(),validId=x=>Number.isSafeInteger(x)&&x>0;
  for(const kind of ["honors","medals"]){
   if(!Array.isArray(catalog?.[kind])||!catalog[kind].length||!Array.isArray(owned?.[kind]))throw Error("Award data incomplete");
@@ -1593,7 +1669,7 @@ function achievementModel(catalog,owned,stats){
    const key=kind+":"+a.id;if(seen.has(key))continue;seen.add(key);
    if(kind==="honors"&&(a.type?.id===1||String(a.type?.title).toLowerCase()==="default"))continue;
    const completed=earned.has(a.id),date=earned.get(a.id);
-   const progress=completed?null:achievementProgress(a.description,stats);
+   const progress=completed?null:(kind==="honors"?educationAwardProgress(a,education):null)??achievementProgress(a.description,stats);
    rows.push({key,kind,name:a.name.slice(0,100),description:a.description.slice(0,400),category:String(a.type?.title||"Other").slice(0,60),rarity:String(a.rarity||"").slice(0,40),completed,earnedAt:completed&&Number.isSafeInteger(date)&&date>0?date:null,progress});
   }
  }
@@ -1611,6 +1687,11 @@ function achievementPlan(progress,history,now,pointPrice){
  if(!progress||progress.remaining<0)return null;
  const k=progress.counter,n=progress.remaining,old=history?.[k],elapsed=old?(now/1000-old.timestamp)/86400:0;
  if(n===0)return {counter:k,tool:"general",energy:null,nerve:null,money:null,points:null,days:null,rate:null,historyDays:null,eta:null,note:"Counter already meets the requirement. Visit the awards page and verify any award-specific trigger; ownership is not confirmed."};
+ if(k==="educationcourses"||/^degree[0-9]+$/.test(k)){
+  const eta=Number.isSafeInteger(progress.courseEnd)&&progress.courseEnd>now?progress.courseEnd:null;
+  return {counter:k,tool:"general",energy:0,nerve:0,money:eta?0:null,points:null,eta,days:null,rate:null,historyDays:null,
+   forecast:eta?"course":null,note:eta?"The final qualifying course is already under way. This is its scheduled finish in Torn.":"Remaining tuition and duration depend on course choice and education perks."};
+ }
  const rate=elapsed>=7&&elapsed<=45&&typeof old.value==="number"&&old.value>=0&&progress.current>old.value?(progress.current-old.value)/elapsed:null;
  const days=rate>0?Math.max(1,Math.ceil(n/rate)):null;
  const validDays=Number.isFinite(days)&&days<=3650?days:null;
@@ -1622,17 +1703,21 @@ function achievementPlan(progress,history,now,pointPrice){
  else if(k==="bloodwithdrawn"||k==="medicalitemsused"){tool="profit";energy=0;nerve=0;note="Item and medical cooldown costs vary. Only use medical items where appropriate; do not interfere with war recovery.";}
  else if(k==="refills"||k==="nerverefills"){tool=k==="refills"?"happy":"general";energy=0;nerve=0;points=n*30;money=Number.isFinite(pointPrice)&&pointPrice>0?points*pointPrice:null;note="30 points per paid refill, ordinarily once daily; free refills may reduce cost. Cash estimate uses current known point quote if available.";}
  else if(k==="peoplebusted"||k==="criminaloffenses"){note="Nerve cost varies by crime, jail target, perks and failures; no universal cost.";}
- else if(k==="jobpointsused"||k==="trainsreceived"){tool="company";note="Requires eligible employment; company director training sent to staff is not personal training received. Costs depend on the job.";}
- else if(k==="booksread"||k==="totalstats"){tool="happy";note="Follow normal training and book timing; energy, money and duration depend on book and gym plan.";}
- else if(k==="daysbeendonator"||k==="awards"||k==="cityfinds"){tool="general";energy=0;nerve=0;note="No direct energy or nerve cost for the milestone itself; underlying actions or subscription may cost resources.";}
+ else if(["jobpointsused","trainsreceived","manuallabor","intelligence","endurance"].includes(k)){tool="company";note="Requires eligible employment; company director training sent to staff is not personal training received. Costs depend on the job.";}
+ else if(["booksread","totalstats","strength","defense","speed","dexterity"].includes(k)){tool="happy";note="Follow normal training and book timing; energy, money and duration depend on book and gym plan.";}
+ else if(k==="stockpayouts"){tool="profit";energy=0;nerve=0;note="Collect qualifying benefits from your existing stocks. Timing depends on holdings.";}
+ else if(k==="cityfinds"){energy=0;nerve=0;money=0;note="Finding spawned items on the city map has no direct cost. The next spawn time is unknown.";}
+ else if(k==="daysbeendonator"||k==="awards"){tool="general";energy=0;nerve=0;note="No direct energy or nerve cost for the milestone itself; underlying actions or subscription may cost resources.";}
  else if(["candyused","alcoholused","energydrinkused","itemsdumped","auctionswon","bazaarcustomers","dumpfinds"].includes(k)){tool="profit";energy=k==="dumpfinds"?5*n:0;nerve=0;note="Incremental item and cooldown requirements depend on the method; use normal gameplay and check cost before spending.";
- }else if(["attackswonabroad","contractscompleted","missioncreditsearned","organisedcrimes"].includes(k)){tool="war";note="Progress depends on qualifying attacks, missions or faction participation; do not spend energy or nerve solely for a merit during a war.";
+ }else if(["attackswonabroad","contractscompleted","missioncreditsearned","organizedcrimes"].includes(k)){tool="war";note="Progress depends on qualifying attacks, missions or faction participation; do not spend energy or nerve solely for a merit during a war.";
  }else if(k==="virusescoded"){tool="general";energy=0;nerve=0;note="Coding duration varies by virus and perks; no direct energy or nerve requirement.";}
  return {counter:k,tool,energy,nerve,money,points,days:validDays,rate:rate>0?rate:null,historyDays:rate>0?elapsed:null,eta:validDays===null?null:now+validDays*86400000,note};
 }
 
+let awardCourseCatalog=null,awardCourseCatalogAt=0;
 let achievementSnapshot=null,achievementCatalog=null,achievementCatalogAt=0,achievementAttempt=0,achievementBusy=false,achievementHistory={},achievementHistoryAt=0;
 function publishAchievements(status){
+ if(achievementSnapshot)achievementSnapshot.warHold=!!trainingWarHold();
  Do.dispatchEvent(new CustomEvent("staxx:achievements-data",{detail:{version:1,status,snapshot:achievementSnapshot}}));
 }
 async function refreshAchievements(force){
@@ -1651,9 +1736,21 @@ async function refreshAchievements(force){
   }
   const owned=await api("/user/?selections=honors,medals,merits");
   let stats=null;
-  try{const p=await api("/user/personalstats?cat=all&legacy=personalstats");if(p.personalstats&&!Ar(p.personalstats)&&typeof p.personalstats==="object")stats=p.personalstats;}catch(_){}
-  const model=achievementModel(achievementCatalog,owned,stats);
-  const keys=[...new Set(model.rows.filter(x=>!x.completed&&x.progress?.remaining>0).sort((a,b)=>b.progress.percent-a.progress.percent||a.progress.remaining-b.progress.remaining).map(x=>x.progress.counter))].slice(0,60);
+  try{const p=await api("/user/personalstats?cat=all");stats=achievementCounters(p.personalstats);}catch(_){}
+  let education=null;
+  // Reuse the normal Training refresh where available. Education permissions are optional.
+  try{
+   const recent=data?.coreAt&&now-data.coreAt<600000;
+   const user=recent&&data.education?data.education:await api("/user/education");
+   if(recent&&Array.isArray(data.educationCatalog?.education)){awardCourseCatalog=data.educationCatalog;awardCourseCatalogAt=now;}
+   education=awardEducation(user,awardCourseCatalog);
+   if(education&&(!awardCourseCatalog||now-awardCourseCatalogAt>86400000)){
+    const courses=await api("/torn/education");
+    if(Array.isArray(courses.education)){awardCourseCatalog=courses;awardCourseCatalogAt=now;education=awardEducation(user,courses);}
+   }
+  }catch(_){}
+  const model=achievementModel(achievementCatalog,owned,stats,education);
+  const keys=[...new Set(model.rows.filter(x=>!x.completed&&x.progress?.remaining>0&&x.progress.counter!=="educationcourses"&&!/^degree/.test(x.progress.counter)).sort((a,b)=>b.progress.percent-a.progress.percent||a.progress.remaining-b.progress.remaining).map(x=>x.progress.counter))].slice(0,60);
   if(keys.length&&(!achievementHistoryAt||now-achievementHistoryAt>86400000)){
    const next={},at=Math.floor(now/1000)-30*86400;
    for(let i=0;i<keys.length;i+=10){
